@@ -16,6 +16,7 @@ extends CanvasLayer
 var _status_timer: float = 0.0
 var _detection_display: float = 0.0
 var _capture_hint: Label
+var _scope_overlay: Control
 
 
 func _ready() -> void:
@@ -26,6 +27,7 @@ func _ready() -> void:
 	status_label.text = ""
 	detection_bar.value = 0
 	_ensure_capture_hint()
+	_ensure_scope_overlay()
 	if touch_controls:
 		touch_controls.visible = TouchInput.is_touch_ui_desired()
 	set_click_to_capture_hint(TouchInput.is_web_desktop())
@@ -58,6 +60,73 @@ func set_click_to_capture_hint(show: bool) -> void:
 	_ensure_capture_hint()
 	if _capture_hint:
 		_capture_hint.visible = show
+
+
+func _ensure_scope_overlay() -> void:
+	_scope_overlay = get_node_or_null("Root/ScopeOverlay") as Control
+	if _scope_overlay:
+		return
+	_scope_overlay = Control.new()
+	_scope_overlay.name = "ScopeOverlay"
+	_scope_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_scope_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scope_overlay.visible = false
+	# Dark vignette bars + crisp fine mil-dot sniper crosshair lines
+	for spec in [
+		[0.0, 0.0, 1.0, 0.14],
+		[0.0, 0.86, 1.0, 1.0],
+		[0.0, 0.14, 0.22, 0.86],
+		[0.78, 0.14, 1.0, 0.86],
+	]:
+		var bar := ColorRect.new()
+		bar.color = Color(0.02, 0.03, 0.02, 0.92)
+		bar.anchor_left = spec[0]
+		bar.anchor_top = spec[1]
+		bar.anchor_right = spec[2]
+		bar.anchor_bottom = spec[3]
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_scope_overlay.add_child(bar)
+	var hline := ColorRect.new()
+	hline.color = Color(0.1, 0.1, 0.1, 0.9)
+	hline.anchor_left = 0.22
+	hline.anchor_right = 0.78
+	hline.anchor_top = 0.5
+	hline.anchor_bottom = 0.5
+	hline.offset_top = -1.0
+	hline.offset_bottom = 1.0
+	hline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scope_overlay.add_child(hline)
+	var vline := ColorRect.new()
+	vline.color = Color(0.1, 0.1, 0.1, 0.9)
+	vline.anchor_left = 0.5
+	vline.anchor_right = 0.5
+	vline.anchor_top = 0.14
+	vline.anchor_bottom = 0.86
+	vline.offset_left = -1.0
+	vline.offset_right = 1.0
+	vline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scope_overlay.add_child(vline)
+	var dot := ColorRect.new()
+	dot.color = Color(1.0, 0.2, 0.15, 0.95)
+	dot.anchor_left = 0.5
+	dot.anchor_right = 0.5
+	dot.anchor_top = 0.5
+	dot.anchor_bottom = 0.5
+	dot.offset_left = -2.0
+	dot.offset_right = 2.0
+	dot.offset_top = -2.0
+	dot.offset_bottom = 2.0
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scope_overlay.add_child(dot)
+	$Root.add_child(_scope_overlay)
+	$Root.move_child(_scope_overlay, 0)
+
+
+func set_scope_overlay(on: bool) -> void:
+	if is_instance_valid(_scope_overlay):
+		_scope_overlay.visible = on
+	if is_instance_valid(crosshair):
+		crosshair.visible = not on
 
 
 func _late_bind() -> void:

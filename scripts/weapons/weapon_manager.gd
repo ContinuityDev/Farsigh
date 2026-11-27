@@ -1,29 +1,32 @@
 extends Node
 class_name WeaponManager
-## Owns equipped weapons, firing, reloading, and ammo HUD updates.
+## Manages the 5-slot arsenal (Primary, Secondary, Special/Bow, Throwable, Melee),
+## Gunsmith mod stats, multi-pellet shotguns, recoil, frag/molotov ordnance,
+## melee swings, and retrievable arrows/knives.
 
 signal ammo_changed(mag: int, reserve: int, weapon_name: String)
 signal weapon_switched(weapon_name: String)
 
+const ARROW_SCENE := preload("res://scenes/items/arrow.tscn")
+const KNIFE_SCENE := preload("res://scenes/items/thrown_knife.tscn")
+const ThrowableOrdnance = preload("res://scripts/items/throwable_ordnance.gd")
+
 @export var camera_path: NodePath
 
+# 5-slot inventory (0: Primary, 1: Secondary, 2: Special/Bow, 3: Throwable, 4: Melee)
+var slots: Array[WeaponData] = []
+var mags: Array[int] = [0, 0, 0, 0, 0]
+var reserves: Array[int] = [0, 0, 0, 0, 0]
+var active_slot: int = 0
+
+# Backward-compatible aliases for tests & HUD
 var primary: WeaponData
 var secondary: WeaponData
 var active_is_primary: bool = true
 
-var primary_mag: int = 0
-var primary_reserve: int = 0
-var secondary_mag: int = 0
-var secondary_reserve: int = 0
-
 var _cooldown: float = 0.0
 var _reloading: bool = false
 var _reload_timer: float = 0.0
-
-const RELOAD_TIME := 1.4
-const ARROW_SCENE := preload("res://scenes/items/arrow.tscn")
-const KNIFE_SCENE := preload("res://scenes/items/thrown_knife.tscn")
-
 
 var viewmodel_rig: ViewmodelRig
 
@@ -37,7 +40,7 @@ func _bind_viewmodel_rig() -> void:
 	var cam := get_node_or_null(camera_path) as Camera3D
 	if cam:
 		viewmodel_rig = cam.get_node_or_null("Viewmodels") as ViewmodelRig
-	_refresh_viewmodel()
+	_refresh_viewmodel(false)
 
 
 func _refresh_viewmodel(animate_swap: bool = true) -> void:
@@ -48,39 +51,63 @@ func _refresh_viewmodel(animate_swap: bool = true) -> void:
 
 
 func _equip_from_loadout() -> void:
-	primary = WeaponData.from_id(GameState.selected_primary)
-	secondary = WeaponData.from_id(GameState.selected_secondary)
-	primary_mag = primary.magazine_size
-	primary_reserve = primary.reserve_ammo
-	secondary_mag = secondary.magazine_size
-	secondary_reserve = secondary.reserve_ammo
+	slots.clear()
+	var ids: Array[GameState.WeaponId] = [
+		GameState.selected_primary,
+		GameState.selected_secondary,
+		GameState.selected_special,
+		GameState.selected_throwable,
+		GameState.selected_melee,
+	]
+	for i in range(ids.size()):
+		var wid := ids[i]
+		var w := WeaponData.from_id(wid, GameState.get_weapon_mods(wid))
+		# If Knife is placed in slot 4 (melee), treat it as melee swing instead of throwing
+		if i == 4 and wid == GameState.WeaponId.KNIFE:
+			w.display_name = "Combat Knife"
+			w.projectile_kind = "melee_swing"
+			w.damage = 75.0
+			w.max_range = 2.4
+			w.magazine_size = 1
+			w.reserve_ammo = 0
+		slots.append(w)
+		mags[i] = w.magazine_size
+		reserves[i] = w.reserve_ammo
+	primary = slots[0]
+	secondary = slots[1]
+	active_slot = 0
+	active_is_primary = true
 	_emit_ammo()
 
 
 func get_active() -> WeaponData:
-	return primary if active_is_primary else secondary
+	if slots.is_empty():
+		return WeaponData.make_pistol()
+	return slots[clampi(active_slot, 0, slots.size() - 1)]
+
+
+func get_aim_fov() -> float:
+	return get_active().aim_fov
+
+
+func has_scope_overlay() -> bool:
+	return get_active().scope_overlay
 
 
 func _mag() -> int:
-	return primary_mag if active_is_primary else secondary_mag
+	return mags[clampi(active_slot, 0, mags.size() - 1)]
 
 
 func _reserve() -> int:
-	return primary_reserve if active_is_primary else secondary_reserve
+	return reserves[clampi(active_slot, 0, reserves.size() - 1)]
 
 
 func _set_mag(v: int) -> void:
-	if active_is_primary:
-		primary_mag = v
-	else:
-		secondary_mag = v
+	mags[clampi(active_slot, 0, mags.size() - 1)] = v
 
 
 func _set_reserve(v: int) -> void:
-	if active_is_primary:
-		primary_reserve = v
-	else:
-		secondary_reserve = v
+	reserves[clampi(active_slot, 0, reserves.size() - 1)] = v
 
 
 func _process(delta: float) -> void:
@@ -95,6 +122,9 @@ func try_fire() -> void:
 	var w := get_active()
 	if _reloading or _cooldown > 0.0:
 		return
+	if w.projectile_kind == "melee_swing":
+		_fire_shot(w)
+		return
 	if _mag() <= 0:
 		start_reload()
 		return
@@ -107,7 +137,8 @@ func try_fire_held() -> void:
 
 
 func _fire_shot(w: WeaponData) -> void:
-	_set_mag(_mag() - 1)
+	if w.projectile_kind != "melee_swing":
+		_set_mag(_mag() - 1)
 	_cooldown = w.fire_rate
 	var cam := get_node_or_null(camera_path) as Camera3D
 	var origin: Vector3
@@ -125,40 +156,84 @@ func _fire_shot(w: WeaponData) -> void:
 		if w.id == GameState.WeaponId.BOW:
 			viewmodel_rig.set_bow_arrow_visible(_mag() > 0)
 
-	match w.id:
-		GameState.WeaponId.BOW:
+	# Apply distinct weapon recoil to player view
+	var p := get_parent()
+	if is_instance_valid(p) and p.has_method("apply_recoil") and w.recoil_pitch > 0.0:
+		var yaw_kick := randf_range(-w.recoil_yaw, w.recoil_yaw)
+		p.apply_recoil(w.recoil_pitch, yaw_kick)
+
+	match w.projectile_kind:
+		"arrow", "bolt":
 			_spawn_projectile(ARROW_SCENE, origin, dir, w)
 			if _mag() <= 0 and _reserve() > 0:
 				start_reload()
-		GameState.WeaponId.KNIFE:
+		"knife":
 			_spawn_projectile(KNIFE_SCENE, origin, dir, w)
+			if _mag() <= 0 and _reserve() > 0:
+				start_reload()
+		"frag", "molotov":
+			ThrowableOrdnance.spawn_ordnance(get_tree().current_scene, origin + dir * 0.65, dir, w.projectile_kind, w.damage, w.explosion_radius, get_parent())
+			if _mag() <= 0 and _reserve() > 0:
+				start_reload()
+		"melee_swing":
+			_melee_swing(origin, dir, w)
 		_:
-			_hitscan(origin, dir, w)
+			var pellets := maxi(1, w.pellet_count)
+			var is_aim := bool(p.get("is_aiming")) if is_instance_valid(p) else false
+			var spread := w.spread_deg * (0.35 if is_aim and pellets == 1 else 1.0)
+			for _i in range(pellets):
+				var shot_dir := _apply_spread(dir, spread)
+				_hitscan(origin, shot_dir, w)
 
 	_emit_ammo()
+
+
+func _apply_spread(dir: Vector3, spread_deg: float) -> Vector3:
+	if spread_deg <= 0.05:
+		return dir
+	var rad := deg_to_rad(spread_deg)
+	var rx := randf_range(-rad, rad)
+	var ry := randf_range(-rad, rad)
+	return (dir + Vector3(rx, ry, 0.0)).normalized()
 
 
 func _hitscan(origin: Vector3, dir: Vector3, w: WeaponData) -> void:
 	var space := get_viewport().get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * w.max_range)
-	# world + hitboxes + bodies + interactables (prefer HitZones over enemy capsules)
 	query.collision_mask = 1 | 16 | 32 | 128
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
 	query.exclude = [_player_rid()]
 	var hit := space.intersect_ray(query)
-	_spawn_tracer(origin, hit.get("position", origin + dir * minf(w.max_range, 40.0)))
+	_spawn_tracer(origin, hit.get("position", origin + dir * minf(w.max_range, 42.0)))
 	if hit.is_empty():
 		return
 	_apply_weapon_hit(hit.collider, w.damage, hit.position)
 
 
+func _melee_swing(origin: Vector3, dir: Vector3, w: WeaponData) -> void:
+	var space := get_viewport().get_world_3d().direct_space_state
+	# Check center + slight left/right arc rays so melee swings feel generous & crisp
+	var offsets: Array[Vector3] = [Vector3.ZERO, Vector3(0.18, 0, 0), Vector3(-0.18, 0, 0)]
+	for off in offsets:
+		var ray_dir: Vector3 = (dir + off * 0.5).normalized()
+		var q := PhysicsRayQueryParameters3D.create(origin, origin + ray_dir * w.max_range)
+		q.collision_mask = 4 | 128
+		q.collide_with_areas = true
+		q.collide_with_bodies = true
+		q.exclude = [_player_rid()]
+		var hit := space.intersect_ray(q)
+		if not hit.is_empty():
+			_apply_weapon_hit(hit.collider, w.damage, hit.position)
+			return
+
+
 func _spawn_projectile(scene: PackedScene, origin: Vector3, dir: Vector3, w: WeaponData) -> void:
 	var proj := scene.instantiate()
 	get_tree().current_scene.add_child(proj)
-	proj.global_position = origin + dir * 0.6
+	proj.global_position = origin + dir * 0.65
 	if proj.has_method("launch"):
-		proj.launch(dir, w.damage, w.projectile_speed, w.retrievable_projectile, get_parent())
+		proj.launch(dir, w.damage, w.projectile_speed, w.retrievable_projectile, get_parent(), w.arrow_type)
 
 
 func _spawn_tracer(from: Vector3, to: Vector3) -> void:
@@ -184,10 +259,12 @@ func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 
 func start_reload() -> void:
 	var w := get_active()
+	if w.projectile_kind == "melee_swing":
+		return
 	if _reloading or _mag() >= w.magazine_size or _reserve() <= 0:
 		return
 	_reloading = true
-	_reload_timer = 0.85 if w.id == GameState.WeaponId.BOW else RELOAD_TIME
+	_reload_timer = w.reload_time
 	if is_instance_valid(viewmodel_rig):
 		viewmodel_rig.play_reload(_reload_timer)
 
@@ -205,13 +282,29 @@ func _finish_reload() -> void:
 
 
 func switch_slot(to_primary: bool) -> void:
-	if active_is_primary == to_primary:
+	select_slot(0 if to_primary else 1)
+
+
+func select_slot(slot_idx: int) -> void:
+	var clamped := clampi(slot_idx, 0, maxi(0, slots.size() - 1))
+	if active_slot == clamped:
 		return
-	active_is_primary = to_primary
+	active_slot = clamped
+	active_is_primary = (active_slot == 0)
 	_reloading = false
 	weapon_switched.emit(get_active().display_name)
 	_refresh_viewmodel()
 	_emit_ammo()
+
+
+func cycle_slot() -> void:
+	if slots.is_empty():
+		return
+	select_slot((active_slot + 1) % slots.size())
+
+
+func select_weapon_index(index: int) -> void:
+	select_slot(clampi(index - 1, 0, maxi(0, slots.size() - 1)))
 
 
 func _apply_weapon_hit(collider: Object, damage: float, hit_pos: Vector3) -> void:
@@ -231,14 +324,6 @@ func _apply_weapon_hit(collider: Object, damage: float, hit_pos: Vector3) -> voi
 		collider.get_parent().apply_damage(damage, hit_pos, get_parent())
 
 
-func select_weapon_index(index: int) -> void:
-	match index:
-		1, 3:
-			switch_slot(true)
-		2, 4:
-			switch_slot(false)
-
-
 func try_melee_takedown(player: Node3D) -> bool:
 	var cam := get_node_or_null(camera_path) as Camera3D
 	if cam == null:
@@ -246,7 +331,7 @@ func try_melee_takedown(player: Node3D) -> bool:
 	var space := get_viewport().get_world_3d().direct_space_state
 	var origin := cam.global_position
 	var dir := -cam.global_transform.basis.z
-	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * 2.2)
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * 2.4)
 	query.collision_mask = 4
 	query.exclude = [_player_rid()]
 	var hit := space.intersect_ray(query)
@@ -277,18 +362,24 @@ func try_melee_takedown(player: Node3D) -> bool:
 
 
 func add_retrievable_ammo(weapon_hint: String = "") -> void:
-	# Picked up arrow / knife
-	if weapon_hint == "arrow" and primary.id == GameState.WeaponId.BOW:
-		primary_reserve += 1
-	elif weapon_hint == "knife" and secondary.id == GameState.WeaponId.KNIFE:
-		secondary_reserve += 1
-	elif get_active().retrievable_projectile:
+	for i in range(slots.size()):
+		if weapon_hint == "arrow" and slots[i].id in [GameState.WeaponId.BOW, GameState.WeaponId.CROSSBOW]:
+			reserves[i] += 1
+			_emit_ammo()
+			return
+		elif weapon_hint == "knife" and slots[i].id == GameState.WeaponId.KNIFE and slots[i].projectile_kind == "knife":
+			reserves[i] += 1
+			_emit_ammo()
+			return
+	if get_active().retrievable_projectile:
 		_set_reserve(_reserve() + 1)
 	_emit_ammo()
 
 
 func _emit_ammo() -> void:
-	ammo_changed.emit(_mag(), _reserve(), get_active().display_name)
+	var w := get_active()
+	var slot_tag := "[%d] %s" % [active_slot + 1, w.display_name]
+	ammo_changed.emit(_mag(), _reserve(), slot_tag)
 
 
 func _player_rid() -> RID:

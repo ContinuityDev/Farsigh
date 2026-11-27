@@ -120,9 +120,16 @@ func _physics_process(delta: float) -> void:
 	_update_lean(delta)
 	is_aiming = TouchInput.is_action_pressed("aim") and carried_body == null
 	var target_fov := 70.0
+	var scoped := false
 	if is_aiming:
 		target_fov = weapons.get_aim_fov() if is_instance_valid(weapons) and weapons.has_method("get_aim_fov") else 52.0
+		scoped = is_instance_valid(weapons) and weapons.has_method("has_scope_overlay") and weapons.has_scope_overlay()
 	camera.fov = lerpf(camera.fov, target_fov, 10.0 * delta)
+	var hud_scope := get_tree().get_first_node_in_group("hud")
+	if is_instance_valid(hud_scope) and hud_scope.has_method("set_scope_overlay"):
+		hud_scope.set_scope_overlay(scoped)
+	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
+		weapons.viewmodel_rig.visible = not scoped
 
 	var input_dir := TouchInput.get_move_axis()
 	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
@@ -166,6 +173,13 @@ func _apply_look(yaw: float, pitch: float) -> void:
 	head.rotation.x = clampf(head.rotation.x, deg_to_rad(-85.0), deg_to_rad(85.0))
 	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
 		weapons.viewmodel_rig.add_look_sway(Vector2(yaw * 18.0, pitch * 18.0))
+
+
+func apply_recoil(pitch_deg: float, yaw_deg: float) -> void:
+	if is_instance_valid(head):
+		head.rotate_x(deg_to_rad(pitch_deg * 0.45))
+		head.rotation.x = clampf(head.rotation.x, deg_to_rad(-85.0), deg_to_rad(85.0))
+	rotate_y(deg_to_rad(yaw_deg * 0.35))
 
 
 func _update_lean(delta: float) -> void:
@@ -320,11 +334,17 @@ func _handle_combat_input() -> void:
 	if TouchInput.is_action_just_pressed("melee"):
 		weapons.try_melee_takedown(self)
 	if TouchInput.is_action_just_pressed("weapon_1"):
-		weapons.switch_slot(true)
+		weapons.select_slot(0)
 	if TouchInput.is_action_just_pressed("weapon_2"):
-		weapons.switch_slot(false)
+		weapons.select_slot(1)
+	if TouchInput.is_action_just_pressed("weapon_3"):
+		weapons.select_slot(2)
+	if TouchInput.is_action_just_pressed("weapon_4"):
+		weapons.select_slot(3)
+	if TouchInput.is_action_just_pressed("weapon_5"):
+		weapons.select_slot(4)
 	if TouchInput.is_action_just_pressed("weapon_next"):
-		weapons.switch_slot(not weapons.active_is_primary)
+		weapons.cycle_slot()
 	if TouchInput.is_action_just_pressed("inspect_weapon"):
 		if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
 			weapons.viewmodel_rig.play_inspect()

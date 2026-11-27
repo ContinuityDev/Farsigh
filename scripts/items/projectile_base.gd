@@ -2,18 +2,22 @@ extends RigidBody3D
 class_name ProjectileBase
 ## Shared throwable / arrow / knife projectile.
 
+const ThrowableOrdnance = preload("res://scripts/items/throwable_ordnance.gd")
+
 @export var item_kind: String = "projectile"
 @export var impact_noise: float = 6.0
 
 var damage: float = 30.0
 var retrievable: bool = false
+var payload_type: String = "standard"  # "standard" | "fire" | "explosive"
 var spent: bool = false
 var _owner: Node = null
 
 
-func launch(dir: Vector3, dmg: float, speed: float, can_retrieve: bool = false, owner_node: Node = null) -> void:
+func launch(dir: Vector3, dmg: float, speed: float, can_retrieve: bool = false, owner_node: Node = null, payload: String = "standard") -> void:
 	damage = dmg
-	retrievable = can_retrieve
+	retrievable = can_retrieve and payload == "standard"
+	payload_type = payload
 	_owner = owner_node
 	freeze = false
 	linear_velocity = dir.normalized() * speed
@@ -71,6 +75,17 @@ func _resolve_hit(body: Object, hit_pos: Vector3) -> void:
 		body.apply_damage(damage, hit_pos, _owner)
 	elif body.get_parent() and body.get_parent().has_method("apply_damage"):
 		body.get_parent().apply_damage(damage, hit_pos, _owner)
+	# Special arrow/bolt payloads (fire or explosive from Gunsmith customization!)
+	if payload_type == "explosive":
+		NoiseBus.emit_noise(hit_pos, 68.0, "explosive_arrow")
+		for g in get_tree().get_nodes_in_group("guards"):
+			if is_instance_valid(g) and g is Node3D and (g as Node3D).global_position.distance_to(hit_pos) <= 5.5:
+				if g.has_method("apply_damage"):
+					g.apply_damage(130.0, hit_pos, _owner, "BLAST")
+		ThrowableOrdnance.spawn_explosion_fx(get_tree().current_scene, hit_pos, 5.5)
+	elif payload_type == "fire":
+		NoiseBus.emit_noise(hit_pos, 24.0, "fire_arrow")
+		ThrowableOrdnance.spawn_fire_pool(get_tree().current_scene, hit_pos, 3.6, 20.0, 5.0, _owner)
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	freeze = true
