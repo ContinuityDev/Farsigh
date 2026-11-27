@@ -26,6 +26,11 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 - **Guards**: front & back takedown animations, investigate, look-around, radio-call, and alarm-press animations with smooth `AnimationPlayer` cross-fading.
 - **Player**: low-wall vaulting/climbing (`Space` near low cover), wall-safe lean/peek left & right (`Z` / `V`), weapon inspect (`I` / `T`), standing shoulder-carry & crouched body-drag viewmodel motion, and smooth ADS/sway/recoil transitions.
 
+### Aim Down Sights (ADS)
+- Hold Aim (RMB / LT / touch Aim) to raise the viewmodel from hip to sights — iron sights by default, or red dot / holo / scope when fitted in the Gunsmith.
+- Per-weapon aim-in time, ADS FOV, tighter spread, lower recoil, slower movement, and reduced look sensitivity (adjustable in the pause menu).
+- Scope overlay + breath-hold sway dampening for sniper / 4x scopes. Crosshair hides in ADS. Bow draw-and-aim, throwable lob arc preview, and melee ready stance included.
+
 ### 14-Weapon Arsenal & 5-Slot Gunsmith
 - **Primary**: AR-C Assault Rifle, MP-40 / Vector SMG, M133 Pump Shotgun (8 pellets), MBP .50 Sniper Rifle (scope overlay), M60 LMG.
 - **Secondary**: 1911 Tactical Pistol, Skorpion Machine Pistol.
@@ -52,7 +57,8 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 | Crouch | Ctrl | B |
 | Lean / Peek Left & Right | Z / V | — |
 | Fire / Throw / Swing | LMB | RT / RB |
-| Aim / Scope zoom | RMB | LT |
+| Aim / ADS (iron, optic, or scope) | RMB hold | LT |
+| Breath-hold (steady scope) | Shift while ADS | L3 while ADS |
 | Reload | R | Y |
 | Weapon inspect | I or T | — |
 | Interact / door / body / alarm | E | X |
@@ -69,6 +75,7 @@ Touch controls appear automatically on native mobile and on web builds when a to
 - **Left virtual stick** — move
 - **Right-side swipe** — look
 - **Buttons** — `PEEK L`, `PEEK R`, `JUMP/VLT`, `CROUCH`, `SPRINT`, `FIRE`, `AIM`, `TAKEDOWN`, `ROCK`, `USE`, `INSPECT`, `SWAP`, `RELOAD`
+- Pause menu: **ADS Sensitivity** (35–100%) and **Touch Aim Hold/Toggle**
 
 ## Screenshots
 
@@ -84,6 +91,7 @@ Captured from a running Godot 4.3 session (`AUTO_CAPTURE=1`):
 | Jacob's Ridge Bunker (Helipad & Radar) | ![Jacob's Ridge Bunker](docs/screenshots/06_hilltop_bunker.png) |
 | Multi-Storey Interior Window & Weapon Inspect | ![Interior Inspect](docs/screenshots/07_interior_inspect.png) |
 | Mobile Touch Controls & Kukri Machete | ![Touch Controls](docs/screenshots/08_touch_controls.png) |
+| ADS Holo Sight (centered optic + FOV) | ![ADS Holo](docs/screenshots/09_ads_holo.png) |
 
 ```bash
 # Automated screenshot capture (needs a display; use OpenGL if Vulkan is unavailable)

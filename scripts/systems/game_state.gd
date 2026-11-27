@@ -47,6 +47,10 @@ var outposts: Dictionary = {}  # id -> {status: "active"|"liberated", guards_rem
 var last_detection: float = 0.0
 var is_paused: bool = false
 
+# Persistent player settings (saved with loadout prefs)
+var ads_sensitivity: float = 0.55  # multiplier applied while aiming (0.25–1.0)
+var touch_aim_toggle: bool = false  # false = hold Aim button, true = tap to toggle
+
 
 func _ready() -> void:
 	_ensure_defaults()
@@ -223,6 +227,8 @@ func serialize_loadout() -> Dictionary:
 		"selected_throwable": int(selected_throwable),
 		"selected_melee": int(selected_melee),
 		"weapon_mods": weapon_mods.duplicate(true),
+		"ads_sensitivity": ads_sensitivity,
+		"touch_aim_toggle": touch_aim_toggle,
 	}
 
 
@@ -235,7 +241,19 @@ func deserialize_loadout(data: Dictionary) -> void:
 	var loaded_mods = data.get("weapon_mods", {})
 	if loaded_mods is Dictionary:
 		weapon_mods = (loaded_mods as Dictionary).duplicate(true)
+	ads_sensitivity = clampf(float(data.get("ads_sensitivity", ads_sensitivity)), 0.25, 1.0)
+	touch_aim_toggle = bool(data.get("touch_aim_toggle", touch_aim_toggle))
 	_ensure_defaults()
+
+
+func set_ads_sensitivity(value: float) -> void:
+	ads_sensitivity = clampf(value, 0.25, 1.0)
+	SaveManager.save_loadout()
+
+
+func set_touch_aim_toggle(enabled: bool) -> void:
+	touch_aim_toggle = enabled
+	SaveManager.save_loadout()
 
 
 func serialize() -> Dictionary:

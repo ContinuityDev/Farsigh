@@ -29,6 +29,7 @@ const FOOTSTEP_CROUCH := 2.5
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var is_crouching: bool = false
 var is_aiming: bool = false
+var aim_blend: float = 0.0
 var _footstep_timer: float = 0.0
 var carried_body: Node3D = null
 var rock_count: int = 5
@@ -37,6 +38,7 @@ var hp: float = 100.0
 var is_down: bool = false
 var _capsule: CapsuleShape3D
 var _crouch_toggled: bool = false
+var _aim_toggled: bool = false
 var _capture_fire_suppress: float = 0.0
 var _lean_amount: float = 0.0  # -1 left .. +1 right
 var _is_vaulting: bool = false
@@ -47,6 +49,8 @@ var _vault_apex: Vector3 = Vector3.ZERO
 var _vault_end: Vector3 = Vector3.ZERO
 var _carry_bob_t: float = 0.0
 var _head_target_y: float = 1.65
+var _breath_sway: Vector2 = Vector2.ZERO
+var _breath_t: float = 0.0
 
 
 func _ready() -> void:
@@ -85,7 +89,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_apply_look(-event.relative.x * MOUSE_SENS, -event.relative.y * MOUSE_SENS)
+		var sens := MOUSE_SENS * _look_sensitivity_mult()
+		_apply_look(-event.relative.x * sens, -event.relative.y * sens)
 	if event.is_action_pressed("pause_menu"):
 		_toggle_pause()
 
@@ -101,13 +106,14 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(hud_hint) and hud_hint.has_method("set_click_to_capture_hint"):
 			hud_hint.set_click_to_capture_hint(Input.mouse_mode != Input.MOUSE_MODE_CAPTURED)
 
-	# Touch look swipe + gamepad stick
+	# Touch look swipe + gamepad stick (ADS sensitivity applied)
+	var look_mult := _look_sensitivity_mult()
 	var touch_look := TouchInput.consume_look_relative()
 	if touch_look != Vector2.ZERO:
-		_apply_look(-touch_look.x * TOUCH_LOOK_SENS * 0.01, -touch_look.y * TOUCH_LOOK_SENS * 0.01)
+		_apply_look(-touch_look.x * TOUCH_LOOK_SENS * 0.01 * look_mult, -touch_look.y * TOUCH_LOOK_SENS * 0.01 * look_mult)
 	var pad_look := TouchInput.get_look_axis()
 	if pad_look.length() > 0.1:
-		_apply_look(-pad_look.x * GAMEPAD_LOOK_SENS * delta, -pad_look.y * GAMEPAD_LOOK_SENS * delta)
+		_apply_look(-pad_look.x * GAMEPAD_LOOK_SENS * delta * look_mult, -pad_look.y * GAMEPAD_LOOK_SENS * delta * look_mult)
 
 	if _is_vaulting:
 		_step_vault(delta)
@@ -118,29 +124,23 @@ func _physics_process(delta: float) -> void:
 
 	_handle_crouch()
 	_update_lean(delta)
-	is_aiming = TouchInput.is_action_pressed("aim") and carried_body == null
-	var target_fov := 70.0
-	var scoped := false
-	if is_aiming:
-		target_fov = weapons.get_aim_fov() if is_instance_valid(weapons) and weapons.has_method("get_aim_fov") else 52.0
-		scoped = is_instance_valid(weapons) and weapons.has_method("has_scope_overlay") and weapons.has_scope_overlay()
-	camera.fov = lerpf(camera.fov, target_fov, 10.0 * delta)
-	var hud_scope := get_tree().get_first_node_in_group("hud")
-	if is_instance_valid(hud_scope) and hud_scope.has_method("set_scope_overlay"):
-		hud_scope.set_scope_overlay(scoped)
-	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
-		weapons.viewmodel_rig.visible = not scoped
+	_update_aim_state(delta)
 
 	var input_dir := TouchInput.get_move_axis()
 	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 	var speed := WALK_SPEED
-	var sprinting := TouchInput.is_action_pressed("sprint") and not is_crouching and carried_body == null and input_dir.length() > 0.1
+	var sprinting := TouchInput.is_action_pressed("sprint") and not is_crouching and carried_body == null and input_dir.length() > 0.1 and not is_aiming
 	if carried_body != null:
 		speed = CROUCH_SPEED * 0.72 if is_crouching else WALK_SPEED * 0.68
 	elif is_crouching:
 		speed = CROUCH_SPEED
 	elif sprinting:
 		speed = SPRINT_SPEED
+	if is_aiming and carried_body == null:
+		var ads_move := 0.55
+		if is_instance_valid(weapons):
+			ads_move = weapons.get_active().ads_move_mult
+		speed *= lerpf(1.0, ads_move, aim_blend)
 
 	if direction:
 		velocity.x = direction.x * speed
@@ -159,7 +159,6 @@ func _physics_process(delta: float) -> void:
 	var horiz_speed := Vector2(velocity.x, velocity.z).length()
 	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
 		weapons.viewmodel_rig.set_move_factor(horiz_speed / WALK_SPEED if is_on_floor() else 0.0)
-		weapons.viewmodel_rig.set_aiming(is_aiming)
 		weapons.viewmodel_rig.set_carrying_body(carried_body != null, carried_body != null and is_crouching)
 	_update_carry_animation(delta, horiz_speed)
 	_update_footsteps(delta, direction.length() > 0.1 and is_on_floor(), sprinting)
@@ -176,10 +175,77 @@ func _apply_look(yaw: float, pitch: float) -> void:
 
 
 func apply_recoil(pitch_deg: float, yaw_deg: float) -> void:
+	var ads_mult := 1.0
+	if is_instance_valid(weapons) and aim_blend > 0.01:
+		ads_mult = lerpf(1.0, weapons.get_active().ads_recoil_mult, aim_blend)
 	if is_instance_valid(head):
-		head.rotate_x(deg_to_rad(pitch_deg * 0.45))
+		head.rotate_x(deg_to_rad(pitch_deg * 0.45 * ads_mult))
 		head.rotation.x = clampf(head.rotation.x, deg_to_rad(-85.0), deg_to_rad(85.0))
-	rotate_y(deg_to_rad(yaw_deg * 0.35))
+	rotate_y(deg_to_rad(yaw_deg * 0.35 * ads_mult))
+
+
+func _look_sensitivity_mult() -> float:
+	# Lower mouse / stick / touch sensitivity while ADS (setting from pause menu).
+	return lerpf(1.0, GameState.ads_sensitivity, aim_blend)
+
+
+func _update_aim_state(delta: float) -> void:
+	# Touch Aim can be Hold (default) or Toggle via pause-menu setting.
+	if carried_body != null:
+		_aim_toggled = false
+		is_aiming = false
+	elif GameState.touch_aim_toggle and TouchInput.is_touch_ui_desired():
+		if TouchInput.is_action_just_pressed("aim"):
+			_aim_toggled = not _aim_toggled
+		# Keyboard/gamepad RMB still works as hold alongside toggle for mixed input
+		is_aiming = _aim_toggled or Input.is_action_pressed("aim")
+	else:
+		_aim_toggled = false
+		is_aiming = TouchInput.is_action_pressed("aim")
+
+	var w: WeaponData = weapons.get_active() if is_instance_valid(weapons) else null
+	var ads_time := 0.28
+	if w != null:
+		ads_time = w.ads_time
+	# Breath-hold: hold Sprint while ADS to steady the scope (Shift / SprintBtn)
+	var breath := 0.0
+	if is_aiming and TouchInput.is_action_pressed("sprint") and not is_crouching:
+		breath = 1.0
+	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
+		weapons.viewmodel_rig.set_aiming(is_aiming, ads_time, breath)
+		aim_blend = weapons.viewmodel_rig.get_aim_blend()
+	else:
+		aim_blend = move_toward(aim_blend, 1.0 if is_aiming else 0.0, delta / maxf(0.08, ads_time))
+
+	var hip_fov := 70.0
+	var target_fov := hip_fov
+	var scoped := false
+	if w != null and aim_blend > 0.01:
+		target_fov = lerpf(hip_fov, w.aim_fov, aim_blend)
+		scoped = w.scope_overlay and aim_blend > 0.72
+	# Breath-hold slightly tightens zoom further for sniper / scoped optics
+	if scoped and breath > 0.5:
+		target_fov = maxf(14.0, target_fov - 2.5)
+	camera.fov = lerpf(camera.fov, target_fov, clampf(delta * 14.0, 0.0, 1.0))
+
+	# Scope sway when ADS without breath-hold
+	_breath_t += delta
+	if scoped and breath < 0.5:
+		_breath_sway.x = sin(_breath_t * 1.15) * 0.00035
+		_breath_sway.y = cos(_breath_t * 0.95) * 0.00028
+		_apply_look(_breath_sway.x, _breath_sway.y)
+	else:
+		_breath_sway = Vector2.ZERO
+
+	var hud_scope := get_tree().get_first_node_in_group("hud")
+	if is_instance_valid(hud_scope):
+		if hud_scope.has_method("set_scope_overlay"):
+			hud_scope.set_scope_overlay(scoped)
+		if hud_scope.has_method("set_ads_crosshair"):
+			hud_scope.set_ads_crosshair(aim_blend > 0.18)
+	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
+		# Hide viewmodel under full scope overlay; keep it for iron/red-dot/holo ADS
+		weapons.viewmodel_rig.visible = not scoped
 
 
 func _update_lean(delta: float) -> void:

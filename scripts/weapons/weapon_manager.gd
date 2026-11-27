@@ -162,25 +162,36 @@ func _fire_shot(w: WeaponData) -> void:
 		var yaw_kick := randf_range(-w.recoil_yaw, w.recoil_yaw)
 		p.apply_recoil(w.recoil_pitch, yaw_kick)
 
+	var blend := float(p.get("aim_blend")) if is_instance_valid(p) else 0.0
+	var aimed_dir := dir
+	if w.spread_deg > 0.05:
+		var spread := w.spread_deg
+		if blend > 0.01:
+			spread = lerpf(w.spread_deg, w.spread_deg * w.ads_spread_mult, blend)
+		# Single-projectile weapons get one ADS-tightened direction; pellets each scatter below
+		if w.pellet_count <= 1:
+			aimed_dir = _apply_spread(dir, spread)
+
 	match w.projectile_kind:
 		"arrow", "bolt":
-			_spawn_projectile(ARROW_SCENE, origin, dir, w)
+			_spawn_projectile(ARROW_SCENE, origin, aimed_dir, w)
 			if _mag() <= 0 and _reserve() > 0:
 				start_reload()
 		"knife":
-			_spawn_projectile(KNIFE_SCENE, origin, dir, w)
+			_spawn_projectile(KNIFE_SCENE, origin, aimed_dir, w)
 			if _mag() <= 0 and _reserve() > 0:
 				start_reload()
 		"frag", "molotov":
-			ThrowableOrdnance.spawn_ordnance(get_tree().current_scene, origin + dir * 0.65, dir, w.projectile_kind, w.damage, w.explosion_radius, get_parent())
+			ThrowableOrdnance.spawn_ordnance(get_tree().current_scene, origin + aimed_dir * 0.65, aimed_dir, w.projectile_kind, w.damage, w.explosion_radius, get_parent())
 			if _mag() <= 0 and _reserve() > 0:
 				start_reload()
 		"melee_swing":
-			_melee_swing(origin, dir, w)
+			_melee_swing(origin, aimed_dir, w)
 		_:
 			var pellets := maxi(1, w.pellet_count)
-			var is_aim := bool(p.get("is_aiming")) if is_instance_valid(p) else false
-			var spread := w.spread_deg * (0.35 if is_aim and pellets == 1 else 1.0)
+			var spread := w.spread_deg
+			if blend > 0.01:
+				spread = lerpf(w.spread_deg, w.spread_deg * w.ads_spread_mult, blend)
 			for _i in range(pellets):
 				var shot_dir := _apply_spread(dir, spread)
 				_hitscan(origin, shot_dir, w)

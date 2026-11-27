@@ -28,6 +28,7 @@ func _ready() -> void:
 	detection_bar.value = 0
 	_ensure_capture_hint()
 	_ensure_scope_overlay()
+	_ensure_settings_buttons()
 	if touch_controls:
 		touch_controls.visible = TouchInput.is_touch_ui_desired()
 	set_click_to_capture_hint(TouchInput.is_web_desktop())
@@ -125,8 +126,15 @@ func _ensure_scope_overlay() -> void:
 func set_scope_overlay(on: bool) -> void:
 	if is_instance_valid(_scope_overlay):
 		_scope_overlay.visible = on
+	if on and is_instance_valid(crosshair):
+		crosshair.visible = false
+
+
+func set_ads_crosshair(hide: bool) -> void:
+	## Hide the hipfire crosshair whenever the player is aiming (iron/optic/scope).
 	if is_instance_valid(crosshair):
-		crosshair.visible = not on
+		var scoped := is_instance_valid(_scope_overlay) and _scope_overlay.visible
+		crosshair.visible = not hide and not scoped
 
 
 func _late_bind() -> void:
@@ -195,6 +203,57 @@ func set_liberated_banner(on: bool) -> void:
 
 func set_paused(paused: bool) -> void:
 	pause_panel.visible = paused
+	if paused:
+		_refresh_settings_ui()
+
+
+func _refresh_settings_ui() -> void:
+	var sens_btn := pause_panel.get_node_or_null("PauseVBox/AdsSensBtn") as Button
+	if is_instance_valid(sens_btn):
+		sens_btn.text = "ADS Sensitivity: %d%%" % int(round(GameState.ads_sensitivity * 100.0))
+	var aim_btn := pause_panel.get_node_or_null("PauseVBox/TouchAimBtn") as Button
+	if is_instance_valid(aim_btn):
+		aim_btn.text = "Touch Aim: %s" % ("Toggle" if GameState.touch_aim_toggle else "Hold")
+
+
+func _ensure_settings_buttons() -> void:
+	var vbox := pause_panel.get_node_or_null("PauseVBox") as VBoxContainer
+	if vbox == null:
+		return
+	if vbox.get_node_or_null("AdsSensBtn") == null:
+		var sens := Button.new()
+		sens.name = "AdsSensBtn"
+		sens.custom_minimum_size = Vector2(0, 40)
+		sens.pressed.connect(_on_ads_sens_pressed)
+		vbox.add_child(sens)
+		vbox.move_child(sens, mini(3, vbox.get_child_count() - 1))
+	if vbox.get_node_or_null("TouchAimBtn") == null:
+		var aim := Button.new()
+		aim.name = "TouchAimBtn"
+		aim.custom_minimum_size = Vector2(0, 40)
+		aim.pressed.connect(_on_touch_aim_pressed)
+		vbox.add_child(aim)
+		vbox.move_child(aim, mini(4, vbox.get_child_count() - 1))
+	_refresh_settings_ui()
+
+
+func _on_ads_sens_pressed() -> void:
+	# Cycle Low (35%) → Med (55%) → High (75%) → Full (100%)
+	var steps: Array[float] = [0.35, 0.55, 0.75, 1.0]
+	var idx := 0
+	for i in range(steps.size()):
+		if absf(GameState.ads_sensitivity - steps[i]) < 0.05:
+			idx = (i + 1) % steps.size()
+			break
+	GameState.set_ads_sensitivity(steps[idx])
+	_refresh_settings_ui()
+	show_status("ADS mouse/look sensitivity: %d%%" % int(round(GameState.ads_sensitivity * 100.0)), 1.6)
+
+
+func _on_touch_aim_pressed() -> void:
+	GameState.set_touch_aim_toggle(not GameState.touch_aim_toggle)
+	_refresh_settings_ui()
+	show_status("Touch Aim set to %s" % ("Toggle" if GameState.touch_aim_toggle else "Hold"), 1.6)
 
 
 func _on_resume_pressed() -> void:

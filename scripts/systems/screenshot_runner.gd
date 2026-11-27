@@ -144,6 +144,29 @@ func _ready() -> void:
 	await get_tree().create_timer(0.45).timeout
 	await _snap("08_touch_controls")
 
+	# 9. Proper ADS with holo sight centered + FOV drop + hidden crosshair
+	TouchInput.force_touch_ui = false
+	if is_instance_valid(hud):
+		var tc = hud.get_node_or_null("TouchControls")
+		if is_instance_valid(tc):
+			tc.visible = false
+	GameState.select_outpost("compound_alpha")
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(2.0, 0.2, 18.0)
+		player.look_at(Vector3(0.0, 1.6, -8.0), Vector3.UP)
+		var wm = player.get_node_or_null("WeaponManager")
+		if is_instance_valid(wm):
+			wm.select_slot(0)  # Holo-modded AR-C
+		TouchInput.press("aim")
+		await get_tree().create_timer(0.55).timeout
+	await _snap("09_ads_holo")
+	TouchInput.release("aim")
+
 	print("AUTO_CAPTURE complete")
 	await get_tree().create_timer(0.2).timeout
 	get_tree().quit()

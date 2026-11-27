@@ -47,6 +47,12 @@ var _carrying: bool = false
 var _dragging: bool = false
 var _sway: Vector2 = Vector2.ZERO
 var _aim_blend: float = 0.0
+var _aim_target: float = 0.0
+var _ads_speed: float = 4.0
+var _breath_hold: float = 0.0
+var _sight_local: Dictionary = {}  # WeaponId -> Vector3 sight point in ModelRoot space
+var _throw_arc: MeshInstance3D = null
+var _throw_arc_mat: StandardMaterial3D = null
 
 
 func _ready() -> void:
@@ -202,7 +208,7 @@ func _build_pistol(slot: Node3D, body_col: Color, accent_col: Color, mods: Dicti
 	# Muzzle attachment (suppressor or compensator)
 	var muzzle_z := -0.13 if not is_auto else -0.155
 	muzzle_z = _attach_muzzle(root, Vector3(0, 0.028, muzzle_z), String(mods.get("muzzle", "none")), 0.016, 0.18)
-	_attach_optic(root, Vector3(0, 0.058, 0.01), String(mods.get("optic", "iron")), true)
+	_sight_local[GameState.WeaponId.MACHINE_PISTOL if is_auto else GameState.WeaponId.PISTOL] = _attach_optic(root, Vector3(0, 0.058, 0.01), String(mods.get("optic", "iron")), true)
 	_attach_underbarrel(root, Vector3(0, -0.020, -0.095), String(mods.get("underbarrel", "none")), true)
 
 	# Gloved hands
@@ -276,7 +282,7 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 	var chosen_optic := String(mods.get("optic", default_optic))
 	if is_sniper and chosen_optic == "iron":
 		chosen_optic = "scope"
-	_attach_optic(root, Vector3(0, 0.015 + rh * 0.5 + 0.014, 0.01), chosen_optic, false)
+	_sight_local[id] = _attach_optic(root, Vector3(0, 0.015 + rh * 0.5 + 0.014, 0.01), chosen_optic, false)
 	_attach_underbarrel(root, Vector3(0, -0.025, hg_z), String(mods.get("underbarrel", "none")), false)
 
 	# Gloved hands + forearms
@@ -311,7 +317,7 @@ func _build_shotgun(slot: Node3D, body_col: Color, accent_col: Color, mods: Dict
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.048, 0.090, 0.26), wood, 0.78, 0.08), Vector3(0, -0.022, 0.22), Vector3(-8, 0, 0))
 
 	var tip := _attach_muzzle(root, Vector3(0, 0.034, -0.52), String(mods.get("muzzle", "none")), 0.022, 0.18)
-	_attach_optic(root, Vector3(0, 0.056, 0.02), String(mods.get("optic", "iron")), false)
+	_sight_local[GameState.WeaponId.SHOTGUN] = _attach_optic(root, Vector3(0, 0.056, 0.02), String(mods.get("optic", "iron")), false)
 	_attach_underbarrel(root, Vector3(0, -0.038, -0.26), String(mods.get("underbarrel", "none")), false)
 
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.060, 0.068, 0.075), glove), Vector3(0.006, -0.04, 0.13))
@@ -338,13 +344,14 @@ func _build_bow(slot: Node3D, body_col: Color, accent_col: Color, mods: Dictiona
 	# Compound bow riser + machined cutouts + twin cam pulleys!
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.034, 0.24, 0.046), carbon, 0.65, 0.25), Vector3(0, 0, 0))
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.038, 0.11, 0.050), wood, 0.82, 0.05), Vector3(0, -0.02, 0.004))
-	# Sight ring + glowing pin (upgrades with optic!)
+	# Sight ring + glowing pin (upgrades with optic!) — SightPoint lines up on ADS
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.038, 0.010, 0.016), carbon), Vector3(-0.024, 0.068, -0.022))
 	ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.019, 0.012, carbon, 0.5, 0.4, 10), Vector3(-0.042, 0.068, -0.024), Vector3(90, 0, 0))
 	var pin_col := Color(1.0, 0.2, 0.15) if String(mods.get("optic", "iron")) != "iron" else Color(0.2, 1.0, 0.35)
 	var pin := ProcMesh.sphere_mesh(0.0045, pin_col)
 	pin.material_override = ProcMesh.emissive(pin_col, 2.3)
 	ProcMesh.add_part(root, pin, Vector3(-0.042, 0.068, -0.024))
+	_sight_local[GameState.WeaponId.BOW] = Vector3(-0.042, 0.068, -0.024)
 
 	# Upper & lower split limbs + compound cams
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.21, 0.026), wood, 0.72, 0.08), Vector3(0, 0.19, 0.038), Vector3(22, 0, 0))
@@ -395,7 +402,7 @@ func _build_crossbow(slot: Node3D, body_col: Color, accent_col: Color, mods: Dic
 	bolt.position = Vector3(0, 0.042, -0.16)
 	root.add_child(bolt)
 
-	_attach_optic(root, Vector3(0, 0.048, 0.02), String(mods.get("optic", "red_dot")), false)
+	_sight_local[GameState.WeaponId.CROSSBOW] = _attach_optic(root, Vector3(0, 0.048, 0.02), String(mods.get("optic", "red_dot")), false)
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.058, 0.068, 0.075), glove), Vector3(0.005, -0.055, 0.085))
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.068, 0.068, 0.22), sleeve), Vector3(0.038, -0.105, 0.21), Vector3(-18, -8, 0))
 
@@ -523,8 +530,10 @@ func _attach_muzzle(root: Node3D, pos: Vector3, muzzle: String, radius: float, l
 	return pos.z
 
 
-func _attach_optic(root: Node3D, pos: Vector3, optic: String, compact: bool) -> void:
+func _attach_optic(root: Node3D, pos: Vector3, optic: String, compact: bool) -> Vector3:
+	## Builds optic/iron sights and returns the local SightPoint used for ADS alignment.
 	var housing := Color(0.11, 0.12, 0.13)
+	var sight := pos + Vector3(0.0, 0.018, 0.0)
 	match optic:
 		"red_dot":
 			var s := 0.72 if compact else 1.0
@@ -532,7 +541,8 @@ func _attach_optic(root: Node3D, pos: Vector3, optic: String, compact: bool) -> 
 			ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.017 * s, 0.052 * s, housing, 0.45, 0.45, 10), pos + Vector3(0, 0.022 * s, 0), Vector3(90, 0, 0))
 			var dot := ProcMesh.sphere_mesh(0.0038 * s, Color(1.0, 0.18, 0.12))
 			dot.material_override = ProcMesh.emissive(Color(1.0, 0.2, 0.12), 2.5)
-			ProcMesh.add_part(root, dot, pos + Vector3(0, 0.022 * s, -0.004))
+			sight = pos + Vector3(0, 0.022 * s, -0.004)
+			ProcMesh.add_part(root, dot, sight)
 		"holo":
 			var s := 0.78 if compact else 1.0
 			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.042 * s, 0.012 * s, 0.072 * s), housing), pos)
@@ -541,13 +551,30 @@ func _attach_optic(root: Node3D, pos: Vector3, optic: String, compact: bool) -> 
 			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.044 * s, 0.009 * s, 0.062 * s), housing), pos + Vector3(0, 0.042 * s, 0))
 			var ret := ProcMesh.sphere_mesh(0.0042 * s, Color(0.25, 1.0, 0.35))
 			ret.material_override = ProcMesh.emissive(Color(0.25, 1.0, 0.35), 2.5)
-			ProcMesh.add_part(root, ret, pos + Vector3(0, 0.024 * s, -0.004))
+			sight = pos + Vector3(0, 0.024 * s, -0.004)
+			ProcMesh.add_part(root, ret, sight)
 		"scope":
 			# Magnified sniper scope tube + objective bell + rings
 			ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.017, 0.24, housing, 0.38, 0.55, 10), pos + Vector3(0, 0.032, -0.03), Vector3(90, 0, 0))
 			ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.024, 0.075, housing, 0.38, 0.55, 10), pos + Vector3(0, 0.032, -0.15), Vector3(90, 0, 0))
 			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.028, 0.016), housing), pos + Vector3(0, 0.014, 0.03))
 			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.028, 0.016), housing), pos + Vector3(0, 0.014, -0.08))
+			sight = pos + Vector3(0.0, 0.032, -0.03)
+		_:
+			# Iron sights: rear notch + glowing front post
+			var s := 0.78 if compact else 1.0
+			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.028 * s, 0.014 * s, 0.014 * s), housing), pos + Vector3(0, 0.008 * s, 0.04 * s))
+			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.006 * s, 0.016 * s, 0.010 * s), housing), pos + Vector3(-0.010 * s, 0.016 * s, 0.04 * s))
+			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.006 * s, 0.016 * s, 0.010 * s), housing), pos + Vector3(0.010 * s, 0.016 * s, 0.04 * s))
+			var fs := ProcMesh.box_mesh(Vector3(0.005 * s, 0.016 * s, 0.010 * s), Color(0.2, 0.95, 0.45))
+			fs.material_override = ProcMesh.emissive(Color(0.25, 1.0, 0.45), 1.6)
+			sight = pos + Vector3(0, 0.016 * s, -0.08 if not compact else -0.05)
+			ProcMesh.add_part(root, fs, sight)
+	var marker := Marker3D.new()
+	marker.name = "SightPoint"
+	marker.position = sight
+	root.add_child(marker)
+	return sight
 
 
 func _attach_underbarrel(root: Node3D, pos: Vector3, underbarrel: String, compact: bool) -> void:
@@ -657,13 +684,20 @@ func set_carrying_body(carrying: bool, dragging: bool = false) -> void:
 	_dragging = dragging
 
 
-func set_aiming(aiming: bool) -> void:
-	_aim_blend = 1.0 if aiming else 0.0
+func set_aiming(aiming: bool, ads_time: float = 0.28, breath_hold: float = 0.0) -> void:
+	_aim_target = 1.0 if aiming else 0.0
+	_ads_speed = 1.0 / maxf(0.08, ads_time)
+	_breath_hold = clampf(breath_hold, 0.0, 1.0)
+
+
+func get_aim_blend() -> float:
+	return _aim_blend
 
 
 func add_look_sway(delta_xy: Vector2) -> void:
-	_sway.x = clampf(_sway.x - delta_xy.x * 0.0028, -0.045, 0.045)
-	_sway.y = clampf(_sway.y + delta_xy.y * 0.0022, -0.035, 0.035)
+	var damp := 1.0 - _aim_blend * 0.78
+	_sway.x = clampf(_sway.x - delta_xy.x * 0.0028 * damp, -0.045, 0.045)
+	_sway.y = clampf(_sway.y + delta_xy.y * 0.0022 * damp, -0.035, 0.035)
 
 
 func get_slot(id: GameState.WeaponId) -> Node3D:
@@ -672,9 +706,12 @@ func get_slot(id: GameState.WeaponId) -> Node3D:
 
 func _process(delta: float) -> void:
 	_idle_time += delta
-	_sway = _sway.lerp(Vector2.ZERO, clampf(delta * 9.0, 0.0, 1.0))
+	_aim_blend = move_toward(_aim_blend, _aim_target, delta * _ads_speed)
+	var sway_recover := 9.0 + _aim_blend * 6.0 + _breath_hold * 8.0
+	_sway = _sway.lerp(Vector2.ZERO, clampf(delta * sway_recover, 0.0, 1.0))
 	var slot: Node3D = _slots.get(_active_id)
 	if not is_instance_valid(slot) or not slot.visible:
+		_update_throw_arc(false)
 		return
 
 	if _flash_t > 0.0:
@@ -689,16 +726,31 @@ func _process(delta: float) -> void:
 	var offset_p := Vector3(_sway.x, _sway.y, 0.0)
 	var offset_r := Vector3(_sway.y * 160.0, _sway.x * 220.0, -_sway.x * 180.0)
 
-	if _aim_blend > 0.01 and not _carrying and _inspect_t <= 0.0:
-		offset_p.x -= base_p.x * 0.62 * _aim_blend
-		offset_p.y += 0.042 * _aim_blend
-		offset_p.z += 0.04 * _aim_blend
+	# Smooth hip -> ADS raise that centers the fitted SightPoint on screen centre
+	var ads := _aim_blend
+	if ads > 0.001 and not _carrying and _inspect_t <= 0.0:
+		var ads_pose := _ads_pose_for(_active_id, base_p, base_r)
+		offset_p += (ads_pose["pos"] - base_p) * ads
+		offset_r += (ads_pose["rot"] - base_r) * ads
+		# Subtle ADS idle sway + breath-hold stabilization
+		var idle_sway := (1.0 - _breath_hold * 0.85) * ads
+		offset_p.x += sin(_idle_time * 1.35) * 0.0018 * idle_sway
+		offset_p.y += cos(_idle_time * 1.1) * 0.0014 * idle_sway
+		offset_r.z += sin(_idle_time * 0.9) * 0.55 * idle_sway
 
-	var aim_damp := 1.0 - _aim_blend * 0.72
-	var bob_amp := (0.004 + _move_factor * 0.011) * aim_damp
+	var aim_damp := 1.0 - ads * 0.82
+	var bob_amp := (0.004 + _move_factor * 0.011) * aim_damp * (1.0 - _breath_hold * 0.5)
 	var bob_freq := 2.2 + _move_factor * 6.5
 	offset_p.x += sin(_idle_time * bob_freq * 0.5) * bob_amp
 	offset_p.y += absf(cos(_idle_time * bob_freq * 0.5)) * bob_amp * 0.85
+
+	# Bow / crossbow draw-and-aim string pull while ADS
+	if ads > 0.01 and _active_id == GameState.WeaponId.BOW and is_instance_valid(_bow_string):
+		_bow_string.position.z = lerpf(0.0, 0.085, ads)
+		if is_instance_valid(_bow_arrow):
+			_bow_arrow.position.z = lerpf(-0.04, 0.05, ads)
+	elif is_instance_valid(_bow_string):
+		_bow_string.position.z = move_toward(_bow_string.position.z, 0.0, delta * 4.0)
 
 	if _swap_t > 0.0:
 		_swap_t = maxf(0.0, _swap_t - delta)
@@ -749,7 +801,8 @@ func _process(delta: float) -> void:
 	if _fire_t > 0.0:
 		_fire_t = maxf(0.0, _fire_t - delta)
 		var u := _fire_t / maxf(0.01, _fire_dur)
-		var kick := sin(u * PI)
+		# ADS fire recoil is snappier / shorter travel so the sight stays on target
+		var kick := sin(u * PI) * lerpf(1.0, 0.42, ads)
 		match _active_id:
 			GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL:
 				offset_p.z += 0.045 * kick
@@ -765,7 +818,7 @@ func _process(delta: float) -> void:
 				offset_p.z += 0.05 * kick
 				offset_r.x += 8.0 * kick
 				if is_instance_valid(_bow_string):
-					_bow_string.position.z = -0.035 * kick
+					_bow_string.position.z = lerpf(0.0, 0.085, ads) - 0.035 * kick
 			GameState.WeaponId.KNIFE, GameState.WeaponId.FRAG, GameState.WeaponId.MOLOTOV:
 				offset_p.z -= 0.14 * kick
 				offset_p.x -= 0.08 * kick
@@ -784,8 +837,6 @@ func _process(delta: float) -> void:
 	else:
 		if is_instance_valid(_pistol_slide):
 			_pistol_slide.position.z = 0.0
-		if is_instance_valid(_bow_string):
-			_bow_string.position.z = 0.0
 
 	if _reload_t > 0.0:
 		_reload_t = maxf(0.0, _reload_t - delta)
@@ -808,6 +859,96 @@ func _process(delta: float) -> void:
 
 	var target_p := base_p + offset_p
 	var target_r := base_r + offset_r
-	var smooth := clampf(delta * 20.0, 0.0, 1.0)
+	# Snap harder while raising into ADS so the sight settles cleanly
+	var smooth := clampf(delta * lerpf(18.0, 28.0, ads), 0.0, 1.0)
 	slot.position = slot.position.lerp(target_p, smooth)
 	slot.rotation_degrees = slot.rotation_degrees.lerp(target_r, smooth)
+
+	var show_arc := ads > 0.35 and _active_id in [GameState.WeaponId.FRAG, GameState.WeaponId.MOLOTOV, GameState.WeaponId.KNIFE]
+	_update_throw_arc(show_arc)
+
+
+func _ads_pose_for(wid: GameState.WeaponId, _base_p: Vector3, _base_r: Vector3) -> Dictionary:
+	## Returns the ADS slot position/rotation that lines the SightPoint up with
+	## camera centre (0,0) looking down -Z. Melee/throwables get ready poses.
+	match wid:
+		GameState.WeaponId.MACHETE, GameState.WeaponId.BAT:
+			# Guard / ready stance — blade up and centered
+			return {
+				"pos": Vector3(0.10, -0.12, -0.38),
+				"rot": Vector3(-28.0, 8.0, -18.0),
+			}
+		GameState.WeaponId.FRAG, GameState.WeaponId.MOLOTOV:
+			# Overhand throw cock — grenade/molotov raised for the lob arc
+			return {
+				"pos": Vector3(0.14, -0.02, -0.42),
+				"rot": Vector3(-42.0, 12.0, 18.0),
+			}
+		GameState.WeaponId.KNIFE:
+			# Aimed throw hold
+			return {
+				"pos": Vector3(0.06, -0.08, -0.40),
+				"rot": Vector3(-18.0, 6.0, -6.0),
+			}
+		GameState.WeaponId.BOW:
+			# Drawn bow pin centered on the screen
+			var bow_sight: Vector3 = _sight_local.get(wid, Vector3(-0.042, 0.068, -0.024))
+			return {
+				"pos": Vector3(-bow_sight.x, -bow_sight.y + 0.01, -0.48 - bow_sight.z),
+				"rot": Vector3(0.0, 0.0, 0.0),
+			}
+		_:
+			var sight: Vector3 = _sight_local.get(wid, Vector3(0.0, 0.06, 0.02))
+			# Hold distance puts the optic ~0.42–0.52m in front of the camera eye
+			var hold_z := 0.48 if wid != GameState.WeaponId.SNIPER else 0.42
+			return {
+				"pos": Vector3(-sight.x, -sight.y, -hold_z - sight.z),
+				"rot": Vector3(0.0, 0.0, 0.0),
+			}
+
+
+func _ensure_throw_arc() -> void:
+	if is_instance_valid(_throw_arc):
+		return
+	_throw_arc = MeshInstance3D.new()
+	_throw_arc.name = "ThrowArcPreview"
+	_throw_arc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_throw_arc_mat = StandardMaterial3D.new()
+	_throw_arc_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_throw_arc_mat.albedo_color = Color(1.0, 0.72, 0.18, 0.85)
+	_throw_arc_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_throw_arc.material_override = _throw_arc_mat
+	add_child(_throw_arc)
+
+
+func _update_throw_arc(show: bool) -> void:
+	_ensure_throw_arc()
+	_throw_arc.visible = show
+	if not show:
+		return
+	var speed := 16.0
+	match _active_id:
+		GameState.WeaponId.KNIFE:
+			speed = 38.0
+		GameState.WeaponId.FRAG:
+			speed = 18.0
+		GameState.WeaponId.MOLOTOV:
+			speed = 16.0
+	var gravity := float(ProjectSettings.get_setting("physics/3d/default_gravity"))
+	var origin := Vector3(0.05, -0.05, -0.35)
+	var vel := Vector3(0.0, 0.22, -1.0).normalized() * speed
+	var imm := ImmediateMesh.new()
+	imm.surface_begin(Mesh.PRIMITIVE_LINES)
+	var prev := origin
+	var steps := 18
+	var dt := 0.055
+	for i in range(steps):
+		var t := float(i + 1) * dt
+		var next := origin + vel * t + Vector3(0.0, -0.5 * gravity * t * t, 0.0)
+		imm.surface_add_vertex(prev)
+		imm.surface_add_vertex(next)
+		prev = next
+		if next.y < -2.5:
+			break
+	imm.surface_end()
+	_throw_arc.mesh = imm

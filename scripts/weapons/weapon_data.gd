@@ -19,6 +19,10 @@ class_name WeaponData
 @export var pellet_count: int = 1
 @export var aim_fov: float = 55.0
 @export var scope_overlay: bool = false
+@export var ads_time: float = 0.28
+@export var ads_spread_mult: float = 0.32
+@export var ads_recoil_mult: float = 0.55
+@export var ads_move_mult: float = 0.55
 @export var is_suppressed: bool = false
 @export var is_silent: bool = false
 @export var is_melee: bool = false
@@ -87,6 +91,10 @@ static func make_pistol() -> WeaponData:
 	w.recoil_yaw = 0.35
 	w.spread_deg = 0.65
 	w.aim_fov = 56.0
+	w.ads_time = 0.18
+	w.ads_spread_mult = 0.28
+	w.ads_recoil_mult = 0.48
+	w.ads_move_mult = 0.62
 	w.max_range = 60.0
 	w.supports_muzzle = true
 	w.supports_optic = true
@@ -112,6 +120,10 @@ static func make_machine_pistol() -> WeaponData:
 	w.spread_deg = 2.1
 	w.automatic = true
 	w.aim_fov = 56.0
+	w.ads_time = 0.16
+	w.ads_spread_mult = 0.38
+	w.ads_recoil_mult = 0.52
+	w.ads_move_mult = 0.58
 	w.max_range = 42.0
 	w.supports_muzzle = true
 	w.supports_optic = true
@@ -137,6 +149,10 @@ static func make_rifle() -> WeaponData:
 	w.spread_deg = 1.0
 	w.automatic = true
 	w.aim_fov = 52.0
+	w.ads_time = 0.26
+	w.ads_spread_mult = 0.30
+	w.ads_recoil_mult = 0.52
+	w.ads_move_mult = 0.52
 	w.max_range = 105.0
 	w.supports_muzzle = true
 	w.supports_optic = true
@@ -162,6 +178,10 @@ static func make_smg() -> WeaponData:
 	w.spread_deg = 1.6
 	w.automatic = true
 	w.aim_fov = 54.0
+	w.ads_time = 0.20
+	w.ads_spread_mult = 0.34
+	w.ads_recoil_mult = 0.50
+	w.ads_move_mult = 0.56
 	w.max_range = 58.0
 	w.supports_muzzle = true
 	w.supports_optic = true
@@ -187,6 +207,10 @@ static func make_shotgun() -> WeaponData:
 	w.recoil_yaw = 1.1
 	w.spread_deg = 5.2
 	w.aim_fov = 58.0
+	w.ads_time = 0.30
+	w.ads_spread_mult = 0.55
+	w.ads_recoil_mult = 0.62
+	w.ads_move_mult = 0.48
 	w.max_range = 32.0
 	w.supports_muzzle = true
 	w.supports_optic = true
@@ -212,6 +236,10 @@ static func make_sniper() -> WeaponData:
 	w.spread_deg = 0.12
 	w.aim_fov = 24.0
 	w.scope_overlay = true
+	w.ads_time = 0.42
+	w.ads_spread_mult = 0.18
+	w.ads_recoil_mult = 0.42
+	w.ads_move_mult = 0.38
 	w.max_range = 190.0
 	w.supports_muzzle = true
 	w.supports_optic = true
@@ -237,6 +265,10 @@ static func make_lmg() -> WeaponData:
 	w.spread_deg = 2.2
 	w.automatic = true
 	w.aim_fov = 54.0
+	w.ads_time = 0.38
+	w.ads_spread_mult = 0.36
+	w.ads_recoil_mult = 0.58
+	w.ads_move_mult = 0.42
 	w.max_range = 115.0
 	w.supports_muzzle = true
 	w.supports_optic = true
@@ -261,6 +293,10 @@ static func make_bow() -> WeaponData:
 	w.recoil_yaw = 0.15
 	w.spread_deg = 0.25
 	w.aim_fov = 48.0
+	w.ads_time = 0.34
+	w.ads_spread_mult = 0.22
+	w.ads_recoil_mult = 0.45
+	w.ads_move_mult = 0.48
 	w.is_silent = true
 	w.projectile_kind = "arrow"
 	w.projectile_speed = 60.0
@@ -287,6 +323,10 @@ static func make_crossbow() -> WeaponData:
 	w.recoil_yaw = 0.12
 	w.spread_deg = 0.15
 	w.aim_fov = 42.0
+	w.ads_time = 0.30
+	w.ads_spread_mult = 0.20
+	w.ads_recoil_mult = 0.40
+	w.ads_move_mult = 0.50
 	w.is_silent = true
 	w.projectile_kind = "bolt"
 	w.projectile_speed = 76.0
@@ -312,6 +352,11 @@ static func make_knife() -> WeaponData:
 	w.noise_loudness = 3.5
 	w.recoil_pitch = 0.6
 	w.recoil_yaw = 0.2
+	w.aim_fov = 58.0
+	w.ads_time = 0.22
+	w.ads_spread_mult = 0.25
+	w.ads_recoil_mult = 0.55
+	w.ads_move_mult = 0.60
 	w.is_silent = true
 	w.is_melee = true
 	w.projectile_kind = "knife"
@@ -334,6 +379,9 @@ static func make_frag() -> WeaponData:
 	w.reserve_ammo = 3
 	w.reload_time = 0.8
 	w.noise_loudness = 8.0
+	w.aim_fov = 60.0
+	w.ads_time = 0.24
+	w.ads_move_mult = 0.58
 	w.projectile_kind = "frag"
 	w.projectile_speed = 18.0
 	w.max_range = 32.0
@@ -353,6 +401,9 @@ static func make_molotov() -> WeaponData:
 	w.reserve_ammo = 3
 	w.reload_time = 0.8
 	w.noise_loudness = 6.0
+	w.aim_fov = 60.0
+	w.ads_time = 0.24
+	w.ads_move_mult = 0.58
 	w.projectile_kind = "molotov"
 	w.projectile_speed = 16.0
 	w.max_range = 28.0
@@ -371,6 +422,9 @@ static func make_machete() -> WeaponData:
 	w.reserve_ammo = 0
 	w.noise_loudness = 3.0
 	w.recoil_pitch = 0.8
+	w.aim_fov = 62.0
+	w.ads_time = 0.16
+	w.ads_move_mult = 0.72
 	w.is_silent = true
 	w.is_melee = true
 	w.projectile_kind = "melee_swing"
@@ -390,6 +444,9 @@ static func make_bat() -> WeaponData:
 	w.reserve_ammo = 0
 	w.noise_loudness = 8.0
 	w.recoil_pitch = 1.2
+	w.aim_fov = 62.0
+	w.ads_time = 0.16
+	w.ads_move_mult = 0.72
 	w.is_melee = true
 	w.projectile_kind = "melee_swing"
 	w.max_range = 2.7
@@ -448,21 +505,25 @@ static func apply_mods(w: WeaponData, mods: Dictionary) -> void:
 			w.recoil_yaw *= 0.65
 			w.noise_loudness *= 1.08
 
-	# Optic attachment: red dot, holo, or magnified scope
+	# Optic attachment: red dot, holo, or magnified scope (also tweaks ADS zoom / aim-in)
 	if w.supports_optic:
 		var optic := String(mods.get("optic", "iron"))
 		match optic:
 			"red_dot":
 				w.aim_fov = minf(w.aim_fov, 48.0)
 				w.spread_deg *= 0.85
+				w.ads_time *= 0.92
 			"holo":
 				w.aim_fov = minf(w.aim_fov, 44.0)
 				w.spread_deg *= 0.78
+				w.ads_time *= 0.95
 			"scope":
 				w.aim_fov = 22.0
 				w.scope_overlay = true
 				w.spread_deg *= 0.55
 				w.max_range *= 1.15
+				w.ads_time *= 1.18
+				w.ads_move_mult *= 0.85
 
 	# Magazine attachment: extended mag increases capacity, slightly slower reload
 	if w.supports_mag:
@@ -478,8 +539,11 @@ static func apply_mods(w: WeaponData, mods: Dictionary) -> void:
 		if ub == "grip":
 			w.recoil_pitch *= 0.70
 			w.recoil_yaw *= 0.72
+			w.ads_recoil_mult *= 0.88
+			w.ads_time *= 0.94
 		elif ub == "laser":
 			w.spread_deg *= 0.52
+			w.ads_spread_mult *= 0.90
 
 	# Arrow / Bolt payload type for Bow & Crossbow
 	if w.supports_arrow:
