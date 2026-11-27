@@ -1,16 +1,18 @@
 extends Node
-## Disk persistence for campaign run progress (per-outpost liberation) and
-## persistent player loadout / Gunsmith customization between sessions.
+## Disk persistence for campaign progress. On desktop/native this is a normal
+## user:// file; on HTML5/Web Godot maps user:// to IndexedDB so progress
+## survives page reloads.
 
 const SAVE_PATH := "user://outpost_save.json"
 const LOADOUT_PATH := "user://loadout_prefs.json"
+const PROFILE_VERSION := 3
 
 
 func save_game() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file != null:
 		var payload := {
-			"version": 2,
+			"version": PROFILE_VERSION,
 			"game": GameState.serialize(),
 		}
 		file.store_string(JSON.stringify(payload, "\t"))
@@ -25,7 +27,7 @@ func save_loadout() -> void:
 	if file == null:
 		return
 	var payload := {
-		"version": 2,
+		"version": PROFILE_VERSION,
 		"loadout": GameState.serialize_loadout(),
 	}
 	file.store_string(JSON.stringify(payload, "\t"))
@@ -71,5 +73,13 @@ func clear_save() -> void:
 	if FileAccess.file_exists(SAVE_PATH):
 		DirAccess.remove_absolute(SAVE_PATH)
 	GameState.has_active_run = false
+	GameState.currency = 0
+	GameState.owned_weapons.clear()
+	GameState.owned_items.clear()
+	GameState.owned_abilities.clear()
+	GameState.owned_streaks.clear()
+	GameState.equipped_streaks = ["", "", ""]
+	GameState.unlocked_mod_pack = false
+	GameState.unlocked_skin_pack = false
 	GameState.outposts.clear()
 	GameState._ensure_defaults()

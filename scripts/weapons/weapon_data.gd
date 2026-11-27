@@ -49,22 +49,30 @@ static func slot_weapons(slot: String) -> Array[GameState.WeaponId]:
 				GameState.WeaponId.SHOTGUN,
 				GameState.WeaponId.SNIPER,
 				GameState.WeaponId.LMG,
+				GameState.WeaponId.SILENCED_SNIPER,
+				GameState.WeaponId.FLAMETHROWER,
+				GameState.WeaponId.GRENADE_LAUNCHER,
 			]
 		"secondary":
 			return [
 				GameState.WeaponId.PISTOL,
 				GameState.WeaponId.MACHINE_PISTOL,
+				GameState.WeaponId.TRANQ_PISTOL,
 			]
 		"special":
 			return [
 				GameState.WeaponId.BOW,
 				GameState.WeaponId.CROSSBOW,
+				GameState.WeaponId.HUNTER_BOW,
 			]
 		"throwable":
 			return [
 				GameState.WeaponId.KNIFE,
 				GameState.WeaponId.FRAG,
 				GameState.WeaponId.MOLOTOV,
+				GameState.WeaponId.THROWING_AXE,
+				GameState.WeaponId.C4,
+				GameState.WeaponId.PROX_MINE,
 			]
 		"melee":
 			return [
@@ -453,6 +461,129 @@ static func make_bat() -> WeaponData:
 	return w
 
 
+
+
+static func make_silenced_sniper() -> WeaponData:
+	var w := make_sniper()
+	w.id = GameState.WeaponId.SILENCED_SNIPER
+	w.display_name = "Silenced Sniper"
+	w.description = "Subsonic bolt gun. Near-silent long shots."
+	w.noise_loudness = 8.0
+	w.is_suppressed = true
+	w.is_silent = true
+	w.damage = 120.0
+	w.fire_rate = 1.15
+	return w
+
+
+static func make_flamethrower() -> WeaponData:
+	var w := WeaponData.new()
+	w.id = GameState.WeaponId.FLAMETHROWER
+	w.display_name = "Flamethrower"
+	w.slot_category = "primary"
+	w.description = "Short-range fire stream. Loud and messy."
+	w.fire_rate = 0.08
+	w.damage = 18.0
+	w.magazine_size = 60
+	w.reserve_ammo = 120
+	w.reload_time = 2.4
+	w.noise_loudness = 42.0
+	w.automatic = true
+	w.spread_deg = 4.0
+	w.max_range = 12.0
+	w.projectile_kind = "hitscan"
+	w.aim_fov = 58.0
+	return w
+
+
+static func make_grenade_launcher() -> WeaponData:
+	var w := WeaponData.new()
+	w.id = GameState.WeaponId.GRENADE_LAUNCHER
+	w.display_name = "Grenade Launcher"
+	w.slot_category = "primary"
+	w.description = "Lobbed HE rounds. Clears rooms."
+	w.fire_rate = 0.85
+	w.damage = 110.0
+	w.magazine_size = 4
+	w.reserve_ammo = 12
+	w.reload_time = 2.6
+	w.noise_loudness = 55.0
+	w.projectile_kind = "frag"
+	w.explosion_radius = 5.5
+	w.projectile_speed = 28.0
+	w.max_range = 55.0
+	w.aim_fov = 52.0
+	return w
+
+
+static func make_hunter_bow() -> WeaponData:
+	var w := make_bow()
+	w.id = GameState.WeaponId.HUNTER_BOW
+	w.display_name = "Hunter Recurve"
+	w.description = "Quiet recurve. Dog-whistle tip distracts canines."
+	w.noise_loudness = 1.0
+	w.is_silent = true
+	w.damage = 95.0
+	w.arrow_type = "whistle"
+	return w
+
+
+static func make_tranq_pistol() -> WeaponData:
+	var w := make_pistol()
+	w.id = GameState.WeaponId.TRANQ_PISTOL
+	w.display_name = "Tranq Pistol"
+	w.description = "Non-lethal darts. Hostiles wake after ~45s."
+	w.noise_loudness = 6.0
+	w.is_suppressed = true
+	w.is_silent = true
+	w.damage = 9999.0
+	w.projectile_kind = "tranq"
+	w.magazine_size = 8
+	w.reserve_ammo = 24
+	return w
+
+
+static func make_throwing_axe() -> WeaponData:
+	var w := make_knife()
+	w.id = GameState.WeaponId.THROWING_AXE
+	w.display_name = "Throwing Axe"
+	w.description = "Heavy silent axe. One-shot torso."
+	w.damage = 9999.0
+	w.noise_loudness = 2.5
+	w.projectile_kind = "knife"
+	w.magazine_size = 4
+	w.reserve_ammo = 8
+	return w
+
+
+static func make_c4() -> WeaponData:
+	var w := make_frag()
+	w.id = GameState.WeaponId.C4
+	w.display_name = "C4 Charge"
+	w.description = "Place and detonate. Massive blast."
+	w.projectile_kind = "c4"
+	w.explosion_radius = 7.0
+	w.damage = 200.0
+	w.noise_loudness = 70.0
+	w.magazine_size = 2
+	w.reserve_ammo = 2
+	return w
+
+
+static func make_prox_mine() -> WeaponData:
+	var w := make_frag()
+	w.id = GameState.WeaponId.PROX_MINE
+	w.display_name = "Proximity Mine"
+	w.description = "Arms after place. Trips on hostiles."
+	w.projectile_kind = "prox_mine"
+	w.explosion_radius = 4.5
+	w.damage = 140.0
+	w.noise_loudness = 48.0
+	w.magazine_size = 3
+	w.reserve_ammo = 3
+	return w
+
+
 static func from_id(id: GameState.WeaponId, mods: Dictionary = {}) -> WeaponData:
 	var w: WeaponData
 	match id:
@@ -484,6 +615,22 @@ static func from_id(id: GameState.WeaponId, mods: Dictionary = {}) -> WeaponData
 			w = make_machete()
 		GameState.WeaponId.BAT:
 			w = make_bat()
+		GameState.WeaponId.SILENCED_SNIPER:
+			w = make_silenced_sniper()
+		GameState.WeaponId.FLAMETHROWER:
+			w = make_flamethrower()
+		GameState.WeaponId.GRENADE_LAUNCHER:
+			w = make_grenade_launcher()
+		GameState.WeaponId.HUNTER_BOW:
+			w = make_hunter_bow()
+		GameState.WeaponId.TRANQ_PISTOL:
+			w = make_tranq_pistol()
+		GameState.WeaponId.THROWING_AXE:
+			w = make_throwing_axe()
+		GameState.WeaponId.C4:
+			w = make_c4()
+		GameState.WeaponId.PROX_MINE:
+			w = make_prox_mine()
 		_:
 			w = make_pistol()
 	if not mods.is_empty():

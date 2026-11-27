@@ -20,18 +20,22 @@ const ThreadedLoader = preload("res://scripts/systems/threaded_loader.gd")
 
 var _guards: Array[GuardAI] = []
 var _alarms: Array[Node3D] = []
-var liberated: bool = false
+var liberated: bool = false  # already beaten before this deploy (replay)
 var _loader: Node = null
 var _load_errors: PackedStringArray = []
+var _clearing: bool = false
+var _clear_failed: bool = false
+var _results_shown: bool = false
 
 
 func _ready() -> void:
 	add_to_group("outpost")
 	GameState.begin_world_load()
+	GameState.begin_deploy_stats()
 	outpost_id = GameState.selected_outpost_id
 	var def := OutpostCatalog.get_outpost(outpost_id)
 	outpost_display_name = String(def.get("name", outpost_display_name))
-	liberated = GameState.is_liberated(outpost_id)
+	liberated = GameState.is_liberated(outpost_id)  # replay if true
 	_freeze_player(true)
 	_freeze_hud(true)
 	_ensure_loader()
@@ -92,8 +96,11 @@ func _run_load_pipeline(def: Dictionary) -> void:
 	await _stage_player(def)
 
 	_bind_guards()
+	# Beaten compounds still get a full garrison for replay (currency reduced).
 	if liberated:
-		_show_already_liberated()
+		var hud0 := get_tree().get_first_node_in_group("hud")
+		if hud0 and hud0.has_method("show_status"):
+			hud0.show_status("%s — REPLAY (best payout saved)" % outpost_display_name, 3.5)
 
 	# Verify critical content landed
 	var grey := get_node_or_null("Greybox")
@@ -408,8 +415,7 @@ func _rebuild_outpost_entities_async(def: Dictionary, guard_scene: PackedScene, 
 		_alarms.append(alarm)
 	await get_tree().process_frame
 
-	if liberated:
-		return
+	# Always spawn full garrison (including replays of beaten compounds)
 
 	# Spawn guards in small batches so mobile WebGL can upload meshes
 	var guard_specs: Array = def.get("guards", [])
@@ -474,8 +480,8 @@ func register_guard(g: GuardAI) -> void:
 func _on_guard_died(g: GuardAI) -> void:
 	_guards.erase(g)
 	_update_count()
-	if _guards.is_empty() and not liberated:
-		_liberate()
+	if _guards.is_empty() and not _clearing and not _results_shown:
+		_begin_clear_countdown()
 
 
 func _update_count() -> void:
@@ -489,21 +495,73 @@ func _update_count() -> void:
 		hud.set_guard_count(alive)
 
 
-func _liberate() -> void:
+func _begin_clear_countdown() -> void:
+	_clearing = true
+	_clear_failed = false
+	GameState.clearing_in_progress = true
+	var hud := get_tree().get_first_node_in_group("hud")
+	for i in range(3, 0, -1):
+		if _clear_failed:
+			break
+		if hud and hud.has_method("show_clear_countdown"):
+			hud.show_clear_countdown(i)
+		elif hud and hud.has_method("show_status"):
+			hud.show_status("Compound clearing… %d" % i, 1.05)
+		await get_tree().create_timer(1.0).timeout
+		# Fail if player died or reinforcements / new guards appeared
+		if _player_is_down():
+			_clear_failed = true
+			break
+		_refresh_alive_guards()
+		if not _guards.is_empty():
+			_clear_failed = true
+			break
+	_clearing = false
+	GameState.clearing_in_progress = false
+	if _clear_failed:
+		if hud and hud.has_method("show_status"):
+			hud.show_status("Clear interrupted — finish remaining hostiles", 3.5)
+		return
+	await _complete_clear()
+
+
+func _player_is_down() -> bool:
+	var player := get_node_or_null("Player")
+	if player == null:
+		return true
+	if player.has_method("is_down") and player.is_down():
+		return true
+	if "is_down" in player and bool(player.get("is_down")):
+		return true
+	if "hp" in player and float(player.get("hp")) <= 0.0:
+		return true
+	return false
+
+
+func _refresh_alive_guards() -> void:
+	_guards.clear()
+	_collect_guards(self)
+	var alive: Array[GuardAI] = []
+	for g in _guards:
+		if is_instance_valid(g) and not g.is_queued_for_deletion() and g.is_alive():
+			alive.append(g)
+	_guards = alive
+
+
+func _complete_clear() -> void:
+	if _results_shown:
+		return
+	_results_shown = true
+	var was_replay := liberated
+	var stats: Dictionary = GameState.run_stats.to_dict() if GameState.run_stats else {}
+	var payout_info: Dictionary = ShopCatalog.compute_payout(outpost_id, stats, was_replay)
+	var total := int(payout_info.get("total", 0))
+	GameState.add_currency(total)
+	GameState.record_best_clear(outpost_id, stats, total)
 	liberated = true
-	GameState.mark_liberated(outpost_id)
 	liberation_achieved.emit()
 	var hud := get_tree().get_first_node_in_group("hud")
-	if hud and hud.has_method("show_liberation"):
+	if hud and hud.has_method("show_clear_results"):
+		hud.show_clear_results(outpost_display_name, payout_info, was_replay, GameState.currency)
+	elif hud and hud.has_method("show_liberation"):
 		hud.show_liberation(outpost_display_name)
-
-
-func _show_already_liberated() -> void:
-	for g in get_tree().get_nodes_in_group("guards"):
-		if g is GuardAI and is_ancestor_of(g):
-			g.queue_free()
-	var hud := get_tree().get_first_node_in_group("hud")
-	if hud and hud.has_method("show_status"):
-		hud.show_status("%s — Liberated" % outpost_display_name, 4.0)
-	if hud and hud.has_method("set_liberated_banner"):
-		hud.set_liberated_banner(true)

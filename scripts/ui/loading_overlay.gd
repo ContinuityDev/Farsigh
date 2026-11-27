@@ -71,6 +71,9 @@ func has_errors() -> bool:
 func finish_ok(msg: String = "Ready — deploying…") -> void:
 	set_progress(1.0, msg)
 	await get_tree().create_timer(0.35).timeout
+	# Stop eating touches after dismiss (Dim defaults to MOUSE_FILTER_STOP).
+	if is_instance_valid(dim):
+		dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
 	dismissed.emit()
 

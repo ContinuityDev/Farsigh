@@ -40,6 +40,8 @@ func trigger(_by: Node = null) -> void:
 	if GameState.is_detection_frozen():
 		return
 	triggered = true
+	if GameState.run_stats:
+		GameState.run_stats.on_alarm()
 	alarm_triggered.emit()
 	_update_visual()
 	# Officers call in extra reinforcements (faster / denser response)

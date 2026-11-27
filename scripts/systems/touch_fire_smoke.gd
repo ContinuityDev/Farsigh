@@ -191,6 +191,100 @@ func _run() -> void:
 		return
 	print("TOUCH_FIRE_SMOKE FireBtn fired mag %d->%d" % [mag_after, mag_shot])
 
+	# 8. ScreenTouch on FireBtn rect must press fire (mobile path — not button_down)
+	var hud2 := get_first_node_in_group("hud")
+	var tc2: Node = hud2.get_node_or_null("TouchControls") if is_instance_valid(hud2) else null
+	if is_instance_valid(tc2):
+		tc2.visible = true
+		await process_frame
+		await process_frame
+		var fire_btn: Control = tc2.get_node_or_null("Root/FireBtn")
+		var aim_btn: Control = tc2.get_node_or_null("Root/AimBtn")
+		if not is_instance_valid(fire_btn):
+			print("TOUCH_FIRE_SMOKE FAIL missing FireBtn node")
+			quit(1)
+			return
+		var fire_pos := fire_btn.get_global_rect().get_center()
+		var mag_b2: int = int(wm.mags[wm.active_slot])
+		var vp := root.get_viewport()
+		var st_fire := InputEventScreenTouch.new()
+		st_fire.index = 2
+		st_fire.pressed = true
+		st_fire.position = fire_pos
+		vp.push_input(st_fire, true)
+		await process_frame
+		if not touch.is_action_pressed("fire"):
+			print("TOUCH_FIRE_SMOKE FAIL ScreenTouch on FireBtn did not press fire")
+			quit(1)
+			return
+		await process_frame
+		await process_frame
+		var st_fire_up := InputEventScreenTouch.new()
+		st_fire_up.index = 2
+		st_fire_up.pressed = false
+		st_fire_up.position = fire_pos
+		vp.push_input(st_fire_up, true)
+		await create_timer(0.12).timeout
+		var mag_a2: int = int(wm.mags[wm.active_slot])
+		if mag_a2 >= mag_b2:
+			print("TOUCH_FIRE_SMOKE FAIL ScreenTouch FireBtn no ammo drop %d" % mag_a2)
+			quit(1)
+			return
+		print("TOUCH_FIRE_SMOKE ScreenTouch FireBtn OK mag %d->%d" % [mag_b2, mag_a2])
+		if is_instance_valid(aim_btn):
+			var aim_pos := aim_btn.get_global_rect().get_center()
+			var st_aim := InputEventScreenTouch.new()
+			st_aim.index = 3
+			st_aim.pressed = true
+			st_aim.position = aim_pos
+			vp.push_input(st_aim, true)
+			await process_frame
+			if not touch.is_action_pressed("aim"):
+				print("TOUCH_FIRE_SMOKE FAIL ScreenTouch AimBtn")
+				quit(1)
+				return
+			var st_aim_up := InputEventScreenTouch.new()
+			st_aim_up.index = 3
+			st_aim_up.pressed = false
+			st_aim_up.position = aim_pos
+			vp.push_input(st_aim_up, true)
+			await process_frame
+			print("TOUCH_FIRE_SMOKE ScreenTouch AimBtn OK")
+		var stick := tc2.get_node_or_null("Root/LeftStick") as Control
+		if is_instance_valid(stick):
+			var stick_pos := stick.get_global_rect().get_center()
+			var look_pos := Vector2(fire_pos.x - 200, fire_pos.y - 120)
+			var st_s := InputEventScreenTouch.new()
+			st_s.index = 0
+			st_s.pressed = true
+			st_s.position = stick_pos
+			vp.push_input(st_s, true)
+			var st_l := InputEventScreenTouch.new()
+			st_l.index = 1
+			st_l.pressed = true
+			st_l.position = look_pos
+			vp.push_input(st_l, true)
+			var st_f := InputEventScreenTouch.new()
+			st_f.index = 4
+			st_f.pressed = true
+			st_f.position = fire_pos
+			vp.push_input(st_f, true)
+			await process_frame
+			if not touch.is_action_pressed("fire"):
+				print("TOUCH_FIRE_SMOKE FAIL multitouch fire")
+				quit(1)
+				return
+			print("TOUCH_FIRE_SMOKE multitouch stick+look+fire OK")
+			for idx in [0, 1, 4]:
+				var up := InputEventScreenTouch.new()
+				up.index = idx
+				up.pressed = false
+				up.position = stick_pos
+				vp.push_input(up, true)
+			await process_frame
+	else:
+		print("TOUCH_FIRE_SMOKE WARN no TouchControls for ScreenTouch test")
+
 	# Pause menu must show and hide touch overlay so Resume is tappable
 	gs.is_paused = true
 	paused = true

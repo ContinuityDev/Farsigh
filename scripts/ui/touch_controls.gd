@@ -1,12 +1,30 @@
 extends Control
 ## On-screen virtual controls. Auto-shown on touch devices; hidden on desktop.
-## Look-swipes and the move stick never fire the gun — only FireBtn (and optional
-## tap-to-fire) call TouchInput.press("fire"). Multi-touch: stick + look + fire
-## can all be active at once via separate touch indices.
 ##
-## Root stays MOUSE_FILTER_IGNORE so pause / menu Controls above or below still
-## receive taps (mouse-from-touch stays enabled for GUI). Only stick, look pad,
-## and action buttons stop the pointer.
+## Action buttons (Fire, Aim, Crouch, …) are driven by InputEventScreenTouch +
+## touch index → TouchInput.press/release. They do NOT depend on
+## emulate_mouse_from_touch or BaseButton.button_down — that path was broken on
+## mobile web when LookPad (STOP) overlapped the buttons and ate emulated LMB.
+##
+## Look / move stick also use ScreenTouch indices (multi-touch safe).
+## emulate_mouse_from_touch stays ON globally so menu Buttons still receive taps.
+## Look-swipes never call press("fire").
+
+const ACTION_BUTTONS := [
+	["FireBtn", "fire"],
+	["AimBtn", "aim"],
+	["CrouchBtn", "crouch"],
+	["SprintBtn", "sprint"],
+	["JumpBtn", "jump"],
+	["InteractBtn", "interact"],
+	["ThrowBtn", "throw_item"],
+	["ReloadBtn", "reload"],
+	["WeaponBtn", "weapon_next"],
+	["MeleeBtn", "melee"],
+	["InspectBtn", "inspect_weapon"],
+	["LeanLeftBtn", "lean_left"],
+	["LeanRightBtn", "lean_right"],
+]
 
 @onready var root: Control = $Root
 @onready var stick_base: Control = $Root/LeftStick
@@ -15,48 +33,56 @@ extends Control
 
 var _stick_touch_idx: int = -1
 var _look_touch_idx: int = -1
+## touch_index -> action string (held action buttons)
+var _button_touches: Dictionary = {}
 var _stick_center: Vector2 = Vector2.ZERO
 var _stick_radius: float = 70.0
 var _last_look_pos: Vector2 = Vector2.ZERO
 var _look_start_pos: Vector2 = Vector2.ZERO
 var _look_start_msec: int = 0
 var _look_dragged: bool = false
+var _action_btns: Array = []  # Array of [Control, String]
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	# Never blanket-stop the full screen — that steals pause/menu button taps.
+	set_process_input(true)
+	# Never blanket-stop the full screen — pause/menu Controls must stay tappable.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if is_instance_valid(root):
 		root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_refresh_visibility()
+	# Look pad is visual + hit-test only via ScreenTouch — never steal GUI.
 	if is_instance_valid(look_pad):
-		look_pad.mouse_filter = Control.MOUSE_FILTER_STOP
-		# Consume emulated LMB on the look pad so it cannot fall through as fire.
-		look_pad.gui_input.connect(_on_look_pad_gui_input)
+		look_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if is_instance_valid(stick_base):
-		stick_base.mouse_filter = Control.MOUSE_FILTER_STOP
+		# Stick also driven by ScreenTouch; IGNORE so it can't block streak HUD.
+		stick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	await get_tree().process_frame
 	_stick_center = stick_base.size * 0.5
 	_stick_radius = minf(stick_base.size.x, stick_base.size.y) * 0.42
-	for b in [
-		["FireBtn", "fire"],
-		["AimBtn", "aim"],
-		["CrouchBtn", "crouch"],
-		["SprintBtn", "sprint"],
-		["JumpBtn", "jump"],
-		["InteractBtn", "interact"],
-		["ThrowBtn", "throw_item"],
-		["ReloadBtn", "reload"],
-		["WeaponBtn", "weapon_next"],
-		["MeleeBtn", "melee"],
-		["InspectBtn", "inspect_weapon"],
-		["LeanLeftBtn", "lean_left"],
-		["LeanRightBtn", "lean_right"],
-	]:
-		var alt := root.get_node_or_null(b[0]) as BaseButton
-		if alt:
-			_wire_button(alt, b[1])
+	_action_btns.clear()
+	for b in ACTION_BUTTONS:
+		var btn := root.get_node_or_null(b[0]) as BaseButton
+		if btn == null:
+			continue
+		# Visual only — presses come from ScreenTouch hit-tests below.
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.disabled = false
+		# Keep button_down as a desktop/fallback path (force_touch_ui + real mouse).
+		var action: String = b[1]
+		btn.button_down.connect(_on_btn_down.bind(action))
+		btn.button_up.connect(_on_btn_up.bind(action))
+		_action_btns.append([btn, action])
+
+
+func _on_btn_down(action: String) -> void:
+	TouchInput.press(action)
+
+
+func _on_btn_up(action: String) -> void:
+	TouchInput.release(action)
 
 
 func _process(_delta: float) -> void:
@@ -69,63 +95,80 @@ func _refresh_visibility() -> void:
 		visible = want
 	if is_instance_valid(root) and root.visible != want:
 		root.visible = want
+	if not want:
+		_release_all_holds()
 
 
-func _wire_button(btn: BaseButton, action: String) -> void:
-	btn.focus_mode = Control.FOCUS_NONE
-	btn.button_down.connect(func(): TouchInput.press(action))
-	btn.button_up.connect(func(): TouchInput.release(action))
-	# Swallow the button's pointer events so they never fall through as look.
-	btn.gui_input.connect(func(event: InputEvent):
-		if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouseButton:
-			accept_event()
-	)
-
-
-func _on_look_pad_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		# Emulated LMB from a look-pad touch — eat it; look comes from ScreenTouch.
-		accept_event()
-	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		accept_event()
+func _release_all_holds() -> void:
+	if _stick_touch_idx >= 0:
+		_stick_touch_idx = -1
+		TouchInput.set_move_vector(Vector2.ZERO)
+	_look_touch_idx = -1
+	for idx in _button_touches.keys():
+		var action: String = String(_button_touches[idx])
+		TouchInput.release(action)
+	_button_touches.clear()
 
 
 func _input(event: InputEvent) -> void:
 	if not visible or GameState.is_paused:
 		return
 	if event is InputEventScreenTouch:
-		_handle_touch(event)
+		_handle_touch(event as InputEventScreenTouch)
 	elif event is InputEventScreenDrag:
-		_handle_drag(event)
+		_handle_drag(event as InputEventScreenDrag)
 
 
 func _handle_touch(event: InputEventScreenTouch) -> void:
 	var pos: Vector2 = event.position
 	if event.pressed:
+		# 1) Action buttons first — independent of mouse emulation.
+		var hit := _action_at(pos)
+		if hit != "":
+			_button_touches[event.index] = hit
+			TouchInput.press(hit)
+			get_viewport().set_input_as_handled()
+			return
+		# 2) Move stick
 		if _stick_touch_idx < 0 and _in_control(stick_base, pos):
 			_stick_touch_idx = event.index
 			_update_stick(pos)
 			get_viewport().set_input_as_handled()
-		elif _look_touch_idx < 0 and _is_look_area(pos) and not _over_action_button(pos):
+			return
+		# 3) Look (never on a button; never fires)
+		if _look_touch_idx < 0 and _is_look_area(pos):
 			_look_touch_idx = event.index
 			_last_look_pos = pos
 			_look_start_pos = pos
 			_look_start_msec = Time.get_ticks_msec()
 			_look_dragged = false
 			get_viewport().set_input_as_handled()
+			return
 	else:
+		if _button_touches.has(event.index):
+			var action: String = String(_button_touches[event.index])
+			_button_touches.erase(event.index)
+			TouchInput.release(action)
+			get_viewport().set_input_as_handled()
+			return
 		if event.index == _stick_touch_idx:
 			_stick_touch_idx = -1
 			TouchInput.set_move_vector(Vector2.ZERO)
 			stick_knob.position = _stick_center - stick_knob.size * 0.5
 			get_viewport().set_input_as_handled()
+			return
 		if event.index == _look_touch_idx:
 			_look_touch_idx = -1
 			_maybe_tap_to_fire(pos)
 			get_viewport().set_input_as_handled()
+			return
 
 
 func _handle_drag(event: InputEventScreenDrag) -> void:
+	if _button_touches.has(event.index):
+		# Finger slid off a hold button — keep action held until release (sticky).
+		get_viewport().set_input_as_handled()
+		return
 	if event.index == _stick_touch_idx:
 		_update_stick(event.position)
 		get_viewport().set_input_as_handled()
@@ -139,7 +182,7 @@ func _handle_drag(event: InputEventScreenDrag) -> void:
 
 
 func _maybe_tap_to_fire(release_pos: Vector2) -> void:
-	## Optional (off by default): a short, non-dragged tap on the look pad fires once.
+	## Optional (off by default): short non-dragged look-pad tap fires once.
 	if not GameState.tap_to_fire:
 		return
 	if _look_dragged:
@@ -157,27 +200,25 @@ func _update_stick(screen_pos: Vector2) -> void:
 	if offset.length() > _stick_radius:
 		offset = offset.limit_length(_stick_radius)
 	stick_knob.position = _stick_center + offset - stick_knob.size * 0.5
-	# Godot move_forward is negative Y in get_vector mapping — use y flipped for stick up = forward
 	TouchInput.set_move_vector(Vector2(offset.x / _stick_radius, offset.y / _stick_radius))
 
 
 func _in_control(ctrl: Control, screen_pos: Vector2) -> bool:
-	var r := ctrl.get_global_rect()
-	return r.has_point(screen_pos)
+	if not is_instance_valid(ctrl) or not ctrl.visible:
+		return false
+	return ctrl.get_global_rect().has_point(screen_pos)
 
 
 func _is_look_area(screen_pos: Vector2) -> bool:
-	## Prefer the dedicated LookPad; also allow any right-half swipe that isn't
-	## on the stick or a button so looking feels natural on phones.
 	if _in_control(look_pad, screen_pos):
 		return true
 	var vp := get_viewport().get_visible_rect()
 	return screen_pos.x >= vp.size.x * 0.42 and not _in_control(stick_base, screen_pos)
 
 
-func _over_action_button(screen_pos: Vector2) -> bool:
-	for name in ["FireBtn", "AimBtn", "CrouchBtn", "SprintBtn", "JumpBtn", "InteractBtn", "ThrowBtn", "ReloadBtn", "WeaponBtn", "MeleeBtn", "InspectBtn", "LeanLeftBtn", "LeanRightBtn"]:
-		var btn := root.get_node_or_null(name) as Control
-		if btn and btn.get_global_rect().has_point(screen_pos):
-			return true
-	return false
+func _action_at(screen_pos: Vector2) -> String:
+	for pair in _action_btns:
+		var btn: Control = pair[0]
+		if is_instance_valid(btn) and btn.visible and btn.get_global_rect().has_point(screen_pos):
+			return String(pair[1])
+	return ""

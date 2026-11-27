@@ -341,6 +341,8 @@ func _update_vision(delta: float) -> void:
 			if not _spotted_emitted:
 				_spotted_emitted = true
 				GameState.player_spotted.emit()
+				if GameState.run_stats:
+					GameState.run_stats.on_spotted()
 		elif detection > 0.35 and state == State.PATROL:
 			investigate_pos = last_known_pos
 			_set_state(State.SUSPICIOUS)
@@ -773,6 +775,8 @@ func _die_takedown(from_behind: bool) -> void:
 		return
 	state = State.DEAD
 	velocity = Vector3.ZERO
+	if GameState.run_stats:
+		GameState.run_stats.on_kill(false, true)
 	died.emit(self)
 	collision_layer = 0
 	collision_mask = 0
@@ -806,6 +810,8 @@ func _die(silent: bool) -> void:
 		return
 	_set_state(State.DEAD)
 	velocity = Vector3.ZERO
+	if GameState.run_stats:
+		GameState.run_stats.on_kill(_last_hit_zone == "HEAD", false)
 	died.emit(self)
 	collision_layer = 0
 	collision_mask = 0

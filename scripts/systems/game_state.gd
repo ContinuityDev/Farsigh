@@ -25,6 +25,15 @@ enum WeaponId {
 	FRAG,
 	MOLOTOV,
 	ROCK,
+	# Shop specials
+	SILENCED_SNIPER,
+	FLAMETHROWER,
+	GRENADE_LAUNCHER,
+	HUNTER_BOW,
+	TRANQ_PISTOL,
+	THROWING_AXE,
+	C4,
+	PROX_MINE,
 }
 
 const OUTPOST_ID := "compound_alpha"
@@ -43,7 +52,7 @@ var selected_melee: WeaponId = WeaponId.KNIFE
 var weapon_mods: Dictionary = {}
 
 var has_active_run: bool = false
-var outposts: Dictionary = {}  # id -> {status: "active"|"liberated", guards_remaining: int, name: String}
+var outposts: Dictionary = {}  # id -> {status, guards_remaining, name, best: {}}
 var last_detection: float = 0.0
 var is_paused: bool = false
 
@@ -51,6 +60,18 @@ var is_paused: bool = false
 var ads_sensitivity: float = 0.55  # multiplier applied while aiming (0.25–1.0)
 var touch_aim_toggle: bool = false  # false = hold Aim button, true = tap to toggle
 var tap_to_fire: bool = false  # optional: short look-pad tap fires (off by default)
+
+# Progression / shop / streaks (persisted)
+var currency: int = 0
+var owned_weapons: Array = []  # int WeaponId
+var owned_items: Array = []  # String shop ids
+var owned_abilities: Array = []  # String shop ids
+var owned_streaks: Array = []  # String streak ids
+var equipped_streaks: Array = ["", "", ""]  # up to 3 streak ids
+var unlocked_mod_pack: bool = false
+var unlocked_skin_pack: bool = false
+var run_stats: RunStats = RunStats.new()
+var clearing_in_progress: bool = false
 
 ## World load gate — AI / detection stay frozen until the staged outpost load
 ## finishes and the post-spawn grace period elapses.
@@ -105,12 +126,28 @@ func _ensure_defaults() -> void:
 				"status": "active",
 				"guards_remaining": -1,
 				"name": String(spec["name"]),
+				"best": {},
 			}
+		elif not outposts[oid].has("best"):
+			outposts[oid]["best"] = {}
 	if not outposts.has(selected_outpost_id):
 		selected_outpost_id = OUTPOST_ID
+	# Starter arsenal — always owned
+	for wid in [
+		WeaponId.PISTOL, WeaponId.RIFLE, WeaponId.BOW, WeaponId.KNIFE,
+		WeaponId.SMG, WeaponId.SHOTGUN, WeaponId.SNIPER, WeaponId.LMG,
+		WeaponId.CROSSBOW, WeaponId.MACHINE_PISTOL, WeaponId.MACHETE, WeaponId.BAT,
+		WeaponId.FRAG, WeaponId.MOLOTOV,
+	]:
+		if not owns_weapon(wid):
+			owned_weapons.append(int(wid))
 	# Default suppressor on pistol so the classic stealth sidearm starts quiet
 	if not weapon_mods.has(str(int(WeaponId.PISTOL))):
 		weapon_mods[str(int(WeaponId.PISTOL))] = default_mods_for(WeaponId.PISTOL)
+	while equipped_streaks.size() < 3:
+		equipped_streaks.append("")
+	if equipped_streaks.size() > 3:
+		equipped_streaks = equipped_streaks.slice(0, 3)
 
 
 func default_mods_for(id: WeaponId) -> Dictionary:
@@ -146,13 +183,122 @@ func set_weapon_mod(id: WeaponId, slot: String, value: String) -> void:
 func start_new_run() -> void:
 	has_active_run = true
 	selected_outpost_id = OUTPOST_ID
-	selected_primary = WeaponId.PISTOL
-	selected_secondary = WeaponId.KNIFE
+	selected_primary = WeaponId.RIFLE
+	selected_secondary = WeaponId.PISTOL
 	selected_special = WeaponId.BOW
 	selected_throwable = WeaponId.KNIFE
 	selected_melee = WeaponId.KNIFE
+	currency = 0
+	owned_weapons.clear()
+	owned_items.clear()
+	owned_abilities.clear()
+	owned_streaks.clear()
+	equipped_streaks = ["", "", ""]
+	unlocked_mod_pack = false
+	unlocked_skin_pack = false
 	outposts.clear()
 	_ensure_defaults()
+	SaveManager.save_game()
+
+
+func owns_weapon(id: WeaponId) -> bool:
+	return int(id) in owned_weapons or owned_weapons.has(int(id))
+
+
+func owns_item(id: String) -> bool:
+	return id in owned_items
+
+
+func owns_ability(id: String) -> bool:
+	return id in owned_abilities
+
+
+func owns_streak(id: String) -> bool:
+	return id in owned_streaks
+
+
+func add_currency(amount: int) -> void:
+	currency = maxi(0, currency + amount)
+	SaveManager.save_game()
+
+
+func try_purchase(entry_id: String) -> String:
+	var e: Dictionary = ShopCatalog.entry(entry_id)
+	if e.is_empty():
+		return "Unknown item"
+	var price := int(e.get("price", 0))
+	var kind := String(e.get("kind", ""))
+	# Already owned checks
+	match kind:
+		"weapon":
+			if owns_weapon(e.get("weapon") as WeaponId):
+				return "Already owned"
+		"item":
+			if owns_item(entry_id):
+				return "Already owned"
+		"ability":
+			if owns_ability(entry_id):
+				return "Already owned"
+		"streak":
+			if owns_streak(String(e.get("streak", ""))):
+				return "Already owned"
+		"mod":
+			if unlocked_mod_pack:
+				return "Already owned"
+		"skin":
+			if unlocked_skin_pack:
+				return "Already owned"
+	if currency < price:
+		return "Need %d more Hope Dollars" % (price - currency)
+	currency -= price
+	match kind:
+		"weapon":
+			var wid: WeaponId = e.get("weapon") as WeaponId
+			if not owns_weapon(wid):
+				owned_weapons.append(int(wid))
+		"item":
+			owned_items.append(entry_id)
+		"ability":
+			owned_abilities.append(entry_id)
+		"streak":
+			var sid := String(e.get("streak", ""))
+			if sid != "" and not owns_streak(sid):
+				owned_streaks.append(sid)
+		"mod":
+			unlocked_mod_pack = true
+		"skin":
+			unlocked_skin_pack = true
+	SaveManager.save_game()
+	return ""
+
+
+func set_equipped_streak(slot: int, streak_id: String) -> void:
+	if slot < 0 or slot > 2:
+		return
+	if streak_id != "" and not owns_streak(streak_id):
+		return
+	equipped_streaks[slot] = streak_id
+	SaveManager.save_game()
+
+
+func begin_deploy_stats() -> void:
+	run_stats = RunStats.new()
+	run_stats.begin()
+	clearing_in_progress = false
+
+
+func record_best_clear(outpost_id: String, stats: Dictionary, payout: int) -> void:
+	if not outposts.has(outpost_id):
+		_ensure_defaults()
+	var best: Dictionary = outposts[outpost_id].get("best", {})
+	var prev_payout := int(best.get("payout", 0))
+	if payout >= prev_payout:
+		best = stats.duplicate(true)
+		best["payout"] = payout
+		best["when"] = Time.get_unix_time_from_system()
+	outposts[outpost_id]["best"] = best
+	outposts[outpost_id]["status"] = "liberated"
+	outposts[outpost_id]["guards_remaining"] = 0
 	SaveManager.save_game()
 
 
@@ -215,8 +361,7 @@ func set_guards_remaining(count: int, outpost_id: String = "") -> void:
 	if not outposts.has(oid):
 		_ensure_defaults()
 	outposts[oid]["guards_remaining"] = count
-	if count <= 0 and outposts[oid]["status"] != "liberated":
-		mark_liberated(oid)
+	# Beating is handled by the 3s clear countdown + results flow (not instant)
 
 
 func weapon_name(id: WeaponId) -> String:
@@ -251,6 +396,22 @@ func weapon_name(id: WeaponId) -> String:
 			return "Molotov Cocktail"
 		WeaponId.ROCK:
 			return "Distraction Rock"
+		WeaponId.SILENCED_SNIPER:
+			return "Silenced Sniper"
+		WeaponId.FLAMETHROWER:
+			return "Flamethrower"
+		WeaponId.GRENADE_LAUNCHER:
+			return "Grenade Launcher"
+		WeaponId.HUNTER_BOW:
+			return "Hunter Recurve"
+		WeaponId.TRANQ_PISTOL:
+			return "Tranq Pistol"
+		WeaponId.THROWING_AXE:
+			return "Throwing Axe"
+		WeaponId.C4:
+			return "C4 Charge"
+		WeaponId.PROX_MINE:
+			return "Proximity Mine"
 	return "Unknown"
 
 
@@ -309,6 +470,14 @@ func serialize() -> Dictionary:
 		"selected_melee": int(selected_melee),
 		"weapon_mods": weapon_mods.duplicate(true),
 		"outposts": outposts.duplicate(true),
+		"currency": currency,
+		"owned_weapons": owned_weapons.duplicate(),
+		"owned_items": owned_items.duplicate(),
+		"owned_abilities": owned_abilities.duplicate(),
+		"owned_streaks": owned_streaks.duplicate(),
+		"equipped_streaks": equipped_streaks.duplicate(),
+		"unlocked_mod_pack": unlocked_mod_pack,
+		"unlocked_skin_pack": unlocked_skin_pack,
 	}
 
 
@@ -326,4 +495,22 @@ func deserialize(data: Dictionary) -> void:
 	var loaded_outposts = data.get("outposts", {})
 	if loaded_outposts is Dictionary and not (loaded_outposts as Dictionary).is_empty():
 		outposts = (loaded_outposts as Dictionary).duplicate(true)
+	currency = int(data.get("currency", 0))
+	var ow = data.get("owned_weapons", [])
+	if ow is Array:
+		owned_weapons = (ow as Array).duplicate()
+	var oi = data.get("owned_items", [])
+	if oi is Array:
+		owned_items = (oi as Array).duplicate()
+	var oa = data.get("owned_abilities", [])
+	if oa is Array:
+		owned_abilities = (oa as Array).duplicate()
+	var os = data.get("owned_streaks", [])
+	if os is Array:
+		owned_streaks = (os as Array).duplicate()
+	var es = data.get("equipped_streaks", ["", "", ""])
+	if es is Array:
+		equipped_streaks = (es as Array).duplicate()
+	unlocked_mod_pack = bool(data.get("unlocked_mod_pack", false))
+	unlocked_skin_pack = bool(data.get("unlocked_skin_pack", false))
 	_ensure_defaults()

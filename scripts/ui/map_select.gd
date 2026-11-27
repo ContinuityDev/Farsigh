@@ -22,8 +22,22 @@ func _ready() -> void:
 	get_tree().paused = false
 	GameState.is_paused = false
 	_selected_id = GameState.selected_outpost_id
+	_ensure_shop_btn()
 	_build_cards()
 	_refresh()
+
+
+func _ensure_shop_btn() -> void:
+	var actions := $Margin/RootVBox/Body/DetailPanel/DetailMargin/DetailVBox/Actions
+	if actions.get_node_or_null("ShopBtn") != null:
+		return
+	var shop := Button.new()
+	shop.name = "ShopBtn"
+	shop.text = "Shop ($%d)" % GameState.currency
+	shop.custom_minimum_size = Vector2(0, 44)
+	shop.pressed.connect(_on_shop_pressed)
+	actions.add_child(shop)
+	actions.move_child(shop, 0)
 
 
 func _build_cards() -> void:
@@ -37,14 +51,22 @@ func _build_cards() -> void:
 		var g_count := OutpostCatalog.guard_count(def)
 		var s_count := OutpostCatalog.sniper_count(def)
 		var a_count := OutpostCatalog.alarm_count(def)
-		var badge := "LIBERATED" if is_lib else "CONTESTED"
+		var badge := "BEATEN — Replay" if is_lib else "CONTESTED"
+		var best: Dictionary = GameState.outposts.get(oid, {}).get("best", {})
+		var best_line := ""
+		if is_lib and not best.is_empty():
+			best_line = "\nBest $%d  ·  %ds  ·  HS %d" % [
+				int(best.get("payout", 0)),
+				int(best.get("elapsed_sec", 0)),
+				int(best.get("headshots", 0)),
+			]
 		var btn := Button.new()
 		btn.toggle_mode = true
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 74)
-		btn.add_theme_font_size_override("font_size", 16)
-		btn.text = "%s  [%s]\n%s  •  %d Hostiles (%d Snipers)  •  %d Alarms" % [
-			def["name"], badge, def["theme"], g_count, s_count, a_count
+		btn.custom_minimum_size = Vector2(0, 86)
+		btn.add_theme_font_size_override("font_size", 15)
+		btn.text = "%s  [%s]\n%s  •  %d Hostiles (%d Snipers)  •  %d Alarms%s" % [
+			def["name"], badge, def["theme"], g_count, s_count, a_count, best_line
 		]
 		if is_lib:
 			btn.modulate = Color(0.75, 1.0, 0.78)
@@ -73,12 +95,25 @@ func _refresh() -> void:
 	var is_lib := GameState.is_liberated(_selected_id)
 	detail_name.text = String(def.get("name", ""))
 	detail_theme.text = String(def.get("theme", ""))
+	var shop_btn := $Margin/RootVBox/Body/DetailPanel/DetailMargin/DetailVBox/Actions.get_node_or_null("ShopBtn") as Button
+	if shop_btn:
+		shop_btn.text = "Shop ($%d)" % GameState.currency
+	var deploy := $Margin/RootVBox/Body/DetailPanel/DetailMargin/DetailVBox/Actions.get_node_or_null("DeployBtn") as Button
 	if is_lib:
-		detail_status.text = "STATUS: LIBERATED (Revisit safe — clear skies)"
+		var best: Dictionary = GameState.outposts.get(_selected_id, {}).get("best", {})
+		detail_status.text = "STATUS: BEATEN — Replay available (50%% currency)\nBest payout $%d · Ghost %s · Alarms %s" % [
+			int(best.get("payout", 0)),
+			"yes" if bool(best.get("undetected", false)) else "no",
+			"none" if bool(best.get("no_alarms", true)) else "triggered",
+		]
 		detail_status.modulate = Color(0.45, 0.95, 0.55)
+		if deploy:
+			deploy.text = "Replay Compound"
 	else:
 		detail_status.text = "STATUS: HOSTILE GARRISON"
 		detail_status.modulate = Color(0.96, 0.65, 0.35)
+		if deploy:
+			deploy.text = "Deploy Now"
 	detail_desc.text = String(def.get("description", ""))
 	detail_intel.text = "Garrison: %d Hostiles (%d Snipers, %d Heavies, %d Officers, %d Dogs)  |  Alarms: %d" % [
 		OutpostCatalog.guard_count(def),
@@ -104,6 +139,10 @@ func _refresh() -> void:
 func _on_gunsmith_pressed() -> void:
 	GameState.select_outpost(_selected_id)
 	get_tree().change_scene_to_file("res://scenes/ui/loadout.tscn")
+
+
+func _on_shop_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/ui/shop.tscn")
 
 
 func _on_deploy_pressed() -> void:
