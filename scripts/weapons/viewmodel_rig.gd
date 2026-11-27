@@ -152,9 +152,9 @@ func rebuild_weapon(id: GameState.WeaponId, mods: Dictionary) -> void:
 
 	match id:
 		GameState.WeaponId.PISTOL:
-			_build_pistol(slot, body_col, accent_col, mods, false)
+			_build_pistol(slot, id, body_col, accent_col, mods, false)
 		GameState.WeaponId.MACHINE_PISTOL:
-			_build_pistol(slot, body_col, accent_col, mods, true)
+			_build_pistol(slot, id, body_col, accent_col, mods, true)
 		GameState.WeaponId.RIFLE:
 			_build_long_gun(slot, id, body_col, accent_col, mods, 0.27, 0.25, 0.22, false, false, false)
 		GameState.WeaponId.SMG:
@@ -166,7 +166,7 @@ func rebuild_weapon(id: GameState.WeaponId, mods: Dictionary) -> void:
 		GameState.WeaponId.LMG, GameState.WeaponId.FLAMETHROWER, GameState.WeaponId.GRENADE_LAUNCHER:
 			_build_long_gun(slot, id, body_col, accent_col, mods, 0.32, 0.30, 0.28, false, false, true)
 		GameState.WeaponId.BOW, GameState.WeaponId.HUNTER_BOW:
-			_build_bow(slot, body_col, accent_col, mods)
+			_build_bow(slot, id, body_col, accent_col, mods)
 		GameState.WeaponId.CROSSBOW:
 			_build_crossbow(slot, body_col, accent_col, mods)
 		GameState.WeaponId.KNIFE, GameState.WeaponId.THROWING_AXE:
@@ -180,13 +180,13 @@ func rebuild_weapon(id: GameState.WeaponId, mods: Dictionary) -> void:
 		GameState.WeaponId.BAT:
 			_build_bat(slot, body_col, accent_col)
 		GameState.WeaponId.TRANQ_PISTOL:
-			_build_pistol(slot, body_col, accent_col, mods, false)
+			_build_pistol(slot, id, body_col, accent_col, mods, false)
 
 
 # ============================================================================
 # PROCEDURAL MODULAR WEAPON BUILDERS
 # ============================================================================
-func _build_pistol(slot: Node3D, body_col: Color, accent_col: Color, mods: Dictionary, is_auto: bool) -> void:
+func _build_pistol(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accent_col: Color, mods: Dictionary, is_auto: bool) -> void:
 	var polymer := Color(0.11, 0.12, 0.13)
 	var glove := Color(0.18, 0.17, 0.16)
 	var sleeve := Color(0.24, 0.28, 0.20)
@@ -199,11 +199,7 @@ func _build_pistol(slot: Node3D, body_col: Color, accent_col: Color, mods: Dicti
 	root.add_child(slide)
 	var slide_len := 0.24 if is_auto else 0.205
 	ProcMesh.add_part(slide, ProcMesh.box_mesh(Vector3(0.042, 0.046, slide_len), body_col, 0.42, 0.55), Vector3(0, 0.032, -0.02))
-	ProcMesh.add_part(slide, ProcMesh.box_mesh(Vector3(0.008, 0.010, 0.012), polymer), Vector3(-0.011, 0.058, 0.072))
-	ProcMesh.add_part(slide, ProcMesh.box_mesh(Vector3(0.008, 0.010, 0.012), polymer), Vector3(0.011, 0.058, 0.072))
-	var fs := ProcMesh.box_mesh(Vector3(0.006, 0.011, 0.010), Color(0.2, 0.95, 0.45))
-	fs.material_override = ProcMesh.emissive(Color(0.25, 1.0, 0.45), 1.8)
-	ProcMesh.add_part(slide, fs, Vector3(0, 0.059, -0.11))
+	# No slide-mounted irons — _attach_optic owns the single iron/optic set so ADS centers correctly
 	if not is_auto:
 		_pistol_slide = slide
 
@@ -220,19 +216,18 @@ func _build_pistol(slot: Node3D, body_col: Color, accent_col: Color, mods: Dicti
 	if ext and is_auto:
 		mag_h = 0.17
 	ProcMesh.add_part(mag, ProcMesh.box_mesh(Vector3(0.030, mag_h, 0.048), body_col.darkened(0.15), 0.5, 0.45), Vector3(0, -mag_h * 0.35, 0), Vector3(-14, 0, 0))
-	_magazines[GameState.WeaponId.MACHINE_PISTOL if is_auto else GameState.WeaponId.PISTOL] = mag
+	_magazines[wid] = mag
 
 	# Muzzle attachment (suppressor or compensator)
 	var muzzle_z := -0.13 if not is_auto else -0.155
 	muzzle_z = _attach_muzzle(root, Vector3(0, 0.028, muzzle_z), String(mods.get("muzzle", "none")), 0.016, 0.18)
-	_sight_local[GameState.WeaponId.MACHINE_PISTOL if is_auto else GameState.WeaponId.PISTOL] = _attach_optic(root, Vector3(0, 0.058, 0.01), String(mods.get("optic", "iron")), true)
+	_sight_local[wid] = _attach_optic(root, Vector3(0, 0.058, 0.01), String(mods.get("optic", "iron")), true)
 	_attach_underbarrel(root, Vector3(0, -0.020, -0.095), String(mods.get("underbarrel", "none")), true)
 
 	# Gloved hands
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.062, 0.075, 0.082), glove, 0.88, 0.04), Vector3(0.006, -0.062, 0.055), Vector3(-12, 0, 0))
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.070, 0.068, 0.24), sleeve, 0.90, 0.02), Vector3(0.035, -0.105, 0.185), Vector3(-16, -8, 0))
 
-	var wid := GameState.WeaponId.MACHINE_PISTOL if is_auto else GameState.WeaponId.PISTOL
 	var flash := _make_muzzle_flash(0.055 if String(mods.get("muzzle", "none")) == "suppressor" else 0.085, Color(1.0, 0.85, 0.45, 0.88))
 	flash.position = Vector3(0, 0.028, muzzle_z - 0.03)
 	root.add_child(flash)
@@ -369,7 +364,7 @@ func _build_shotgun(slot: Node3D, body_col: Color, accent_col: Color, mods: Dict
 	_muzzle_flashes[GameState.WeaponId.SHOTGUN] = flash
 
 
-func _build_bow(slot: Node3D, body_col: Color, accent_col: Color, mods: Dictionary) -> void:
+func _build_bow(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accent_col: Color, mods: Dictionary) -> void:
 	var wood := Color(0.42, 0.26, 0.14) if body_col == SKIN_PALETTES["default"]["body"] else body_col
 	var carbon := accent_col
 	var string_col := Color(0.84, 0.82, 0.76)
@@ -390,7 +385,7 @@ func _build_bow(slot: Node3D, body_col: Color, accent_col: Color, mods: Dictiona
 	var pin := ProcMesh.sphere_mesh(0.0045, pin_col)
 	pin.material_override = ProcMesh.emissive(pin_col, 2.3)
 	ProcMesh.add_part(root, pin, Vector3(-0.042, 0.068, -0.024))
-	_sight_local[GameState.WeaponId.BOW] = Vector3(-0.042, 0.068, -0.024)
+	_sight_local[wid] = Vector3(-0.042, 0.068, -0.024)
 
 	# Upper & lower split limbs + compound cams
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.21, 0.026), wood, 0.72, 0.08), Vector3(0, 0.19, 0.038), Vector3(22, 0, 0))
@@ -995,7 +990,7 @@ func _ads_pose_for(wid: GameState.WeaponId, _base_p: Vector3, _base_r: Vector3) 
 				"pos": Vector3(0.06, -0.08, -0.40),
 				"rot": Vector3(-18.0, 6.0, -6.0),
 			}
-		GameState.WeaponId.BOW:
+		GameState.WeaponId.BOW, GameState.WeaponId.HUNTER_BOW:
 			var bow_sight: Vector3 = _sight_local.get(wid, Vector3(-0.042, 0.068, -0.024))
 			return {
 				"pos": Vector3(-bow_sight.x, -bow_sight.y + 0.008, -0.50 - bow_sight.z),
