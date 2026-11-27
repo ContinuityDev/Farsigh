@@ -3,10 +3,13 @@ name: Deploy Web to GitHub Pages
 on:
   push:
     branches: [main]
+    paths-ignore:
+      # Avoid loops when this workflow commits the exported web build into docs/
+      - "docs/**"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -65,24 +68,57 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/web
-          # Import project once so remaps/uids exist, then export release Web build.
           godot --headless --path . --import || true
           godot --headless --path . --export-release "Web" build/web/index.html
-          # GitHub Pages treats underscore paths specially without this.
           touch build/web/.nojekyll
+          # Confirm nothreads build (GitHub Pages has no COOP/COEP headers)
+          grep -q 'GODOT_THREADS_ENABLED = false' build/web/index.html
           test -f build/web/index.html
           test -f build/web/index.wasm
           test -f build/web/index.pck
           ls -lh build/web
 
+      # Primary publish path: this repo's Pages source is currently
+      # "Deploy from a branch" → main → /docs (legacy). We cannot switch it to
+      # "GitHub Actions" via the API (403), so ship the build into docs/.
+      - name: Publish export into docs/ for branch Pages
+        run: |
+          set -euo pipefail
+          mkdir -p docs
+          # Replace only top-level docs web files; keep docs/screenshots/
+          find docs -maxdepth 1 -type f -delete
+          cp -a build/web/. docs/
+          test -f docs/index.html
+          test -f docs/.nojekyll
+
+      - name: Commit docs web build
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs
+          if git diff --cached --quiet; then
+            echo "No docs/ changes to commit"
+            exit 0
+          fi
+          git commit -m "docs: refresh GitHub Pages web build"
+          git push origin HEAD:main
+
+      # Also upload a Pages artifact. This succeeds for deploy-pages only when
+      # Settings → Pages → Source is "GitHub Actions". Kept best-effort.
       - name: Upload Pages artifact
+        continue-on-error: true
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
 
   deploy:
     needs: build
+    # Only meaningful when Pages source is GitHub Actions.
+    # Branch-/docs publishing above already covers the current legacy setting.
+    if: ${{ success() }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

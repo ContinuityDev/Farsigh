@@ -92,9 +92,11 @@ Presets live in `export_presets.cfg` (including **Web** with `variant/thread_sup
 
 ### Web / GitHub Pages
 
-Every push to `main` runs [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml): it downloads Godot 4.3 + export templates, exports a **no-threads** Web build, and deploys with `actions/upload-pages-artifact` + `actions/deploy-pages`.
+Live game: **https://continuitydev.github.io/Farsigh/**
 
-Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+Every push to `main` runs [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml): it downloads Godot 4.3 + export templates, exports a **no-threads** Web build (`variant/thread_support=false`), and publishes it into `docs/` (this matches the repo’s current Pages source: **Deploy from a branch → `main` → `/docs`**). The workflow also attempts `actions/upload-pages-artifact` + `actions/deploy-pages` for when Pages is switched to Actions.
+
+**Preferred (optional) owner setting:** Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**. Until that is set, branch `/docs` publishing is the path that works.
 
 Local Web export:
 
