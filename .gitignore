@@ -1,0 +1,17 @@
+.godot/
+.import/
+*.translation
+export/
+build/
+*.apk
+*.aab
+*.ipa
+*.exe
+*.x86_64
+*.app
+*.zip
+.DS_Store
+*~
+*.tmp
+android/
+ios/

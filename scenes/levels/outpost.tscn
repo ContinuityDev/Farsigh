@@ -1,0 +1,122 @@
+[gd_scene load_steps=7 format=3 uid="uid://outpost001"]
+
+[ext_resource type="Script" path="res://scripts/systems/outpost_manager.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/levels/greybox_builder.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/guard.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/levels/alarm_panel.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="6"]
+
+[node name="Outpost" type="Node3D"]
+script = ExtResource("1")
+outpost_id = "compound_alpha"
+outpost_display_name = "Hope County Compound"
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.353, 0.353, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 20, 0)
+light_energy = 1.05
+shadow_enabled = false
+
+[node name="FillLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+light_color = Color(0.85, 0.9, 1, 1)
+light_energy = 0.35
+omni_range = 40.0
+
+[node name="Greybox" type="Node3D" parent="."]
+script = ExtResource("2")
+
+[node name="AlarmPanel" parent="." instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 8)
+reinforcement_points = Array[NodePath]([NodePath("../ReinforceA"), NodePath("../ReinforceB")])
+
+[node name="ReinforceA" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, 18)
+
+[node name="ReinforceB" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, 16)
+
+[node name="Player" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 26)
+
+[node name="HUD" parent="." instance=ExtResource("6")]
+
+[node name="PatrolRoutes" type="Node3D" parent="."]
+
+[node name="RouteA" type="Node3D" parent="PatrolRoutes"]
+
+[node name="P1" type="Marker3D" parent="PatrolRoutes/RouteA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -10)
+
+[node name="P2" type="Marker3D" parent="PatrolRoutes/RouteA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 8)
+
+[node name="P3" type="Marker3D" parent="PatrolRoutes/RouteA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 8)
+
+[node name="RouteB" type="Node3D" parent="PatrolRoutes"]
+
+[node name="P1" type="Marker3D" parent="PatrolRoutes/RouteB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -10)
+
+[node name="P2" type="Marker3D" parent="PatrolRoutes/RouteB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, 6)
+
+[node name="P3" type="Marker3D" parent="PatrolRoutes/RouteB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
+
+[node name="RouteC" type="Node3D" parent="PatrolRoutes"]
+
+[node name="P1" type="Marker3D" parent="PatrolRoutes/RouteC"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -4)
+
+[node name="P2" type="Marker3D" parent="PatrolRoutes/RouteC"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -4)
+
+[node name="P3" type="Marker3D" parent="PatrolRoutes/RouteC"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 4)
+
+[node name="RouteD" type="Node3D" parent="PatrolRoutes"]
+
+[node name="P1" type="Marker3D" parent="PatrolRoutes/RouteD"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, 2)
+
+[node name="P2" type="Marker3D" parent="PatrolRoutes/RouteD"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 12)
+
+[node name="RouteE" type="Node3D" parent="PatrolRoutes"]
+
+[node name="P1" type="Marker3D" parent="PatrolRoutes/RouteE"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 12)
+
+[node name="P2" type="Marker3D" parent="PatrolRoutes/RouteE"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 2)
+
+[node name="Guards" type="Node3D" parent="."]
+
+[node name="Guard1" parent="Guards" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0.1, -8)
+patrol_path = NodePath("../../PatrolRoutes/RouteA")
+alarm_path = NodePath("../../AlarmPanel")
+
+[node name="Guard2" parent="Guards" instance=ExtResource("4")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 12, 0.1, -8)
+patrol_path = NodePath("../../PatrolRoutes/RouteB")
+alarm_path = NodePath("../../AlarmPanel")
+
+[node name="Guard3" parent="Guards" instance=ExtResource("4")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0.1, -4)
+patrol_path = NodePath("../../PatrolRoutes/RouteC")
+alarm_path = NodePath("../../AlarmPanel")
+
+[node name="Guard4" parent="Guards" instance=ExtResource("4")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -12, 0.1, 4)
+patrol_path = NodePath("../../PatrolRoutes/RouteD")
+alarm_path = NodePath("../../AlarmPanel")
+
+[node name="Guard5" parent="Guards" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.1, 10)
+patrol_path = NodePath("../../PatrolRoutes/RouteE")
+alarm_path = NodePath("../../AlarmPanel")
