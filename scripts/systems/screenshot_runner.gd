@@ -195,11 +195,14 @@ func _ready() -> void:
 	await get_tree().create_timer(0.35).timeout
 	await _snap("10_eden_fortress")
 
-	# 11. Binoculars tagging overlay
+	# 11. Binoculars tagging overlay (force tags so the shot shows markers)
 	var bino := get_tree().get_first_node_in_group("binoculars")
 	if bino and bino.has_method("toggle"):
 		bino.toggle()
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(0.35).timeout
+		if bino.has_method("force_tag_visible_guards"):
+			bino.force_tag_visible_guards()
+		await get_tree().create_timer(0.35).timeout
 	await _snap("11_binoculars_tagging")
 	if bino and bino.has_method("toggle") and bool(bino.get("active")):
 		bino.toggle()

@@ -70,6 +70,8 @@ var _body_armor: float = 1.0  # multiplies non-head damage taken (heavies < 1)
 
 var _body_scene: PackedScene = preload("res://scenes/items/body.tscn")
 var _last_hit_zone: String = ""
+var tagged: bool = false
+var _tag_icon: Label3D = null
 
 
 func _ready() -> void:
@@ -93,6 +95,51 @@ func _ready() -> void:
 func setup_patrol_points(points: Array[Vector3]) -> void:
 	_patrol_points = points.duplicate()
 	_patrol_index = 0
+
+
+func set_tagged(on: bool) -> void:
+	tagged = on
+	if not on:
+		if is_instance_valid(_tag_icon):
+			_tag_icon.queue_free()
+			_tag_icon = null
+		return
+	if not is_instance_valid(_tag_icon):
+		_tag_icon = Label3D.new()
+		_tag_icon.name = "TagIcon"
+		_tag_icon.font_size = 48
+		_tag_icon.outline_size = 8
+		_tag_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_tag_icon.position = Vector3(0, 2.35, 0)
+		_tag_icon.no_depth_test = true
+		add_child(_tag_icon)
+	_refresh_tag_icon()
+
+
+func _refresh_tag_icon() -> void:
+	if not is_instance_valid(_tag_icon):
+		return
+	var icon := "◎"
+	if is_sniper:
+		icon = "◎ S"
+	elif is_dog or role == "dog":
+		icon = "◎ D"
+	elif is_heavy or role == "heavy":
+		icon = "◎ H"
+	elif role == "commander":
+		icon = "◎ BOSS"
+	elif is_officer or role == "officer":
+		icon = "◎ O"
+	_tag_icon.text = icon
+	match state:
+		State.COMBAT:
+			_tag_icon.modulate = Color(1.0, 0.28, 0.22)
+		State.ALERT:
+			_tag_icon.modulate = Color(1.0, 0.72, 0.18)
+		State.SUSPICIOUS:
+			_tag_icon.modulate = Color(0.95, 0.88, 0.35)
+		_:
+			_tag_icon.modulate = Color(0.3, 0.95, 1.0)
 
 
 func apply_spawn_spec(spec: Dictionary) -> void:
@@ -256,6 +303,8 @@ func _set_state(s: State) -> void:
 			visual.play_radio()
 		else:
 			visual.play_state(State.keys()[s])
+	if tagged:
+		_refresh_tag_icon()
 	state_changed.emit(State.keys()[s])
 
 

@@ -6,6 +6,8 @@ extends Node
 const ZOOM_FOVS := [55.0, 35.0, 22.0, 14.0]
 const TAG_DWELL_SEC := 0.5
 const TAG_DWELL_PRO := 0.25
+const TAG_RANGE := 120.0
+const TAG_RANGE_PRO := 180.0
 
 var active: bool = false
 var zoom_idx: int = 1
@@ -13,6 +15,7 @@ var _dwell: Dictionary = {}  # instance_id -> seconds
 var _overlay: Control
 var _cam: Camera3D
 var _base_fov: float = 70.0
+var _pinch_dist: float = -1.0
 
 
 func _ready() -> void:
@@ -39,28 +42,49 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("binoculars") or (event is InputEventKey and event.pressed and event.keycode == KEY_B):
 		toggle()
 		get_viewport().set_input_as_handled()
-	elif active and event is InputEventMouseButton and event.pressed:
+		return
+	if not active:
+		return
+	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom(-1)
 			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom(1)
 			get_viewport().set_input_as_handled()
-	elif active and event.is_action_pressed("weapon_next"):
-		# Don't steal weapon swap while binos — use +/- style via lean keys as fallback
-		pass
+	elif event.is_action_pressed("binoculars_zoom_in"):
+		_zoom(-1)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("binoculars_zoom_out"):
+		_zoom(1)
+		get_viewport().set_input_as_handled()
+	elif event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_handle_pinch(event)
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if TouchInput.is_action_just_pressed("binoculars"):
 		toggle()
 	if not active:
 		return
-	if TouchInput.is_action_just_pressed("binoculars_zoom_in"):
+	if TouchInput.is_action_just_pressed("binoculars_zoom_in") or Input.is_action_just_pressed("binoculars_zoom_in"):
 		_zoom(-1)
-	elif TouchInput.is_action_just_pressed("binoculars_zoom_out"):
+	elif TouchInput.is_action_just_pressed("binoculars_zoom_out") or Input.is_action_just_pressed("binoculars_zoom_out"):
 		_zoom(1)
-	_update_tagging(delta)
+	_update_tagging(_delta)
+
+
+func _handle_pinch(event: InputEvent) -> void:
+	# MagnifyGesture covers trackpad / OS pinch; touch +/- buttons cover phones
+	if event is InputEventMagnifyGesture:
+		if event.factor > 1.02:
+			_zoom(-1)
+		elif event.factor < 0.98:
+			_zoom(1)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventScreenTouch and not event.pressed:
+		_pinch_dist = -1.0
 
 
 func toggle() -> void:
@@ -70,16 +94,17 @@ func toggle() -> void:
 	var player := get_tree().get_first_node_in_group("player")
 	if active:
 		_dwell.clear()
+		_pinch_dist = -1.0
 		_ensure_overlay()
 		if _overlay:
 			_overlay.visible = true
 		if is_instance_valid(_cam):
 			_cam.fov = ZOOM_FOVS[zoom_idx]
-		if player and "move_speed_mult" in player:
+		if player:
 			player.set("binoculars_slow", true)
 		var hud := get_tree().get_first_node_in_group("hud")
 		if hud and hud.has_method("show_status"):
-			hud.show_status("Binoculars — scroll/+- zoom · tag hostiles", 2.2)
+			hud.show_status("Binoculars — scroll/+- / pinch zoom · tag hostiles", 2.2)
 	else:
 		if _overlay:
 			_overlay.visible = false
@@ -101,6 +126,12 @@ func _dwell_need() -> float:
 	return TAG_DWELL_SEC
 
 
+func _tag_range() -> float:
+	if GameState.owns_item("binoculars_pro"):
+		return TAG_RANGE_PRO
+	return TAG_RANGE
+
+
 func _update_tagging(delta: float) -> void:
 	if not is_instance_valid(_cam):
 		return
@@ -108,6 +139,7 @@ func _update_tagging(delta: float) -> void:
 	var origin := _cam.global_position
 	var forward := -_cam.global_transform.basis.z
 	var need := _dwell_need()
+	var max_r := _tag_range()
 	var seen: Dictionary = {}
 	var targets: Array = []
 	for g in get_tree().get_nodes_in_group("guards"):
@@ -124,7 +156,7 @@ func _update_tagging(delta: float) -> void:
 		var gp := (g as Node3D).global_position + Vector3(0, 1.4, 0)
 		var to := gp - origin
 		var dist := to.length()
-		if dist < 2.0 or dist > 120.0:
+		if dist < 2.0 or dist > max_r:
 			continue
 		var dir := to / dist
 		if dir.dot(forward) < 0.92:  # roughly in view cone
@@ -153,7 +185,6 @@ func _update_tagging(delta: float) -> void:
 		_dwell[iid] = float(_dwell.get(iid, 0.0)) + delta
 		if float(_dwell[iid]) >= need:
 			_tag_node(g)
-	# Decay unseen
 	for iid2 in _dwell.keys():
 		var kid: int = int(iid2)
 		if not seen.has(kid):
@@ -163,13 +194,13 @@ func _update_tagging(delta: float) -> void:
 func _tag_node(g: Node) -> void:
 	if g.has_method("set_tagged"):
 		g.set_tagged(true)
-	elif "tagged" in g:
+		return
+	if "tagged" in g:
 		g.set("tagged", true)
 	if g.get("label") is Label3D:
 		var lbl: Label3D = g.get("label")
 		lbl.modulate = Color(0.25, 0.95, 1.0)
 		lbl.visible = true
-	# Persist tag marker
 	if not g.has_meta("farsigh_tagged"):
 		g.set_meta("farsigh_tagged", true)
 		var marker := Label3D.new()
@@ -182,6 +213,13 @@ func _tag_node(g: Node) -> void:
 		marker.modulate = Color(0.3, 0.95, 1.0)
 		marker.no_depth_test = true
 		g.add_child(marker)
+
+
+func force_tag_visible_guards() -> void:
+	## Used by screenshot / debug — instantly tag all living guards in frustum.
+	for g in get_tree().get_nodes_in_group("guards"):
+		if is_instance_valid(g) and (not g.has_method("is_alive") or g.is_alive()):
+			_tag_node(g)
 
 
 func _role_icon(g: Node) -> String:
@@ -198,6 +236,10 @@ func _role_icon(g: Node) -> String:
 		"dog":
 			return "◎ D"
 		_:
+			if g.is_in_group("security_cameras"):
+				return "◎ CAM"
+			if g.is_in_group("alarms"):
+				return "◎ ALM"
 			return "◎"
 
 
@@ -218,7 +260,6 @@ func _ensure_overlay() -> void:
 	_overlay.name = "BinoOverlay"
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Dual circles vignette
 	for spec in [[0.0, 0.0, 1.0, 0.18], [0.0, 0.82, 1.0, 1.0], [0.0, 0.18, 0.18, 0.82], [0.82, 0.18, 1.0, 0.82]]:
 		var bar := ColorRect.new()
 		bar.color = Color(0.02, 0.03, 0.02, 0.88)
@@ -229,16 +270,15 @@ func _ensure_overlay() -> void:
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_overlay.add_child(bar)
 	var hint := Label.new()
-	hint.text = "BINOCULARS  ·  wheel zoom  ·  tagging…"
+	hint.text = "BINOCULARS  ·  wheel / pinch / +/- zoom  ·  tagging…"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	hint.offset_top = -48
 	hint.offset_bottom = -16
-	hint.offset_left = -200
-	hint.offset_right = 200
+	hint.offset_left = -260
+	hint.offset_right = 260
 	hint.add_theme_font_size_override("font_size", 16)
 	_overlay.add_child(hint)
-	# Zoom buttons for touch
 	var zin := Button.new()
 	zin.text = "+"
 	zin.custom_minimum_size = Vector2(56, 56)
