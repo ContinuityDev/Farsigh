@@ -25,11 +25,23 @@ func _setup_environment() -> void:
 	if we == null:
 		return
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.45, 0.55, 0.62)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.55, 0.58, 0.5)
-	env.ambient_light_energy = 0.55
+	var sky := Sky.new()
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.24, 0.44, 0.70)
+	sky_mat.sky_horizon_color = Color(0.76, 0.71, 0.59)
+	sky_mat.ground_bottom_color = Color(0.18, 0.22, 0.16)
+	sky_mat.ground_horizon_color = Color(0.40, 0.44, 0.34)
+	sky_mat.sun_angle_max = 22.0
+	sky.sky_material = sky_mat
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_sky_contribution = 0.65
+	env.ambient_light_color = Color(0.62, 0.64, 0.56)
+	env.ambient_light_energy = 0.65
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.64, 0.66, 0.62)
+	env.fog_density = 0.0045
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	we.environment = env
 

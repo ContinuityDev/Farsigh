@@ -91,6 +91,9 @@ func _physics_process(delta: float) -> void:
 			_do_combat(delta)
 
 	move_and_slide()
+	if is_instance_valid(visual):
+		var horiz := Vector2(velocity.x, velocity.z).length()
+		visual.set_locomotion(horiz > 0.25, state == State.ALERT or state == State.COMBAT)
 	_update_label()
 
 
@@ -129,6 +132,11 @@ func _player_is_down(player: Node) -> bool:
 	return is_instance_valid(player) and bool(player.get("is_down"))
 
 
+func _player_target_pos(player: Node3D) -> Vector3:
+	var crouched: bool = bool(player.get("is_crouching"))
+	return player.global_position + Vector3.UP * (0.72 if crouched else 1.25)
+
+
 func _update_vision(delta: float) -> void:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	if not is_instance_valid(player) or _player_is_down(player):
@@ -136,28 +144,32 @@ func _update_vision(delta: float) -> void:
 		_push_detection_to_player()
 		return
 
-	var to_player := player.global_position + Vector3.UP * 1.2 - (global_position + Vector3.UP * 1.5)
+	var eye_pos := global_position + Vector3.UP * 1.5
+	var target_pos := _player_target_pos(player)
+	var to_player := target_pos - eye_pos
 	var dist := to_player.length()
 	var seen := false
-	if dist < VISION_RANGE:
+	if dist > 0.001 and dist < VISION_RANGE:
 		var forward := -global_transform.basis.z
-		var angle := rad_to_deg(forward.angle_to(to_player.normalized()))
+		var angle := rad_to_deg(forward.angle_to(to_player / dist))
 		if angle < VISION_ANGLE:
-			vision_ray.global_position = global_position + Vector3.UP * 1.5
-			vision_ray.target_position = vision_ray.to_local(player.global_position + Vector3.UP * 1.2)
-			vision_ray.force_raycast_update()
-			var blocked := vision_ray.is_colliding()
-			var collider = vision_ray.get_collider() if blocked else null
-			var hit_player := false
-			if collider:
-				if collider == player or (collider is Node and player.is_ancestor_of(collider)):
-					hit_player = true
-				elif collider.get_parent() == player:
-					hit_player = true
-			# Also allow clear LOS if nothing blocks or we hit the player body
-			if not blocked or hit_player:
-				# Re-check with exclude self only via space state for reliability
+			if is_instance_valid(vision_ray) and vision_ray.is_inside_tree():
+				vision_ray.global_position = eye_pos
+				vision_ray.target_position = vision_ray.to_local(target_pos)
+				vision_ray.force_raycast_update()
+				var blocked := vision_ray.is_colliding()
+				var collider = vision_ray.get_collider() if blocked else null
+				var hit_player := false
+				if is_instance_valid(collider) and collider is Node:
+					var cnode := collider as Node
+					if cnode == player or player.is_ancestor_of(cnode) or cnode.get_parent() == player:
+						hit_player = true
+				if not blocked or hit_player:
+					seen = _has_line_of_sight(player)
+			else:
 				seen = _has_line_of_sight(player)
+	elif dist <= 0.001:
+		seen = true
 
 	if seen:
 		var profile := 1.0
@@ -191,7 +203,7 @@ func _has_line_of_sight(player: Node3D) -> bool:
 	if space == null:
 		return false
 	var from := global_position + Vector3.UP * 1.5
-	var to := player.global_position + Vector3.UP * 1.2
+	var to := _player_target_pos(player)
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.collision_mask = 1 | 2
 	query.exclude = [get_rid()]
@@ -199,7 +211,9 @@ func _has_line_of_sight(player: Node3D) -> bool:
 	if hit.is_empty():
 		return true
 	var c = hit.collider
-	return c == player or (c is Node and (player.is_ancestor_of(c) or c.get_parent() == player))
+	if not is_instance_valid(c):
+		return true
+	return c == player or (c is Node and (player.is_ancestor_of(c as Node) or (c as Node).get_parent() == player))
 
 
 func _push_detection_to_player() -> void:
@@ -252,11 +266,11 @@ func _can_see_point(point: Vector3) -> bool:
 
 
 func _on_noise(pos: Vector3, loudness: float, _source: String) -> void:
-	if state == State.DEAD:
+	if state == State.DEAD or not is_inside_tree():
 		return
 	var dist := global_position.distance_to(pos)
 	var hear_range := loudness * HEARING_SCALE
-	if dist > hear_range:
+	if hear_range <= 0.001 or dist > hear_range:
 		return
 	investigate_pos = pos
 	last_known_pos = pos
@@ -356,6 +370,7 @@ func _fire_at(player: Node3D) -> void:
 	if player.has_method("apply_damage"):
 		player.apply_damage(12.0, global_position, self)
 	if is_instance_valid(visual):
+		visual.play_shoot()
 		visual.set_placeholder_color(Color(1, 0.4, 0.3))
 		var tree := get_tree()
 		if tree:
@@ -408,6 +423,8 @@ func apply_damage(amount: float, hit_pos: Vector3 = Vector3.ZERO, source: Node =
 	_set_state(State.COMBAT)
 	if hp <= 0.0:
 		_die(false)
+	elif is_instance_valid(visual):
+		visual.play_hit()
 
 
 func apply_hit_zone(zone: HitZone, base_damage: float, hit_pos: Vector3 = Vector3.ZERO, source: Node = null) -> void:
@@ -450,27 +467,33 @@ func _die(silent: bool) -> void:
 	_set_state(State.DEAD)
 	velocity = Vector3.ZERO
 	died.emit(self)
-	hide()
 	collision_layer = 0
 	collision_mask = 0
+	if is_instance_valid(hit_zones):
+		for hz in hit_zones.get_children():
+			if hz is Area3D:
+				(hz as Area3D).monitorable = false
+	if is_instance_valid(label):
+		label.visible = false
 	set_physics_process(false)
 	var tree := get_tree()
 	if tree == null:
 		queue_free()
 		return
-	# Spawn body only while the level scene is still valid (web crashes if
-	# current_scene is mid-change after the player is dropped).
+	# Let the humanoid collapse death animation play before swapping to lootable body
+	await tree.create_timer(0.72).timeout
+	if not is_instance_valid(self):
+		return
 	var scene := tree.current_scene
 	if is_instance_valid(scene) and _body_scene:
 		var body := _body_scene.instantiate()
 		scene.add_child(body)
 		if body is Node3D:
-			(body as Node3D).global_position = global_position + Vector3.UP * 0.2
+			(body as Node3D).global_position = global_position + Vector3.UP * 0.16
+			(body as Node3D).rotation.y = rotation.y
 		if body.has_method("setup"):
 			body.setup(silent)
-	await tree.create_timer(0.05).timeout
-	if is_instance_valid(self):
-		queue_free()
+	queue_free()
 
 
 func is_alive() -> bool:

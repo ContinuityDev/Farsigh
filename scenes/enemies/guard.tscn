@@ -1,23 +1,27 @@
-[gd_scene load_steps=8 format=3 uid="uid://guard001"]
+[gd_scene load_steps=9 format=3 uid="uid://guard001"]
 
 [ext_resource type="Script" path="res://scripts/ai/guard_ai.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/guard_visual.tscn" id="2"]
 [ext_resource type="Script" path="res://scripts/combat/hit_zone.gd" id="3"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
-radius = 0.38
-height = 1.7
+radius = 0.36
+height = 1.8
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_head"]
-radius = 0.22
+radius = 0.21
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_torso"]
-radius = 0.4
-height = 0.95
+radius = 0.26
+height = 0.66
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_limbs"]
-radius = 0.28
-height = 0.7
+radius = 0.24
+height = 0.80
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_arm"]
+radius = 0.12
+height = 0.54
 
 [node name="Guard" type="CharacterBody3D"]
 collision_layer = 4
@@ -33,7 +37,7 @@ shape = SubResource("CapsuleShape3D_body")
 [node name="HitZones" type="Node3D" parent="."]
 
 [node name="Head" type="Area3D" parent="HitZones"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.72, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.70, 0)
 collision_layer = 128
 collision_mask = 0
 monitoring = false
@@ -45,7 +49,7 @@ zone = 0
 shape = SubResource("SphereShape3D_head")
 
 [node name="Torso" type="Area3D" parent="HitZones"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
 collision_layer = 128
 collision_mask = 0
 monitoring = false
@@ -57,7 +61,7 @@ zone = 1
 shape = SubResource("CapsuleShape3D_torso")
 
 [node name="Limbs" type="Area3D" parent="HitZones"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 0)
 collision_layer = 128
 collision_mask = 0
 monitoring = false
@@ -68,13 +72,37 @@ zone = 2
 [node name="CollisionShape3D" type="CollisionShape3D" parent="HitZones/Limbs"]
 shape = SubResource("CapsuleShape3D_limbs")
 
+[node name="LeftArm" type="Area3D" parent="HitZones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.32, 1.18, -0.08)
+collision_layer = 128
+collision_mask = 0
+monitoring = false
+monitorable = true
+script = ExtResource("3")
+zone = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="HitZones/LeftArm"]
+shape = SubResource("CapsuleShape3D_arm")
+
+[node name="RightArm" type="Area3D" parent="HitZones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.32, 1.18, -0.08)
+collision_layer = 128
+collision_mask = 0
+monitoring = false
+monitorable = true
+script = ExtResource("3")
+zone = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="HitZones/RightArm"]
+shape = SubResource("CapsuleShape3D_arm")
+
 [node name="VisionRay" type="RayCast3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
 target_position = Vector3(0, 0, -20)
 collision_mask = 3
 
 [node name="StateLabel" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.22, 0)
 billboard = 1
-font_size = 48
+font_size = 44
 text = "PATROL"
