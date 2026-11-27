@@ -23,6 +23,7 @@ var _streak_row: HBoxContainer
 var _streak_buttons: Array = []
 var _currency_label: Label
 var _scope_zoom_label: Label
+var _hidden_label: Label
 
 
 func _ready() -> void:
@@ -32,12 +33,19 @@ func _ready() -> void:
 	liberated_banner.visible = false
 	status_label.text = ""
 	detection_bar.value = 0
+	# Per-guard ?/! meters replace the global detection bar (kept for soft max hint only).
+	if is_instance_valid(detection_bar):
+		detection_bar.modulate.a = 0.35
+	if is_instance_valid(detection_label):
+		detection_label.text = "AWARENESS"
+		detection_label.modulate.a = 0.55
 	_ensure_capture_hint()
 	_ensure_scope_overlay()
 	_ensure_settings_buttons()
 	_ensure_clear_ui()
 	_ensure_streak_buttons()
 	_ensure_currency_label()
+	_ensure_hidden_indicator()
 	if touch_controls:
 		touch_controls.visible = TouchInput.is_touch_ui_desired()
 	set_click_to_capture_hint(TouchInput.is_web_desktop())
@@ -492,10 +500,66 @@ func set_paused(paused: bool) -> void:
 		_refresh_settings_ui()
 
 
+func _ensure_hidden_indicator() -> void:
+	_hidden_label = get_node_or_null("Root/HiddenLabel") as Label
+	if _hidden_label:
+		return
+	_hidden_label = Label.new()
+	_hidden_label.name = "HiddenLabel"
+	_hidden_label.text = "HIDDEN"
+	_hidden_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hidden_label.add_theme_font_size_override("font_size", 20)
+	_hidden_label.add_theme_color_override("font_color", Color(0.45, 0.95, 0.55))
+	_hidden_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_hidden_label.offset_left = -80
+	_hidden_label.offset_right = 80
+	_hidden_label.offset_top = 52
+	_hidden_label.offset_bottom = 80
+	_hidden_label.visible = false
+	$Root.add_child(_hidden_label)
+
+
+func set_hidden_indicator(fully_hidden: bool, in_foliage: bool = false) -> void:
+	_ensure_hidden_indicator()
+	if not is_instance_valid(_hidden_label):
+		return
+	if fully_hidden:
+		_hidden_label.text = "HIDDEN"
+		_hidden_label.add_theme_color_override("font_color", Color(0.4, 0.95, 0.55))
+		_hidden_label.visible = true
+	elif in_foliage:
+		_hidden_label.text = "IN COVER"
+		_hidden_label.add_theme_color_override("font_color", Color(0.75, 0.9, 0.45))
+		_hidden_label.visible = true
+	else:
+		_hidden_label.visible = false
+
+
+func _widen_pause_panel() -> void:
+	var vbox := pause_panel.get_node_or_null("PauseVBox") as VBoxContainer
+	if vbox == null:
+		return
+	vbox.offset_left = -220.0
+	vbox.offset_right = 220.0
+	vbox.offset_top = -280.0
+	vbox.offset_bottom = 280.0
+	vbox.add_theme_constant_override("separation", 10)
+
+
 func _refresh_settings_ui() -> void:
-	var sens_btn := pause_panel.get_node_or_null("PauseVBox/AdsSensBtn") as Button
-	if is_instance_valid(sens_btn):
-		sens_btn.text = "ADS Sensitivity: %d%%" % int(round(GameState.ads_sensitivity * 100.0))
+	_sync_slider_row("MouseLookRow", GameState.mouse_look_sensitivity, 0.25, 2.0)
+	_sync_slider_row("TouchLookRow", GameState.touch_look_sensitivity, 0.25, 2.0)
+	_sync_slider_row("AdsSensRow", GameState.ads_sensitivity, 0.25, 1.0)
+	_sync_slider_row("Scope4xRow", GameState.scope_sens_4x, 0.25, 1.5)
+	_sync_slider_row("Scope6xRow", GameState.scope_sens_6x, 0.25, 1.5)
+	_sync_slider_row("Scope8xRow", GameState.scope_sens_8x, 0.25, 1.5)
+	var inv := pause_panel.get_node_or_null("PauseVBox/InvertYBtn") as Button
+	if is_instance_valid(inv):
+		inv.text = "Invert Y: %s" % ("On" if GameState.invert_y else "Off")
+	var qual_btn := pause_panel.get_node_or_null("PauseVBox/QualityBtn") as Button
+	if is_instance_valid(qual_btn):
+		var qname := GraphicsQuality.level_name() if GraphicsQuality else "High"
+		qual_btn.text = "Graphics Quality: %s" % qname
 	var aim_btn := pause_panel.get_node_or_null("PauseVBox/TouchAimBtn") as Button
 	if is_instance_valid(aim_btn):
 		aim_btn.text = "Touch Aim: %s" % ("Toggle" if GameState.touch_aim_toggle else "Hold")
@@ -508,52 +572,159 @@ func _refresh_settings_ui() -> void:
 		fs_btn.text = "Fullscreen: %s" % ("On" if on else "Off")
 
 
+func _sync_slider_row(row_name: String, value: float, min_v: float, max_v: float) -> void:
+	var row := pause_panel.get_node_or_null("PauseVBox/%s" % row_name) as Control
+	if row == null:
+		return
+	var slider := row.get_node_or_null("Slider") as HSlider
+	var val_lbl := row.get_node_or_null("Value") as Label
+	if val_lbl == null and row.get_child_count() > 0:
+		var header = row.get_child(0)
+		if header is HBoxContainer and header.get_child_count() > 1:
+			val_lbl = header.get_child(1) as Label
+	if is_instance_valid(slider):
+		slider.min_value = min_v
+		slider.max_value = max_v
+		slider.set_value_no_signal(value)
+	if is_instance_valid(val_lbl):
+		val_lbl.text = "%d%%" % int(round(value * 100.0))
+
+
+func _make_slider_row(parent: VBoxContainer, row_name: String, title: String, value: float, min_v: float, max_v: float, setter: Callable) -> void:
+	if parent.get_node_or_null(row_name) != null:
+		return
+	var row := VBoxContainer.new()
+	row.name = row_name
+	row.add_theme_constant_override("separation", 2)
+	var header := HBoxContainer.new()
+	header.name = "Header"
+	var title_lbl := Label.new()
+	title_lbl.name = "Title"
+	title_lbl.text = title
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_lbl.add_theme_font_size_override("font_size", 14)
+	var val_lbl := Label.new()
+	val_lbl.name = "Value"
+	val_lbl.text = "%d%%" % int(round(value * 100.0))
+	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val_lbl.custom_minimum_size = Vector2(52, 0)
+	val_lbl.add_theme_font_size_override("font_size", 14)
+	val_lbl.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
+	header.add_child(title_lbl)
+	header.add_child(val_lbl)
+	row.add_child(header)
+	var slider := HSlider.new()
+	slider.name = "Slider"
+	slider.min_value = min_v
+	slider.max_value = max_v
+	slider.step = 0.01
+	slider.value = value
+	slider.custom_minimum_size = Vector2(0, 28)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.value_changed.connect(func(v: float):
+		setter.call(v)
+		val_lbl.text = "%d%%" % int(round(v * 100.0))
+	)
+	row.add_child(slider)
+	parent.add_child(row)
+	# Insert after PauseTitle (index 1) so settings sit above Resume
+	var insert_at := mini(parent.get_child_count() - 1, 1)
+	# Keep stacking: find last Sens* / Invert / Quality block
+	for i in range(parent.get_child_count()):
+		var n := parent.get_child(i)
+		if String(n.name).begins_with("MouseLook") or String(n.name).begins_with("TouchLook") \
+				or String(n.name).begins_with("AdsSens") or String(n.name).begins_with("Scope") \
+				or String(n.name) == "SensHeader" or String(n.name) == "InvertYBtn" \
+				or String(n.name) == "QualityBtn" or String(n.name) == "TouchAimBtn" \
+				or String(n.name) == "TapToFireBtn" or String(n.name) == "FullscreenBtn":
+			insert_at = i + 1
+	parent.move_child(row, insert_at)
+
+
 func _ensure_settings_buttons() -> void:
 	var vbox := pause_panel.get_node_or_null("PauseVBox") as VBoxContainer
 	if vbox == null:
 		return
-	if vbox.get_node_or_null("AdsSensBtn") == null:
-		var sens := Button.new()
-		sens.name = "AdsSensBtn"
-		sens.custom_minimum_size = Vector2(0, 40)
-		sens.pressed.connect(_on_ads_sens_pressed)
-		vbox.add_child(sens)
-		vbox.move_child(sens, mini(3, vbox.get_child_count() - 1))
+	_widen_pause_panel()
+	# Remove legacy cycle buttons if present from older builds
+	for legacy in ["AdsSensBtn", "LookSensBtn"]:
+		var old := vbox.get_node_or_null(legacy)
+		if old:
+			old.queue_free()
+	if vbox.get_node_or_null("SensHeader") == null:
+		var hdr := Label.new()
+		hdr.name = "SensHeader"
+		hdr.text = "Sensitivity"
+		hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hdr.add_theme_font_size_override("font_size", 18)
+		vbox.add_child(hdr)
+		vbox.move_child(hdr, 1)
+	_make_slider_row(vbox, "MouseLookRow", "Mouse Look", GameState.mouse_look_sensitivity, 0.25, 2.0, Callable(GameState, "set_mouse_look_sensitivity"))
+	_make_slider_row(vbox, "TouchLookRow", "Touch Look", GameState.touch_look_sensitivity, 0.25, 2.0, Callable(GameState, "set_touch_look_sensitivity"))
+	_make_slider_row(vbox, "AdsSensRow", "ADS / Scope", GameState.ads_sensitivity, 0.25, 1.0, Callable(GameState, "set_ads_sensitivity"))
+	_make_slider_row(vbox, "Scope4xRow", "Scope 4× Mult", GameState.scope_sens_4x, 0.25, 1.5, Callable(GameState, "set_scope_sens_4x"))
+	_make_slider_row(vbox, "Scope6xRow", "Scope 6× Mult", GameState.scope_sens_6x, 0.25, 1.5, Callable(GameState, "set_scope_sens_6x"))
+	_make_slider_row(vbox, "Scope8xRow", "Scope 8× Mult", GameState.scope_sens_8x, 0.25, 1.5, Callable(GameState, "set_scope_sens_8x"))
+	if vbox.get_node_or_null("InvertYBtn") == null:
+		var inv := Button.new()
+		inv.name = "InvertYBtn"
+		inv.custom_minimum_size = Vector2(0, 36)
+		inv.pressed.connect(_on_invert_y_pressed)
+		vbox.add_child(inv)
+		vbox.move_child(inv, _settings_insert_index(vbox))
+	if vbox.get_node_or_null("QualityBtn") == null:
+		var qual := Button.new()
+		qual.name = "QualityBtn"
+		qual.custom_minimum_size = Vector2(0, 36)
+		qual.pressed.connect(_on_quality_pressed)
+		vbox.add_child(qual)
+		vbox.move_child(qual, _settings_insert_index(vbox))
 	if vbox.get_node_or_null("TouchAimBtn") == null:
 		var aim := Button.new()
 		aim.name = "TouchAimBtn"
-		aim.custom_minimum_size = Vector2(0, 40)
+		aim.custom_minimum_size = Vector2(0, 36)
 		aim.pressed.connect(_on_touch_aim_pressed)
 		vbox.add_child(aim)
-		vbox.move_child(aim, mini(4, vbox.get_child_count() - 1))
+		vbox.move_child(aim, _settings_insert_index(vbox))
 	if vbox.get_node_or_null("TapToFireBtn") == null:
 		var tap := Button.new()
 		tap.name = "TapToFireBtn"
-		tap.custom_minimum_size = Vector2(0, 40)
+		tap.custom_minimum_size = Vector2(0, 36)
 		tap.pressed.connect(_on_tap_to_fire_pressed)
 		vbox.add_child(tap)
-		vbox.move_child(tap, mini(5, vbox.get_child_count() - 1))
+		vbox.move_child(tap, _settings_insert_index(vbox))
 	if vbox.get_node_or_null("FullscreenBtn") == null:
 		var fs := Button.new()
 		fs.name = "FullscreenBtn"
-		fs.custom_minimum_size = Vector2(0, 40)
+		fs.custom_minimum_size = Vector2(0, 36)
 		fs.pressed.connect(_on_fullscreen_pressed)
 		vbox.add_child(fs)
-		vbox.move_child(fs, mini(6, vbox.get_child_count() - 1))
+		vbox.move_child(fs, _settings_insert_index(vbox))
 	_refresh_settings_ui()
 
 
-func _on_ads_sens_pressed() -> void:
-	# Cycle Low (35%) → Med (55%) → High (75%) → Full (100%)
-	var steps: Array[float] = [0.35, 0.55, 0.75, 1.0]
-	var idx := 0
-	for i in range(steps.size()):
-		if absf(GameState.ads_sensitivity - steps[i]) < 0.05:
-			idx = (i + 1) % steps.size()
-			break
-	GameState.set_ads_sensitivity(steps[idx])
+func _settings_insert_index(vbox: VBoxContainer) -> int:
+	## Place new settings controls just above ResumeBtn.
+	var resume := vbox.get_node_or_null("ResumeBtn")
+	if resume:
+		return resume.get_index()
+	return mini(vbox.get_child_count() - 1, 1)
+
+
+func _on_invert_y_pressed() -> void:
+	GameState.set_invert_y(not GameState.invert_y)
 	_refresh_settings_ui()
-	show_status("ADS mouse/look sensitivity: %d%%" % int(round(GameState.ads_sensitivity * 100.0)), 1.6)
+	show_status("Invert Y %s" % ("on" if GameState.invert_y else "off"), 1.2)
+
+
+func _on_quality_pressed() -> void:
+	var lvl := 0
+	if GraphicsQuality:
+		lvl = GraphicsQuality.cycle()
+		GameState.set_graphics_quality(lvl)
+	_refresh_settings_ui()
+	var qname := GraphicsQuality.level_name() if GraphicsQuality else "High"
+	show_status("Graphics Quality: %s (rebuild view / reload outpost for all effects)" % qname, 2.2)
 
 
 func _on_touch_aim_pressed() -> void:

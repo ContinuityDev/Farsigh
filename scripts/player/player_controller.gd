@@ -52,6 +52,9 @@ var _head_target_y: float = 1.65
 var _breath_sway: Vector2 = Vector2.ZERO
 var _breath_t: float = 0.0
 var binoculars_slow: bool = false
+var _foliage_zones: Array = []  # FoliageHideZone refs
+var in_foliage: bool = false
+var is_hidden_in_foliage: bool = false
 
 
 func _ready() -> void:
@@ -108,8 +111,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		var sens := MOUSE_SENS * _look_sensitivity_mult()
-		_apply_look(-event.relative.x * sens, -event.relative.y * sens)
+		var sens: float = MOUSE_SENS * _mouse_look_mult()
+		var yaw: float = -event.relative.x * sens
+		var pitch: float = -event.relative.y * sens
+		if GameState.invert_y:
+			pitch = -pitch
+		_apply_look(yaw, pitch)
 	if event.is_action_pressed("pause_menu"):
 		_toggle_pause()
 	if event.is_action_pressed("scope_zoom") and is_aiming and is_instance_valid(weapons) and weapons.has_scope_overlay():
@@ -128,14 +135,21 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(hud_hint) and hud_hint.has_method("set_click_to_capture_hint"):
 			hud_hint.set_click_to_capture_hint(Input.mouse_mode != Input.MOUSE_MODE_CAPTURED)
 
-	# Touch look swipe + gamepad stick (ADS sensitivity applied)
-	var look_mult := _look_sensitivity_mult()
+	# Touch look swipe + gamepad stick (separate touch sens + ADS / invert-Y)
+	var touch_mult := _touch_look_mult()
 	var touch_look := TouchInput.consume_look_relative()
 	if touch_look != Vector2.ZERO:
-		_apply_look(-touch_look.x * TOUCH_LOOK_SENS * 0.01 * look_mult, -touch_look.y * TOUCH_LOOK_SENS * 0.01 * look_mult)
+		var ty := -touch_look.y * TOUCH_LOOK_SENS * 0.01 * touch_mult
+		if GameState.invert_y:
+			ty = -ty
+		_apply_look(-touch_look.x * TOUCH_LOOK_SENS * 0.01 * touch_mult, ty)
 	var pad_look := TouchInput.get_look_axis()
 	if pad_look.length() > 0.1:
-		_apply_look(-pad_look.x * GAMEPAD_LOOK_SENS * delta * look_mult, -pad_look.y * GAMEPAD_LOOK_SENS * delta * look_mult)
+		var pad_mult := _mouse_look_mult()  # gamepad follows mouse profile
+		var py := -pad_look.y * GAMEPAD_LOOK_SENS * delta * pad_mult
+		if GameState.invert_y:
+			py = -py
+		_apply_look(-pad_look.x * GAMEPAD_LOOK_SENS * delta * pad_mult, py)
 
 	if _is_vaulting:
 		_step_vault(delta)
@@ -208,9 +222,25 @@ func apply_recoil(pitch_deg: float, yaw_deg: float) -> void:
 	rotate_y(deg_to_rad(yaw_deg * 0.35 * ads_mult))
 
 
+func _ads_look_factor() -> float:
+	## Blend hip→ADS sensitivity; when scoped, also apply per-zoom multiplier.
+	var ads_target := GameState.ads_sensitivity
+	if is_aiming and is_instance_valid(weapons) and weapons.has_scope_overlay():
+		ads_target *= GameState.get_scope_zoom_sens_mult(weapons.get_scope_zoom_mult())
+	return lerpf(1.0, ads_target, aim_blend)
+
+
+func _mouse_look_mult() -> float:
+	return GameState.mouse_look_sensitivity * _ads_look_factor()
+
+
+func _touch_look_mult() -> float:
+	return GameState.touch_look_sensitivity * _ads_look_factor()
+
+
 func _look_sensitivity_mult() -> float:
-	# Lower mouse / stick / touch sensitivity while ADS (setting from pause menu).
-	return lerpf(1.0, GameState.ads_sensitivity, aim_blend)
+	## Legacy helper — mouse profile.
+	return _mouse_look_mult()
 
 
 func _cycle_scope_zoom(dir: int = 1) -> void:
@@ -408,6 +438,7 @@ func _handle_crouch() -> void:
 	if want == is_crouching:
 		return
 	is_crouching = want
+	_refresh_foliage_state()
 	var target_h := CROUCH_HEIGHT if is_crouching else STAND_HEIGHT
 	if is_instance_valid(_capsule):
 		_capsule.height = maxf(target_h, _capsule.radius * 2.0 + 0.05)
@@ -536,6 +567,33 @@ func _drop_body() -> void:
 		GameState.run_stats.on_body_hidden()
 
 
+func enter_foliage(zone: Node) -> void:
+	if zone == null:
+		return
+	if not _foliage_zones.has(zone):
+		_foliage_zones.append(zone)
+	_refresh_foliage_state()
+
+
+func exit_foliage(zone: Node) -> void:
+	_foliage_zones.erase(zone)
+	_refresh_foliage_state()
+
+
+func _refresh_foliage_state() -> void:
+	# Drop freed zones
+	var alive: Array = []
+	for z in _foliage_zones:
+		if is_instance_valid(z):
+			alive.append(z)
+	_foliage_zones = alive
+	in_foliage = not _foliage_zones.is_empty()
+	is_hidden_in_foliage = in_foliage and is_crouching
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("set_hidden_indicator"):
+		hud.set_hidden_indicator(is_hidden_in_foliage, in_foliage)
+
+
 func get_visibility_profile() -> float:
 	var profile := 1.0
 	if is_crouching:
@@ -544,6 +602,12 @@ func get_visibility_profile() -> float:
 		profile *= 0.85
 	if is_aiming:
 		profile *= 1.05
+	if in_foliage and not _foliage_zones.is_empty():
+		var best := 1.0
+		for z in _foliage_zones:
+			if is_instance_valid(z) and z.has_method("visibility_mult"):
+				best = minf(best, float(z.visibility_mult(is_crouching)))
+		profile *= best
 	return profile
 
 

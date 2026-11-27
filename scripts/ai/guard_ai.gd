@@ -1,7 +1,8 @@
 extends CharacterBody3D
 class_name GuardAI
 ## Modular guard: patrol → suspicious → alert/search → combat.
-## Vision cone + hearing via NoiseBus. Spots player, bodies, and left items.
+## Per-guard awareness (? filling / ! spotted). Hearing → INVESTIGATE only
+## (never instant spot). Delayed interruptible shout/radio warn to nearby.
 
 signal died(guard: GuardAI)
 signal state_changed(new_state: String)
@@ -21,6 +22,11 @@ const SUSPICIOUS_TIME := 5.0
 const MAX_HP := 100.0
 const HEAVY_HP := 220.0
 const DOG_HP := 55.0
+const WARN_DELAY_MIN := 1.5
+const WARN_DELAY_MAX := 3.0
+const WARN_SHOUT_RANGE := 28.0
+const WARN_RADIO_RANGE := 55.0
+const BUMP_NOTICE_DIST := 1.55
 ## AI LOD distances (metres) for mobile / web performance
 const LOD_NEAR := 28.0
 const LOD_MID := 48.0
@@ -72,6 +78,12 @@ var _body_scene: PackedScene = preload("res://scenes/items/body.tscn")
 var _last_hit_zone: String = ""
 var tagged: bool = false
 var _tag_icon: Label3D = null
+var _alert_icon: Label3D = null
+var _meter_bg: MeshInstance3D = null
+var _meter_fill: MeshInstance3D = null
+var _warn_timer: float = -1.0
+var _warned: bool = false
+var _role_prefix: String = ""
 
 
 func _ready() -> void:
@@ -107,13 +119,15 @@ func set_tagged(on: bool) -> void:
 	if not is_instance_valid(_tag_icon):
 		_tag_icon = Label3D.new()
 		_tag_icon.name = "TagIcon"
-		_tag_icon.font_size = 48
+		_tag_icon.font_size = 40
 		_tag_icon.outline_size = 8
 		_tag_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		_tag_icon.position = Vector3(0, 2.35, 0)
+		# Sit above the ?/! meter so binocular tags coexist cleanly
+		_tag_icon.position = Vector3(0, 2.55, 0)
 		_tag_icon.no_depth_test = true
 		add_child(_tag_icon)
 	_refresh_tag_icon()
+	_ensure_alert_meter()
 
 
 func _refresh_tag_icon() -> void:
@@ -251,6 +265,7 @@ func _physics_process(delta: float) -> void:
 			_do_search(delta)
 		State.COMBAT:
 			_do_combat(delta)
+			_tick_warn(delta)
 
 	move_and_slide()
 	if is_instance_valid(visual) and _lod_tier < 3:
@@ -289,14 +304,19 @@ func _set_state(s: State) -> void:
 	match s:
 		State.PATROL:
 			color = Color(0.55, 0.25, 0.2)
+			_warn_timer = -1.0
 		State.SUSPICIOUS:
 			color = Color(0.75, 0.6, 0.15)
 		State.ALERT:
 			color = Color(0.85, 0.45, 0.1)
 		State.COMBAT:
 			color = Color(0.9, 0.15, 0.1)
+			# Delayed shout/radio — interruptible if killed first
+			if prev != State.COMBAT and not _warned:
+				_warn_timer = randf_range(WARN_DELAY_MIN, WARN_DELAY_MAX)
 		State.DEAD:
 			color = Color(0.2, 0.2, 0.2)
+			_warn_timer = -1.0
 	if is_instance_valid(visual):
 		visual.set_placeholder_color(color)
 		if s == State.ALERT and prev != State.COMBAT:
@@ -305,35 +325,128 @@ func _set_state(s: State) -> void:
 			visual.play_state(State.keys()[s])
 	if tagged:
 		_refresh_tag_icon()
+	_refresh_alert_meter()
 	state_changed.emit(State.keys()[s])
 
 
+func _ensure_alert_meter() -> void:
+	if is_instance_valid(_alert_icon):
+		return
+	_alert_icon = Label3D.new()
+	_alert_icon.name = "AlertIcon"
+	_alert_icon.font_size = 64
+	_alert_icon.outline_size = 10
+	_alert_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_alert_icon.position = Vector3(0, 2.15, 0)
+	_alert_icon.no_depth_test = true
+	_alert_icon.visible = false
+	add_child(_alert_icon)
+	# Thin fill meter under the icon (world-space quads)
+	var bg := MeshInstance3D.new()
+	bg.name = "AlertMeterBg"
+	var bg_mesh := BoxMesh.new()
+	bg_mesh.size = Vector3(0.55, 0.06, 0.01)
+	bg.mesh = bg_mesh
+	var bg_mat := StandardMaterial3D.new()
+	bg_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bg_mat.albedo_color = Color(0.08, 0.08, 0.1, 0.85)
+	bg_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bg.material_override = bg_mat
+	bg.position = Vector3(0, 1.92, 0)
+	bg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bg.visible = false
+	add_child(bg)
+	_meter_bg = bg
+	var fill := MeshInstance3D.new()
+	fill.name = "AlertMeterFill"
+	var fill_mesh := BoxMesh.new()
+	fill_mesh.size = Vector3(0.52, 0.045, 0.012)
+	fill.mesh = fill_mesh
+	var fill_mat := StandardMaterial3D.new()
+	fill_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fill_mat.albedo_color = Color(0.95, 0.85, 0.2)
+	fill.material_override = fill_mat
+	fill.position = Vector3(0, 1.92, 0.002)
+	fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	fill.visible = false
+	add_child(fill)
+	_meter_fill = fill
+
+
+func _refresh_alert_meter() -> void:
+	_ensure_alert_meter()
+	if state == State.DEAD:
+		_alert_icon.visible = false
+		if _meter_bg:
+			_meter_bg.visible = false
+		if _meter_fill:
+			_meter_fill.visible = false
+		return
+	var show_q := state == State.SUSPICIOUS or state == State.ALERT or (detection > 0.08 and state == State.PATROL)
+	var show_bang := state == State.COMBAT or detection >= 0.98
+	if show_bang:
+		_alert_icon.text = "!"
+		_alert_icon.modulate = Color(1.0, 0.25, 0.18)
+		_alert_icon.visible = true
+		if _meter_bg:
+			_meter_bg.visible = false
+		if _meter_fill:
+			_meter_fill.visible = false
+	elif show_q:
+		_alert_icon.text = "?"
+		var t := clampf(detection, 0.0, 1.0)
+		_alert_icon.modulate = Color(0.95, 0.88, 0.25).lerp(Color(1.0, 0.55, 0.12), t)
+		_alert_icon.visible = true
+		if _meter_bg:
+			_meter_bg.visible = true
+		if _meter_fill:
+			_meter_fill.visible = true
+			_meter_fill.scale = Vector3(maxf(0.05, t), 1.0, 1.0)
+			_meter_fill.position.x = -0.26 * (1.0 - t)
+			var fm := _meter_fill.material_override as StandardMaterial3D
+			if fm:
+				fm.albedo_color = Color(0.95, 0.85, 0.2).lerp(Color(1.0, 0.35, 0.12), t)
+	else:
+		_alert_icon.visible = false
+		if _meter_bg:
+			_meter_bg.visible = false
+		if _meter_fill:
+			_meter_fill.visible = false
+
+
 func _update_label() -> void:
-	if is_instance_valid(label):
+	## Role badge stays subtle; awareness is shown via ?/! meter (and bino tags).
+	_ensure_alert_meter()
+	_refresh_alert_meter()
+	if not is_instance_valid(label):
+		return
+	if is_dog:
+		_role_prefix = "DOG"
+	elif is_sniper:
+		_role_prefix = "SNIPER"
+	elif is_heavy:
+		_role_prefix = "HEAVY"
+	elif role == "commander":
+		_role_prefix = "BOSS"
+	elif is_officer:
+		_role_prefix = "OFFICER"
+	elif role == "handler":
+		_role_prefix = "HANDLER"
+	else:
+		_role_prefix = ""
+	# Keep role text small under the meter; hide verbose PATROL/etc when calm
+	if state == State.DEAD:
+		label.text = "DEAD"
+		label.modulate = Color(0.45, 0.45, 0.45)
 		label.visible = true
-		var prefix := ""
-		if is_dog:
-			prefix = "DOG "
-		elif is_sniper:
-			prefix = "SNIPER "
-		elif is_heavy:
-			prefix = "HEAVY "
-		elif is_officer:
-			prefix = "OFFICER "
-		elif role == "handler":
-			prefix = "HANDLER "
-		var zone_suffix := (" [%s]" % _last_hit_zone) if _last_hit_zone != "" and state != State.DEAD else ""
-		label.text = prefix + State.keys()[state] + zone_suffix
-		if is_sniper:
-			label.modulate = Color(1.0, 0.85, 0.55)
-		elif is_heavy:
-			label.modulate = Color(0.85, 0.75, 0.95)
-		elif is_officer:
-			label.modulate = Color(0.95, 0.75, 0.35)
-		elif is_dog:
-			label.modulate = Color(0.75, 0.9, 0.65)
-		else:
-			label.modulate = Color(0.9, 0.85, 0.7)
+		return
+	if _role_prefix != "":
+		label.text = _role_prefix
+		label.visible = true
+		label.modulate = Color(0.85, 0.8, 0.65, 0.85)
+		label.position.y = 1.72
+	else:
+		label.visible = false
 
 
 func _player_is_down(player: Node) -> bool:
@@ -381,6 +494,10 @@ func _update_vision(delta: float) -> void:
 	elif dist <= 0.001:
 		seen = true
 
+	# Point-blank bump: foliage hide doesn't save you if a guard walks into you
+	if dist < BUMP_NOTICE_DIST and state != State.COMBAT:
+		seen = true
+
 	if seen:
 		var profile := 1.0
 		if player.has_method("get_visibility_profile"):
@@ -388,6 +505,8 @@ func _update_vision(delta: float) -> void:
 		# Light/distance modifiers
 		var dist_factor := 1.0 - clampf(dist / VISION_RANGE, 0.0, 1.0)
 		var rate := DETECTION_RATE * profile * (0.35 + dist_factor)
+		if dist < BUMP_NOTICE_DIST:
+			rate = maxf(rate, 2.2)
 		# Night-ish compound: slightly harder at long range
 		detection = clampf(detection + rate * delta, 0.0, 1.0)
 		last_known_pos = player.global_position
@@ -405,6 +524,7 @@ func _update_vision(delta: float) -> void:
 		if state != State.COMBAT and state != State.ALERT:
 			detection = maxf(0.0, detection - DETECTION_DECAY * delta)
 
+	_refresh_alert_meter()
 	_push_detection_to_player()
 
 
@@ -478,7 +598,9 @@ func _can_see_point(point: Vector3) -> bool:
 
 
 func _on_noise(pos: Vector3, loudness: float, _source: String) -> void:
-	if state == State.DEAD or not is_inside_tree():
+	## Sound alone never instantly spots the player — always INVESTIGATE (?).
+	## Loud gunshots escalate to ALERT (search / alarm) but not COMBAT.
+	if state == State.DEAD or state == State.COMBAT or not is_inside_tree():
 		return
 	var dist := global_position.distance_to(pos)
 	var hear_range := loudness * _hearing_scale
@@ -487,16 +609,17 @@ func _on_noise(pos: Vector3, loudness: float, _source: String) -> void:
 	investigate_pos = pos
 	last_known_pos = pos
 	var strength := 1.0 - (dist / hear_range)
-	if loudness >= 30.0 or strength > 0.7:
-		detection = 1.0
-		_set_state(State.COMBAT)
-	elif state == State.PATROL or state == State.SUSPICIOUS:
-		detection = maxf(detection, 0.4 + strength * 0.4)
-		# Officers escalate noise faster toward alarm / alert
+	# Cap below full detection so hearing never flips to "!" / combat
+	detection = maxf(detection, minf(0.82, 0.28 + strength * 0.45))
+	if state == State.PATROL or state == State.SUSPICIOUS:
+		# Officers / loud shots escalate to ALERT (search area / race to alarm)
 		if is_officer and loudness >= 10.0:
 			_set_state(State.ALERT)
+		elif loudness >= 18.0:
+			_set_state(State.ALERT)
 		else:
-			_set_state(State.SUSPICIOUS if loudness < 15.0 else State.ALERT)
+			_set_state(State.SUSPICIOUS)
+	_refresh_alert_meter()
 
 
 func _do_patrol(_delta: float) -> void:
@@ -622,6 +745,50 @@ func _do_search(delta: float) -> void:
 	if _state_timer > search_limit:
 		_set_state(State.PATROL)
 		detection = 0.2
+
+
+func _tick_warn(delta: float) -> void:
+	## After spotting, shout/radio after 1.5–3s unless killed first.
+	if _warned or _warn_timer < 0.0:
+		return
+	_warn_timer -= delta
+	if _warn_timer > 0.0:
+		return
+	_warned = true
+	_warn_timer = -1.0
+	if is_instance_valid(visual):
+		visual.play_radio()
+	_broadcast_warn()
+
+
+func _broadcast_warn() -> void:
+	## Only guards within shout/radio range escalate — alarms still escalate compound.
+	for g in get_tree().get_nodes_in_group("guards"):
+		if g == self or not (g is GuardAI):
+			continue
+		var other := g as GuardAI
+		if other.state == State.DEAD or other.state == State.COMBAT:
+			continue
+		var d := global_position.distance_to(other.global_position)
+		var radio_ok := (is_officer or other.is_officer or role == "commander") and d <= WARN_RADIO_RANGE
+		var shout_ok := d <= WARN_SHOUT_RANGE
+		if not radio_ok and not shout_ok:
+			continue
+		other.receive_warn(last_known_pos, radio_ok)
+
+
+func receive_warn(from_pos: Vector3, via_radio: bool = false) -> void:
+	## Called by a spotted guard's delayed shout/radio. Investigate / engage LKP.
+	if state == State.DEAD or state == State.COMBAT:
+		return
+	investigate_pos = from_pos
+	last_known_pos = from_pos
+	detection = maxf(detection, 0.55 if via_radio else 0.45)
+	if via_radio or is_officer:
+		_set_state(State.ALERT)
+	elif state == State.PATROL:
+		_set_state(State.SUSPICIOUS)
+	_refresh_alert_meter()
 
 
 func _do_combat(delta: float) -> void:

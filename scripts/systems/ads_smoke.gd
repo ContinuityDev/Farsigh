@@ -37,19 +37,39 @@ func _run() -> void:
 		return
 	print("ADS_SMOKE stats rifle_ads_time=%.2f holo_fov=%.1f sniper_fov=%.1f" % [base.ads_time, holo.aim_fov, sniper.aim_fov])
 
-	# 2. Settings persistence
+	# 2. Settings persistence (mouse/touch/ADS/zoom/invert-Y)
+	gs.set_mouse_look_sensitivity(1.25)
+	gs.set_touch_look_sensitivity(0.8)
 	gs.set_ads_sensitivity(0.35)
+	gs.set_scope_sens_8x(0.55)
+	gs.set_invert_y(true)
 	gs.set_touch_aim_toggle(true)
 	sm.save_loadout()
+	gs.mouse_look_sensitivity = 1.0
+	gs.touch_look_sensitivity = 1.0
 	gs.ads_sensitivity = 0.55
+	gs.scope_sens_8x = 0.7
+	gs.invert_y = false
 	gs.touch_aim_toggle = false
-	if not sm.load_loadout() or absf(gs.ads_sensitivity - 0.35) > 0.01 or gs.touch_aim_toggle != true:
+	if not sm.load_loadout() \
+			or absf(gs.ads_sensitivity - 0.35) > 0.01 \
+			or absf(gs.mouse_look_sensitivity - 1.25) > 0.01 \
+			or absf(gs.touch_look_sensitivity - 0.8) > 0.01 \
+			or absf(gs.scope_sens_8x - 0.55) > 0.01 \
+			or gs.invert_y != true \
+			or gs.touch_aim_toggle != true:
 		print("ADS_SMOKE FAIL settings")
 		quit(1)
 		return
-	print("ADS_SMOKE settings ads_sens=%.2f touch_toggle=%s" % [gs.ads_sensitivity, str(gs.touch_aim_toggle)])
+	print("ADS_SMOKE settings mouse=%.2f touch=%.2f ads=%.2f invY=%s" % [
+		gs.mouse_look_sensitivity, gs.touch_look_sensitivity, gs.ads_sensitivity, str(gs.invert_y)
+	])
 	gs.set_touch_aim_toggle(false)
+	gs.set_invert_y(false)
 	gs.set_ads_sensitivity(0.55)
+	gs.set_mouse_look_sensitivity(1.0)
+	gs.set_touch_look_sensitivity(1.0)
+	gs.set_scope_sens_8x(0.7)
 
 	# 3. Deploy outpost and exercise live ADS
 	gs.begin_world_load()

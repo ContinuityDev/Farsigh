@@ -362,6 +362,16 @@ func _trees_and_foliage() -> void:
 	if lightweight_props:
 		grass_spots = grass_spots.slice(0, 6)
 	_scatter_grass(grass_spots)
+	# Extra hide bushes along stealth approaches / courtyard edges
+	var bush_spots := [
+		Vector3(-8.0, 0, 27.5), Vector3(8.5, 0, 27.0), Vector3(-22.0, 0, 14.0),
+		Vector3(22.5, 0, 12.0), Vector3(-16.0, 0, -22.0), Vector3(15.0, 0, -22.5),
+		Vector3(-28.0, 0, -2.0), Vector3(28.0, 0, 4.0),
+	]
+	if lightweight_props:
+		bush_spots = bush_spots.slice(0, 4)
+	for bp in bush_spots:
+		_add_hide_bush(bp, 2.4, 1.45)
 
 
 # ============================================================================
@@ -525,12 +535,19 @@ func _river_terrain() -> void:
 	_box(Vector3(0, 0.015, 11), Vector3(44, 0.03, 24), Color(0.39, 0.37, 0.33), false)
 	_box(Vector3(0, 0.025, 24), Vector3(6.5, 0.03, 22), Color(0.42, 0.38, 0.31), false)
 	_box(Vector3(0, -0.1, -6.2), Vector3(70, 1.4, 0.7), Color(0.32, 0.24, 0.16), true)
-	var water_mat := StandardMaterial3D.new()
-	water_mat.albedo_color = Color(0.11, 0.34, 0.44, 0.92)
-	water_mat.roughness = 0.15
-	water_mat.metallic = 0.25
-	var water_mi := ProcMesh.box_mesh(Vector3(140, 0.2, 68), Color(0.11, 0.34, 0.44))
-	water_mi.material_override = water_mat
+	var water_mi := ProcMesh.box_mesh(Vector3(140, 0.2, 68), Color(0.11, 0.34, 0.44, 0.92))
+	if GraphicsQuality:
+		water_mi.material_override = GraphicsQuality.make_water_material(
+			Color(0.18, 0.46, 0.52, 0.88), Color(0.06, 0.22, 0.34, 0.95)
+		)
+	else:
+		var water_mat := StandardMaterial3D.new()
+		water_mat.albedo_color = Color(0.11, 0.34, 0.44, 0.92)
+		water_mat.roughness = 0.15
+		water_mat.metallic = 0.25
+		water_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		water_mi.material_override = water_mat
+	water_mi.add_to_group("water_fx")
 	water_mi.position = Vector3(0, -0.45, -40)
 	add_child(water_mi)
 	_add_box_collider(Vector3(0, -1.2, -40), Vector3(140, 0.5, 68), 0.0)
@@ -1016,23 +1033,84 @@ func _boulder(pos: Vector3, radius: float) -> void:
 
 
 func _scatter_grass(grass_spots: Array) -> void:
-	if lightweight_props:
-		var tuft_col := Color(0.22, 0.38, 0.16)
-		for i in range(grass_spots.size()):
-			var p: Vector3 = grass_spots[i]
-			ProcMesh.add_part(self, ProcMesh.box_mesh(Vector3(0.12, 0.42, 0.12), tuft_col), p + Vector3(0, 0.2, 0))
-			ProcMesh.add_part(self, ProcMesh.box_mesh(Vector3(0.1, 0.34, 0.1), tuft_col), p + Vector3(0.12, 0.16, 0.05))
+	## MultiMesh tufts + hide zones (crouch = hidden). Wind shader on Med/High.
+	var tuft_col := Color(0.22, 0.38, 0.16)
+	var count := grass_spots.size()
+	if count == 0:
 		return
-	for i in range(grass_spots.size()):
-		var scene := KENNEY_GRASS if i % 2 == 0 else KENNEY_GRASS_SMALL
-		var tuft := scene.instantiate()
-		if tuft is Node3D:
-			var n := tuft as Node3D
-			n.position = grass_spots[i]
-			n.rotation_degrees.y = float(i * 47 % 360)
-			var s := 1.4 if i % 2 == 0 else 1.7
-			n.scale = Vector3(s, s, s)
-			add_child(n)
+	# One MultiMesh for all tufts — cheap on mobile
+	var mm := MultiMeshInstance3D.new()
+	mm.name = "GrassMultiMesh"
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	var blade := BoxMesh.new()
+	blade.size = Vector3(0.14, 0.55, 0.08)
+	multimesh.mesh = blade
+	multimesh.instance_count = count * (2 if lightweight_props else 3)
+	if GraphicsQuality:
+		mm.material_override = GraphicsQuality.make_foliage_material(tuft_col)
+	else:
+		mm.material_override = ProcMesh.mat(tuft_col, 0.92, 0.0)
+	mm.add_to_group("foliage_wind")
+	mm.multimesh = multimesh
+	mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mm)
+	var idx := 0
+	for i in range(count):
+		var p: Vector3 = grass_spots[i]
+		var yaw := float(i * 47 % 360)
+		for k in range(2 if lightweight_props else 3):
+			var xf := Transform3D()
+			var ox := float(k) * 0.12 - 0.06
+			var oz := float(k % 2) * 0.1
+			var h := 0.85 + float((i + k) % 3) * 0.12
+			xf = xf.scaled(Vector3(1.0, h, 1.0))
+			xf = xf.rotated(Vector3.UP, deg_to_rad(yaw + float(k) * 35.0))
+			xf.origin = p + Vector3(ox, 0.28 * h, oz)
+			multimesh.set_instance_transform(idx, xf)
+			idx += 1
+		_add_hide_bush(p, 1.8, 1.1)
+	# Optional Kenney accents on PC / high detail
+	if not lightweight_props:
+		var kenney_n := mini(4, count)
+		for i in range(kenney_n):
+			var scene := KENNEY_GRASS if i % 2 == 0 else KENNEY_GRASS_SMALL
+			var tuft := scene.instantiate()
+			if tuft is Node3D:
+				var n := tuft as Node3D
+				n.position = grass_spots[i] + Vector3(0.4, 0, 0.2)
+				n.rotation_degrees.y = float(i * 47 % 360)
+				n.scale = Vector3(1.5, 1.5, 1.5)
+				add_child(n)
+
+
+func _add_hide_bush(pos: Vector3, radius: float = 2.2, height: float = 1.35) -> void:
+	## Visual bush cluster + Area3D hide volume along stealth routes / outskirts.
+	var bush_col := Color(0.16, 0.32, 0.14)
+	var bush_dark := Color(0.12, 0.24, 0.11)
+	var root := Node3D.new()
+	root.name = "HideBush"
+	root.position = pos
+	add_child(root)
+	for i in range(3 if lightweight_props else 5):
+		var ang := float(i) * TAU / 5.0
+		var r := radius * (0.25 + float(i % 3) * 0.08)
+		var leaf := ProcMesh.sphere_mesh(0.55 + float(i % 2) * 0.12, bush_col if i % 2 == 0 else bush_dark, 0.9, 0.0)
+		if GraphicsQuality:
+			leaf.material_override = GraphicsQuality.make_foliage_material(bush_col if i % 2 == 0 else bush_dark)
+		leaf.add_to_group("foliage_wind")
+		ProcMesh.add_part(root, leaf, Vector3(cos(ang) * r, 0.55 + float(i % 3) * 0.15, sin(ang) * r))
+	var zone := Area3D.new()
+	zone.set_script(load("res://scripts/levels/foliage_hide_zone.gd"))
+	zone.name = "HideZone"
+	var cs := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = radius * 0.85
+	shape.height = height
+	cs.shape = shape
+	cs.position = Vector3(0, height * 0.45, 0)
+	zone.add_child(cs)
+	root.add_child(zone)
 
 
 func _pine_tree(pos: Vector3, scale_h: float) -> void:
@@ -1044,9 +1122,13 @@ func _pine_tree(pos: Vector3, scale_h: float) -> void:
 	t.scale = Vector3(scale_h, scale_h, scale_h)
 	add_child(t)
 	ProcMesh.add_part(t, ProcMesh.cylinder_mesh(0.28, 2.6, trunk_col, 0.92, 0.0, 7), Vector3(0, 1.3, 0))
-	ProcMesh.add_part(t, ProcMesh.cone_mesh(2.1, 0.35, 3.0, leaf_dark, 0.9, 0.0, 7), Vector3(0, 3.2, 0))
-	ProcMesh.add_part(t, ProcMesh.cone_mesh(1.65, 0.22, 2.6, leaf_mid, 0.9, 0.0, 7), Vector3(0, 5.0, 0))
-	ProcMesh.add_part(t, ProcMesh.cone_mesh(1.1, 0.05, 2.2, leaf_dark, 0.9, 0.0, 7), Vector3(0, 6.6, 0))
+	var c1 := ProcMesh.add_part(t, ProcMesh.cone_mesh(2.1, 0.35, 3.0, leaf_dark, 0.9, 0.0, 7), Vector3(0, 3.2, 0))
+	var c2 := ProcMesh.add_part(t, ProcMesh.cone_mesh(1.65, 0.22, 2.6, leaf_mid, 0.9, 0.0, 7), Vector3(0, 5.0, 0))
+	var c3 := ProcMesh.add_part(t, ProcMesh.cone_mesh(1.1, 0.05, 2.2, leaf_dark, 0.9, 0.0, 7), Vector3(0, 6.6, 0))
+	for leaf in [c1, c2, c3]:
+		if GraphicsQuality:
+			leaf.material_override = GraphicsQuality.make_foliage_material(leaf_dark)
+		leaf.add_to_group("foliage_wind")
 
 
 func _add_box_collider(pos: Vector3, size: Vector3, rot_y_deg: float) -> void:

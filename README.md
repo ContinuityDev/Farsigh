@@ -85,8 +85,11 @@ Touch controls appear automatically on native mobile and on web builds when a to
 - **Right-side swipe** — look
 - **Always-on** — move stick, look, `FIRE`, `AIM`, `JUMP/VLT`, `CROUCH`, `SPRINT`, `PEEK L/R`, `SWAP`
 - **Contextual** — `TAKEDOWN` (enemy in range), `RELOAD` (mag not full + reserve), `USE` (interactable/body), `ROCK` (rocks left), `ZOOM` (ADS + variable scope), `BINOS` (hidden while ADS), `INSPECT`
-- Pause menu: **ADS Sensitivity** (35–100%), **Touch Aim Hold/Toggle**, and **Tap-to-Fire** (off by default)
+- **Settings** (main menu + pause): separate **Mouse Look** / **Touch Look** sliders with live %, **ADS/Scope** multiplier, optional **4×/6×/8×** scope mults, **Invert Y**, graphics quality, Touch Aim Hold/Toggle, Tap-to-Fire, Fullscreen. Saved to `user://loadout_prefs.json` and applied live.
 - Look-swipes never fire — mouse-from-touch stays on so menus/gunsmith respond to taps, but fire/aim ignore mouse while the touch UI is up; only the on-screen **FIRE** button shoots (PC LMB unchanged)
+- **BINOS** stays tappable while raised (toggle down); pinch or overlay **±** zoom; PC **B** + wheel still work
+- Per-guard **?** / **!** awareness meters; hearing → investigate only (never instant spot); delayed interruptible shout/radio (~1.5–3s)
+- Crouch in bushes/tall grass → HUD **HIDDEN**; MultiMesh foliage + wind/water/rim shaders on Medium/High quality
 
 
 ## Screenshots
@@ -105,10 +108,17 @@ Captured from a running Godot 4.3 session (`AUTO_CAPTURE=1`):
 | Mobile Touch Controls & Kukri Machete | ![Touch Controls](docs/screenshots/08_touch_controls.png) |
 | ADS Holo Sight (2×) | ![ADS Holo](docs/screenshots/09_ads_holo.png) |
 | ADS Red Dot (1.5×) | ![ADS Red Dot](docs/screenshots/12_ads_red_dot.png) |
+| ADS Iron Sights | ![ADS Iron](docs/screenshots/17_ads_iron.png) |
 | Sniper Scope 4× | ![Sniper 4x](docs/screenshots/13_sniper_4x.png) |
 | Sniper Scope 8× | ![Sniper 8x](docs/screenshots/14_sniper_8x.png) |
 | Mobile HUD (decluttered) | ![Mobile HUD](docs/screenshots/15_mobile_hud_no_takedown.png) |
 | Mobile HUD + Takedown | ![Mobile Takedown](docs/screenshots/16_mobile_hud_takedown.png) |
+| Quality Before (Low) | ![Quality Before](docs/screenshots/20_quality_before_low.png) |
+| Quality After (High) | ![Quality After](docs/screenshots/21_quality_after_high.png) |
+| Gun Detail + Rim (High) | ![Guns High](docs/screenshots/22_guns_high_quality.png) |
+| Per-Guard Alert Meters | ![Alert Meters](docs/screenshots/23_guard_alert_meters.png) |
+| Foliage Hide / HIDDEN HUD | ![Foliage Hidden](docs/screenshots/24_foliage_hidden.png) |
+| Water Shader (High) | ![Water High](docs/screenshots/25_water_high.png) |
 
 ```bash
 # Automated screenshot capture (needs a display; use OpenGL if Vulkan is unavailable)

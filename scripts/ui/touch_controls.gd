@@ -182,9 +182,11 @@ func _update_contextual_buttons() -> void:
 	show["reload"] = is_instance_valid(wm) and wm.has_method("needs_reload") and bool(wm.needs_reload())
 	# Inspect — whenever a weapon is equipped (not empty-handed)
 	show["inspect_weapon"] = is_instance_valid(wm) and wm.get_active() != null
-	# Binoculars — hide while ADS (scope owns the view)
-	show["binoculars"] = not aiming and not binos_up
+	# Binoculars — hide while ADS (scope owns the view). Stay visible while
+	# raised so mobile can toggle them back down (same ScreenTouch hit-test).
+	show["binoculars"] = not aiming
 	# Adjust Zoom — only while ADS with a variable magnified scope
+	# (binoculars use overlay ± buttons + pinch while raised).
 	show["scope_zoom"] = aiming and is_instance_valid(wm) and wm.has_method("has_scope_overlay") and bool(wm.has_scope_overlay())
 
 	# Apply visibility + release holds on buttons that disappear mid-press

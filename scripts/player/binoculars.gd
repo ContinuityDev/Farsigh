@@ -1,6 +1,7 @@
 extends Node
 ## Free always-on binoculars: raise with B / gamepad / touch, zoom levels,
 ## auto-tag hostiles with clear LOS after dwell time.
+## Mobile: BINOS button uses ScreenTouch like other actions; pinch or overlay ± zoom.
 
 
 const ZOOM_FOVS := [55.0, 35.0, 22.0, 14.0]
@@ -8,6 +9,7 @@ const TAG_DWELL_SEC := 0.5
 const TAG_DWELL_PRO := 0.25
 const TAG_RANGE := 120.0
 const TAG_RANGE_PRO := 180.0
+const PINCH_ZOOM_THRESHOLD := 28.0
 
 var active: bool = false
 var zoom_idx: int = 1
@@ -15,7 +17,9 @@ var _dwell: Dictionary = {}  # instance_id -> seconds
 var _overlay: Control
 var _cam: Camera3D
 var _base_fov: float = 70.0
-var _pinch_dist: float = -1.0
+var _pinch_touches: Dictionary = {}  # index -> Vector2
+var _pinch_last_dist: float = -1.0
+var _pinch_accum: float = 0.0
 
 
 func _ready() -> void:
@@ -58,6 +62,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("binoculars_zoom_out"):
 		_zoom(1)
 		get_viewport().set_input_as_handled()
+	elif event is InputEventMagnifyGesture:
+		if event.factor > 1.02:
+			_zoom(-1)
+		elif event.factor < 0.98:
+			_zoom(1)
+		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenTouch or event is InputEventScreenDrag:
 		_handle_pinch(event)
 
@@ -75,16 +85,39 @@ func _process(_delta: float) -> void:
 
 
 func _handle_pinch(event: InputEvent) -> void:
-	# MagnifyGesture covers trackpad / OS pinch; touch +/- buttons cover phones
-	if event is InputEventMagnifyGesture:
-		if event.factor > 1.02:
-			_zoom(-1)
-		elif event.factor < 0.98:
-			_zoom(1)
-		get_viewport().set_input_as_handled()
+	## Two-finger pinch zoom for mobile. Tracks active touch indices and
+	## zooms when the distance between fingers changes past a threshold.
+	if event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			_pinch_touches[st.index] = st.position
+		else:
+			_pinch_touches.erase(st.index)
+			if _pinch_touches.size() < 2:
+				_pinch_last_dist = -1.0
+				_pinch_accum = 0.0
 		return
-	if event is InputEventScreenTouch and not event.pressed:
-		_pinch_dist = -1.0
+	if event is InputEventScreenDrag:
+		var sd := event as InputEventScreenDrag
+		if not _pinch_touches.has(sd.index):
+			return
+		_pinch_touches[sd.index] = sd.position
+		if _pinch_touches.size() < 2:
+			return
+		var pts: Array = _pinch_touches.values()
+		var dist: float = (pts[0] as Vector2).distance_to(pts[1] as Vector2)
+		if _pinch_last_dist < 0.0:
+			_pinch_last_dist = dist
+			_pinch_accum = 0.0
+			get_viewport().set_input_as_handled()
+			return
+		var delta_dist := dist - _pinch_last_dist
+		_pinch_last_dist = dist
+		_pinch_accum += delta_dist
+		if absf(_pinch_accum) >= PINCH_ZOOM_THRESHOLD:
+			_zoom(-1 if _pinch_accum > 0.0 else 1)
+			_pinch_accum = 0.0
+		get_viewport().set_input_as_handled()
 
 
 func toggle() -> void:
@@ -98,7 +131,9 @@ func toggle() -> void:
 		return
 	if active:
 		_dwell.clear()
-		_pinch_dist = -1.0
+		_pinch_touches.clear()
+		_pinch_last_dist = -1.0
+		_pinch_accum = 0.0
 		_ensure_overlay()
 		if _overlay:
 			_overlay.visible = true
@@ -116,6 +151,8 @@ func toggle() -> void:
 			_cam.fov = _base_fov
 		if player:
 			player.set("binoculars_slow", false)
+		_pinch_touches.clear()
+		_pinch_last_dist = -1.0
 
 
 func _zoom(dir: int) -> void:
@@ -291,6 +328,7 @@ func _ensure_overlay() -> void:
 	zin.offset_right = -30
 	zin.offset_top = -70
 	zin.offset_bottom = -14
+	zin.focus_mode = Control.FOCUS_NONE
 	zin.pressed.connect(func(): _zoom(-1))
 	_overlay.add_child(zin)
 	var zout := Button.new()
@@ -301,6 +339,7 @@ func _ensure_overlay() -> void:
 	zout.offset_right = -30
 	zout.offset_top = 14
 	zout.offset_bottom = 70
+	zout.focus_mode = Control.FOCUS_NONE
 	zout.pressed.connect(func(): _zoom(1))
 	_overlay.add_child(zout)
 	var root := hud.get_node_or_null("Root")

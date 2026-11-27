@@ -239,6 +239,18 @@ func _build_pistol(slot: Node3D, body_col: Color, accent_col: Color, mods: Dicti
 	_muzzle_flashes[wid] = flash
 
 
+func _gun_box(size: Vector3, color: Color, roughness: float = 0.5, metallic: float = 0.45) -> MeshInstance3D:
+	var mi := ProcMesh.box_mesh(size, color, roughness, metallic)
+	mi.material_override = ProcMesh.gun_mat(color, roughness, metallic)
+	return mi
+
+
+func _gun_cyl(radius: float, height: float, color: Color, roughness: float = 0.4, metallic: float = 0.65, segments: int = 10) -> MeshInstance3D:
+	var mi := ProcMesh.cylinder_mesh(radius, height, color, roughness, metallic, segments)
+	mi.material_override = ProcMesh.gun_mat(color, roughness, metallic)
+	return mi
+
+
 func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, accent_col: Color, mods: Dictionary, rec_len: float, hg_len: float, brl_len: float, is_smg: bool, is_sniper: bool, is_lmg: bool) -> void:
 	var polymer := Color(0.11, 0.12, 0.13)
 	var glove := Color(0.18, 0.17, 0.16)
@@ -247,18 +259,28 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 	root.name = "ModelRoot"
 	slot.add_child(root)
 
-	# Receiver (wider/boxier for LMG, sleeker for SMG/Sniper)
+	# Receiver (wider/boxier for LMG, sleeker for SMG/Sniper) — rim materials on High
 	var rw := 0.078 if is_lmg else (0.044 if is_smg else 0.054)
 	var rh := 0.084 if is_lmg else (0.058 if is_smg else 0.068)
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(rw, rh, rec_len), body_col, 0.45, 0.55), Vector3(0, 0.015, 0.0))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.030, 0.012, rec_len), polymer), Vector3(0, 0.015 + rh * 0.5 + 0.005, -0.01))
+	ProcMesh.add_part(root, _gun_box(Vector3(rw, rh, rec_len), body_col, 0.45, 0.55), Vector3(0, 0.015, 0.0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.030, 0.012, rec_len), polymer, 0.4, 0.5), Vector3(0, 0.015 + rh * 0.5 + 0.005, -0.01))
+	# Detail: top rail segments + charging handle + ejection port for clearer silhouette
+	ProcMesh.add_part(root, _gun_box(Vector3(0.022, 0.006, rec_len * 0.72), Color(0.14, 0.15, 0.16), 0.35, 0.7), Vector3(0, 0.015 + rh * 0.5 + 0.012, -0.02))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.012, 0.018, 0.028), Color(0.28, 0.29, 0.30), 0.4, 0.6), Vector3(rw * 0.42, 0.028, -0.02))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.006, 0.022, 0.04), Color(0.08, 0.08, 0.09), 0.55, 0.3), Vector3(rw * 0.48, 0.02, 0.02))
 
 	# Handguard & Barrel
 	var hg_z := -(rec_len * 0.5 + hg_len * 0.5)
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(rw * 0.9, rh * 0.78, hg_len), accent_col, 0.68, 0.22), Vector3(0, 0.016, hg_z))
+	ProcMesh.add_part(root, _gun_box(Vector3(rw * 0.9, rh * 0.78, hg_len), accent_col, 0.68, 0.22), Vector3(0, 0.016, hg_z))
+	# Handguard vent slots (side detail)
+	ProcMesh.add_part(root, _gun_box(Vector3(0.004, rh * 0.35, hg_len * 0.55), polymer.darkened(0.2), 0.5, 0.4), Vector3(-rw * 0.48, 0.02, hg_z))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.004, rh * 0.35, hg_len * 0.55), polymer.darkened(0.2), 0.5, 0.4), Vector3(rw * 0.48, 0.02, hg_z))
 	var brl_z := hg_z - hg_len * 0.5 - brl_len * 0.5 + 0.03
 	var brl_r := 0.016 if is_sniper else (0.015 if is_lmg else 0.011)
-	ProcMesh.add_part(root, ProcMesh.cylinder_mesh(brl_r, brl_len, body_col.darkened(0.2), 0.35, 0.72, 8), Vector3(0, 0.022, brl_z), Vector3(90, 0, 0))
+	ProcMesh.add_part(root, _gun_cyl(brl_r, brl_len, body_col.darkened(0.2), 0.35, 0.72, 8), Vector3(0, 0.022, brl_z), Vector3(90, 0, 0))
+	# Gas block / front sight base silhouette
+	if not is_smg:
+		ProcMesh.add_part(root, _gun_box(Vector3(0.018, 0.022, 0.028), polymer, 0.4, 0.55), Vector3(0, 0.034, brl_z + brl_len * 0.15))
 
 	if is_lmg:
 		# Carry handle + bipod legs folded under barrel
@@ -556,14 +578,18 @@ func _tag_occlude(mi: MeshInstance3D) -> MeshInstance3D:
 
 func _glass_disc(radius: float, depth: float = 0.004) -> MeshInstance3D:
 	## Transparent lens plane (Compatibility-safe alpha). Keeps a see-through aperture.
+	## High quality uses a fresnel scope-lens shader; Low/Med keep a flat glass disc.
 	var disc := ProcMesh.cylinder_mesh(radius, depth, Color(0.55, 0.75, 0.95, 0.18), 0.15, 0.0, 10)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.55, 0.78, 1.0, 0.16)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
-	disc.material_override = mat
+	if GraphicsQuality:
+		disc.material_override = GraphicsQuality.make_scope_lens_material(Color(0.55, 0.78, 1.0, 0.16))
+	else:
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(0.55, 0.78, 1.0, 0.16)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		disc.material_override = mat
 	return disc
 
 

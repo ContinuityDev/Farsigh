@@ -18,6 +18,7 @@ NoiseBus="*res://scripts/systems/noise_bus.gd"
 SaveManager="*res://scripts/systems/save_manager.gd"
 TouchInput="*res://scripts/systems/touch_input.gd"
 WebDisplay="*res://scripts/systems/web_display.gd"
+GraphicsQuality="*res://scripts/systems/graphics_quality.gd"
 ScreenshotRunner="*res://scripts/systems/screenshot_runner.gd"
 
 [display]

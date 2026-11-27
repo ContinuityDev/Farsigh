@@ -56,10 +56,19 @@ var outposts: Dictionary = {}  # id -> {status, guards_remaining, name, best: {}
 var last_detection: float = 0.0
 var is_paused: bool = false
 
-# Persistent player settings (saved with loadout prefs)
-var ads_sensitivity: float = 0.55  # multiplier applied while aiming (0.25–1.0)
+# Persistent player settings (saved with loadout prefs / user profile)
+var mouse_look_sensitivity: float = 1.0  # PC mouse look (0.25–2.0)
+var touch_look_sensitivity: float = 1.0  # mobile look-pad (0.25–2.0)
+var ads_sensitivity: float = 0.55  # ADS/scope base multiplier (0.25–1.0)
+## Optional per-zoom ADS multipliers (applied on top of ads_sensitivity at 4×/6×/8×)
+var scope_sens_4x: float = 1.0
+var scope_sens_6x: float = 0.85
+var scope_sens_8x: float = 0.7
+var invert_y: bool = false
+var look_sensitivity: float = 1.0  # legacy alias → mouse_look_sensitivity
 var touch_aim_toggle: bool = false  # false = hold Aim button, true = tap to toggle
 var tap_to_fire: bool = false  # optional: short look-pad tap fires (off by default)
+var graphics_quality: int = 2  # 0 Low / 1 Medium / 2 High (GraphicsQuality)
 
 # Progression / shop / streaks (persisted)
 var currency: int = 0
@@ -450,9 +459,17 @@ func serialize_loadout() -> Dictionary:
 		"selected_throwable": int(selected_throwable),
 		"selected_melee": int(selected_melee),
 		"weapon_mods": weapon_mods.duplicate(true),
+		"mouse_look_sensitivity": mouse_look_sensitivity,
+		"touch_look_sensitivity": touch_look_sensitivity,
 		"ads_sensitivity": ads_sensitivity,
+		"scope_sens_4x": scope_sens_4x,
+		"scope_sens_6x": scope_sens_6x,
+		"scope_sens_8x": scope_sens_8x,
+		"invert_y": invert_y,
+		"look_sensitivity": mouse_look_sensitivity,  # legacy key
 		"touch_aim_toggle": touch_aim_toggle,
 		"tap_to_fire": tap_to_fire,
+		"graphics_quality": graphics_quality,
 	}
 
 
@@ -466,14 +483,72 @@ func deserialize_loadout(data: Dictionary) -> void:
 	if loaded_mods is Dictionary:
 		weapon_mods = (loaded_mods as Dictionary).duplicate(true)
 	ads_sensitivity = clampf(float(data.get("ads_sensitivity", ads_sensitivity)), 0.25, 1.0)
+	# Prefer new keys; fall back to legacy look_sensitivity for mouse
+	var legacy_look := float(data.get("look_sensitivity", mouse_look_sensitivity))
+	mouse_look_sensitivity = clampf(float(data.get("mouse_look_sensitivity", legacy_look)), 0.25, 2.0)
+	touch_look_sensitivity = clampf(float(data.get("touch_look_sensitivity", mouse_look_sensitivity)), 0.25, 2.0)
+	scope_sens_4x = clampf(float(data.get("scope_sens_4x", scope_sens_4x)), 0.25, 1.5)
+	scope_sens_6x = clampf(float(data.get("scope_sens_6x", scope_sens_6x)), 0.25, 1.5)
+	scope_sens_8x = clampf(float(data.get("scope_sens_8x", scope_sens_8x)), 0.25, 1.5)
+	invert_y = bool(data.get("invert_y", invert_y))
+	look_sensitivity = mouse_look_sensitivity
 	touch_aim_toggle = bool(data.get("touch_aim_toggle", touch_aim_toggle))
 	tap_to_fire = bool(data.get("tap_to_fire", tap_to_fire))
+	graphics_quality = clampi(int(data.get("graphics_quality", graphics_quality)), 0, 2)
 	_ensure_defaults()
+
+
+func set_mouse_look_sensitivity(value: float) -> void:
+	mouse_look_sensitivity = clampf(value, 0.25, 2.0)
+	look_sensitivity = mouse_look_sensitivity
+	SaveManager.save_loadout()
+
+
+func set_touch_look_sensitivity(value: float) -> void:
+	touch_look_sensitivity = clampf(value, 0.25, 2.0)
+	SaveManager.save_loadout()
 
 
 func set_ads_sensitivity(value: float) -> void:
 	ads_sensitivity = clampf(value, 0.25, 1.0)
 	SaveManager.save_loadout()
+
+
+func set_scope_sens_4x(value: float) -> void:
+	scope_sens_4x = clampf(value, 0.25, 1.5)
+	SaveManager.save_loadout()
+
+
+func set_scope_sens_6x(value: float) -> void:
+	scope_sens_6x = clampf(value, 0.25, 1.5)
+	SaveManager.save_loadout()
+
+
+func set_scope_sens_8x(value: float) -> void:
+	scope_sens_8x = clampf(value, 0.25, 1.5)
+	SaveManager.save_loadout()
+
+
+func set_invert_y(enabled: bool) -> void:
+	invert_y = enabled
+	SaveManager.save_loadout()
+
+
+func set_look_sensitivity(value: float) -> void:
+	## Legacy API — routes to mouse look.
+	set_mouse_look_sensitivity(value)
+
+
+func get_scope_zoom_sens_mult(zoom_mult: float) -> float:
+	## Extra ADS multiplier for variable sniper zoom steps.
+	var z := int(round(zoom_mult))
+	match z:
+		6:
+			return scope_sens_6x
+		8:
+			return scope_sens_8x
+		_:
+			return scope_sens_4x
 
 
 func set_touch_aim_toggle(enabled: bool) -> void:
@@ -484,6 +559,13 @@ func set_touch_aim_toggle(enabled: bool) -> void:
 func set_tap_to_fire(enabled: bool) -> void:
 	tap_to_fire = enabled
 	SaveManager.save_loadout()
+
+
+func set_graphics_quality(value: int) -> void:
+	graphics_quality = clampi(value, 0, 2)
+	SaveManager.save_loadout()
+	if GraphicsQuality and GraphicsQuality.level != graphics_quality:
+		GraphicsQuality.set_level(graphics_quality)
 
 
 func serialize() -> Dictionary:

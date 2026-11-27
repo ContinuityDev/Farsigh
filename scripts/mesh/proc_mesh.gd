@@ -7,7 +7,7 @@ static var _mat_cache: Dictionary = {}
 static var _mesh_cache: Dictionary = {}
 
 
-static func mat(color: Color, roughness: float = 0.82, metallic: float = 0.05) -> StandardMaterial3D:
+static func mat(color: Color, roughness: float = 0.82, metallic: float = 0.05) -> Material:
 	var webish := OS.has_feature("web") or OS.has_feature("mobile")
 	# Unshaded on web/mobile Compatibility — fewer shader variants, reliable draw
 	var key := "%s_%.2f_%.2f_%s" % [color.to_html(true), roughness, metallic, "u" if webish else "l"]
@@ -24,6 +24,13 @@ static func mat(color: Color, roughness: float = 0.82, metallic: float = 0.05) -
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_mat_cache[key] = m
 	return m
+
+
+static func gun_mat(color: Color, roughness: float = 0.55, metallic: float = 0.35) -> Material:
+	## Weapon viewmodel material — rim/fresnel on High quality.
+	if GraphicsQuality:
+		return GraphicsQuality.make_gun_material(color, metallic, roughness)
+	return mat(color, roughness, metallic)
 
 
 static func unshaded(color: Color) -> StandardMaterial3D:

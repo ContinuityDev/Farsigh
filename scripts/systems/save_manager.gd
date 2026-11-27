@@ -5,7 +5,7 @@ extends Node
 
 const SAVE_PATH := "user://outpost_save.json"
 const LOADOUT_PATH := "user://loadout_prefs.json"
-const PROFILE_VERSION := 3
+const PROFILE_VERSION := 4
 
 
 func save_game() -> void:

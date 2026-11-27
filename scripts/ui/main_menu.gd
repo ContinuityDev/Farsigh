@@ -8,7 +8,9 @@ extends Control
 @onready var subtitle: Label = $Center/VBox/Subtitle
 
 var _shop_btn: Button
+var _settings_btn: Button
 var _confirm_panel: Control
+var _settings_panel: Control
 
 
 func _ready() -> void:
@@ -18,8 +20,10 @@ func _ready() -> void:
 	GameState.is_paused = false
 	continue_btn.disabled = not GameState.has_active_run
 	_ensure_shop_btn()
+	_ensure_settings_btn()
 	_ensure_fullscreen_btn()
 	_ensure_confirm_panel()
+	_ensure_settings_panel()
 	_refresh_status()
 	for b in [continue_btn, new_run_btn, quit_btn]:
 		b.custom_minimum_size = Vector2(280, 56)
@@ -73,6 +77,154 @@ func _ensure_shop_btn() -> void:
 		vbox.add_child(_shop_btn)
 		vbox.move_child(_shop_btn, quit_btn.get_index())
 	_shop_btn.disabled = not GameState.has_active_run
+
+
+func _ensure_settings_btn() -> void:
+	var vbox := $Center/VBox
+	_settings_btn = vbox.get_node_or_null("SettingsBtn") as Button
+	if _settings_btn == null:
+		_settings_btn = Button.new()
+		_settings_btn.name = "SettingsBtn"
+		_settings_btn.text = "Settings"
+		_settings_btn.custom_minimum_size = Vector2(280, 56)
+		_settings_btn.add_theme_font_size_override("font_size", 20)
+		_settings_btn.pressed.connect(_on_settings_pressed)
+		vbox.add_child(_settings_btn)
+		vbox.move_child(_settings_btn, quit_btn.get_index())
+
+
+func _ensure_settings_panel() -> void:
+	_settings_panel = get_node_or_null("SettingsPanel") as Control
+	if _settings_panel:
+		return
+	_settings_panel = Control.new()
+	_settings_panel.name = "SettingsPanel"
+	_settings_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_settings_panel.visible = false
+	_settings_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.78)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_settings_panel.add_child(dim)
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.offset_left = -240
+	panel.offset_right = 240
+	panel.offset_top = -260
+	panel.offset_bottom = 260
+	_settings_panel.add_child(panel)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(460, 500)
+	panel.add_child(scroll)
+	var box := VBoxContainer.new()
+	box.name = "SettingsVBox"
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 8)
+	scroll.add_child(box)
+	var title := Label.new()
+	title.text = "Settings"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 26)
+	box.add_child(title)
+	_add_menu_slider(box, "MouseLook", "Mouse Look", GameState.mouse_look_sensitivity, 0.25, 2.0, Callable(GameState, "set_mouse_look_sensitivity"))
+	_add_menu_slider(box, "TouchLook", "Touch Look", GameState.touch_look_sensitivity, 0.25, 2.0, Callable(GameState, "set_touch_look_sensitivity"))
+	_add_menu_slider(box, "AdsSens", "ADS / Scope", GameState.ads_sensitivity, 0.25, 1.0, Callable(GameState, "set_ads_sensitivity"))
+	_add_menu_slider(box, "Scope4x", "Scope 4× Mult", GameState.scope_sens_4x, 0.25, 1.5, Callable(GameState, "set_scope_sens_4x"))
+	_add_menu_slider(box, "Scope6x", "Scope 6× Mult", GameState.scope_sens_6x, 0.25, 1.5, Callable(GameState, "set_scope_sens_6x"))
+	_add_menu_slider(box, "Scope8x", "Scope 8× Mult", GameState.scope_sens_8x, 0.25, 1.5, Callable(GameState, "set_scope_sens_8x"))
+	var inv := Button.new()
+	inv.name = "InvertYBtn"
+	inv.custom_minimum_size = Vector2(0, 44)
+	inv.pressed.connect(func():
+		GameState.set_invert_y(not GameState.invert_y)
+		_refresh_menu_settings()
+	)
+	box.add_child(inv)
+	var close := Button.new()
+	close.text = "Close"
+	close.custom_minimum_size = Vector2(0, 48)
+	close.pressed.connect(func(): _settings_panel.visible = false)
+	box.add_child(close)
+	add_child(_settings_panel)
+	_refresh_menu_settings()
+
+
+func _add_menu_slider(parent: VBoxContainer, key: String, title: String, value: float, min_v: float, max_v: float, setter: Callable) -> void:
+	var row := VBoxContainer.new()
+	row.name = key + "Row"
+	row.add_theme_constant_override("separation", 2)
+	var header := HBoxContainer.new()
+	var title_lbl := Label.new()
+	title_lbl.name = "Title"
+	title_lbl.text = title
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var val_lbl := Label.new()
+	val_lbl.name = "Value"
+	val_lbl.text = "%d%%" % int(round(value * 100.0))
+	val_lbl.custom_minimum_size = Vector2(56, 0)
+	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val_lbl.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
+	header.add_child(title_lbl)
+	header.add_child(val_lbl)
+	row.add_child(header)
+	var slider := HSlider.new()
+	slider.name = "Slider"
+	slider.min_value = min_v
+	slider.max_value = max_v
+	slider.step = 0.01
+	slider.value = value
+	slider.custom_minimum_size = Vector2(400, 28)
+	slider.value_changed.connect(func(v: float):
+		setter.call(v)
+		val_lbl.text = "%d%%" % int(round(v * 100.0))
+	)
+	row.add_child(slider)
+	parent.add_child(row)
+
+
+func _refresh_menu_settings() -> void:
+	if not is_instance_valid(_settings_panel):
+		return
+	var box := _settings_panel.find_child("SettingsVBox", true, false) as VBoxContainer
+	if box == null:
+		return
+	_sync_menu_row(box, "MouseLookRow", GameState.mouse_look_sensitivity)
+	_sync_menu_row(box, "TouchLookRow", GameState.touch_look_sensitivity)
+	_sync_menu_row(box, "AdsSensRow", GameState.ads_sensitivity)
+	_sync_menu_row(box, "Scope4xRow", GameState.scope_sens_4x)
+	_sync_menu_row(box, "Scope6xRow", GameState.scope_sens_6x)
+	_sync_menu_row(box, "Scope8xRow", GameState.scope_sens_8x)
+	var inv := box.get_node_or_null("InvertYBtn") as Button
+	if is_instance_valid(inv):
+		inv.text = "Invert Y: %s" % ("On" if GameState.invert_y else "Off")
+
+
+func _sync_menu_row(box: VBoxContainer, row_name: String, value: float) -> void:
+	var row := box.get_node_or_null(row_name) as Control
+	if row == null:
+		return
+	var slider := row.get_node_or_null("Slider") as HSlider
+	var val := row.get_node_or_null("Value") as Label
+	# Value is under Header
+	if val == null:
+		var header := row.get_node_or_null("Header") as Control
+		if header:
+			val = header.get_node_or_null("Value") as Label
+		# Our structure: Header is unnamed HBox — first child is title, second is Value via find
+		if val == null and row.get_child_count() > 0:
+			var h := row.get_child(0)
+			if h is HBoxContainer and h.get_child_count() > 1:
+				val = h.get_child(1) as Label
+	if is_instance_valid(slider):
+		slider.set_value_no_signal(value)
+	if is_instance_valid(val):
+		val.text = "%d%%" % int(round(value * 100.0))
+
+
+func _on_settings_pressed() -> void:
+	_ensure_settings_panel()
+	_refresh_menu_settings()
+	_settings_panel.visible = true
 
 
 func _ensure_confirm_panel() -> void:

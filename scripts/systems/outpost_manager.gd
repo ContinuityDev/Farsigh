@@ -369,9 +369,14 @@ func _setup_environment(def: Dictionary) -> void:
 	env.ambient_light_energy = 0.68
 	env.fog_enabled = true
 	env.fog_light_color = def.get("fog_color", Color(0.64, 0.66, 0.62))
-	env.fog_density = 0.0042
+	var fog_scale := 1.0
+	if GraphicsQuality:
+		fog_scale = GraphicsQuality.fog_density_scale()
+	env.fog_density = 0.0042 * fog_scale
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	we.environment = env
+	if GraphicsQuality:
+		GraphicsQuality.apply()
 
 
 func _position_player(def: Dictionary) -> void:
