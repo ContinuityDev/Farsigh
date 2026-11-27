@@ -153,22 +153,25 @@ func _rebuild_outpost_entities(def: Dictionary) -> void:
 	if liberated:
 		return
 
-	# Spawn guards and snipers from outpost catalog
+	# Spawn guards / snipers / heavies / officers / dogs from outpost catalog
 	var guard_specs: Array = def.get("guards", [])
 	for i in range(guard_specs.size()):
 		var spec: Dictionary = guard_specs[i]
 		var g := GUARD_SCENE.instantiate() as GuardAI
 		g.name = "Guard_%d" % (i + 1)
 		g.position = spec.get("pos", Vector3(0, 0.1, 0))
-		g.is_sniper = bool(spec.get("sniper", false))
 		var pts: Array[Vector3] = []
 		for p in spec.get("patrol", []):
 			if p is Vector3:
 				pts.append(p)
 		g.setup_patrol_points(pts)
 		guards_root.add_child(g)
-		# Bind nearest alarm panel
-		if not _alarms.is_empty():
+		if g.has_method("apply_spawn_spec"):
+			g.apply_spawn_spec(spec)
+		else:
+			g.is_sniper = bool(spec.get("sniper", false))
+		# Bind nearest alarm panel (dogs skip — they don't press alarms)
+		if not _alarms.is_empty() and not bool(g.get("is_dog")):
 			var best_alarm: Node3D = _alarms[0]
 			var best_d := g.position.distance_to(best_alarm.position)
 			for a in _alarms:

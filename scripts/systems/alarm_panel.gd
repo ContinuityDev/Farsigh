@@ -40,10 +40,17 @@ func trigger(_by: Node = null) -> void:
 	triggered = true
 	alarm_triggered.emit()
 	_update_visual()
-	_spawn_reinforcements()
+	# Officers call in extra reinforcements (faster / denser response)
+	var extra := 0
+	if is_instance_valid(_by) and bool(_by.get("is_officer")):
+		extra = 2
+	_spawn_reinforcements(extra)
 	var hud := get_tree().get_first_node_in_group("hud")
 	if is_instance_valid(hud) and hud.has_method("show_status"):
-		hud.show_status("ALARM — reinforcements inbound!", 3.5)
+		if extra > 0:
+			hud.show_status("OFFICER ALARM — heavy reinforcements inbound!", 3.8)
+		else:
+			hud.show_status("ALARM — reinforcements inbound!", 3.5)
 
 
 func interact(player: Node) -> void:
@@ -59,7 +66,7 @@ func interact(player: Node) -> void:
 		hud.show_status("Alarm disabled", 2.0)
 
 
-func _spawn_reinforcements() -> void:
+func _spawn_reinforcements(extra: int = 0) -> void:
 	if reinforcement_scene == null:
 		reinforcement_scene = preload("res://scenes/enemies/guard.tscn")
 	var tree := get_tree()
@@ -67,11 +74,19 @@ func _spawn_reinforcements() -> void:
 		return
 	var outpost := tree.get_first_node_in_group("outpost")
 	var scene := tree.current_scene
-	for path in reinforcement_points:
-		if _spawned >= max_reinforcements:
-			break
+	var cap := max_reinforcements + maxi(0, extra)
+	# Cycle reinforce points so officer extras still spawn even with 2 markers
+	var paths: Array = reinforcement_points.duplicate()
+	if paths.is_empty():
+		return
+	var i := 0
+	while _spawned < cap:
+		var path = paths[i % paths.size()]
+		i += 1
 		var marker := get_node_or_null(path)
 		if not is_instance_valid(marker):
+			if i > paths.size() * 3:
+				break
 			continue
 		var g := reinforcement_scene.instantiate()
 		if is_instance_valid(outpost):
@@ -80,14 +95,17 @@ func _spawn_reinforcements() -> void:
 			scene.add_child(g)
 		else:
 			g.free()
-			continue
+			break
 		if g is Node3D and marker is Node3D:
-			(g as Node3D).global_position = (marker as Node3D).global_position
+			var jitter := Vector3(randf_range(-1.2, 1.2), 0.0, randf_range(-1.2, 1.2))
+			(g as Node3D).global_position = (marker as Node3D).global_position + jitter
 		if g.has_method("_set_state"):
 			g._set_state(GuardAI.State.COMBAT)
 		_spawned += 1
 		if is_instance_valid(outpost) and outpost.has_method("register_guard"):
 			outpost.register_guard(g)
+		if i > cap * 4:
+			break
 
 
 func _update_visual() -> void:

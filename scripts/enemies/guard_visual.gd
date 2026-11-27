@@ -384,6 +384,9 @@ func play_state(state_name: String) -> void:
 			play(ANIM_RUN, 0.18)
 		"COMBAT":
 			play(ANIM_RUN, 0.14)
+		"LOOK_AROUND":
+			_oneshot_timer = 1.1
+			play(ANIM_LOOK_AROUND, 0.18)
 		"DEAD":
 			_is_dead = true
 			play(ANIM_DEATH, 0.08)
@@ -450,6 +453,50 @@ func set_sniper_look(enabled: bool) -> void:
 		var kit := _right_arm.get_node_or_null("GuardRifle/SniperKit") as Node3D
 		if is_instance_valid(kit):
 			kit.visible = enabled
+
+
+func apply_role_look(role: String, heavy: bool = false, officer: bool = false, dog: bool = false) -> void:
+	## Visual variants for heavy / officer / dog without swapping scenes.
+	if dog:
+		_build_dog_mesh()
+		return
+	if not is_instance_valid(_rig):
+		return
+	if heavy and is_instance_valid(_torso):
+		_torso.scale = Vector3(1.18, 1.08, 1.22)
+		if is_instance_valid(_pelvis):
+			_pelvis.scale = Vector3(1.12, 1.0, 1.1)
+		set_placeholder_color(Color(0.35, 0.28, 0.48))
+	elif officer:
+		set_placeholder_color(Color(0.82, 0.62, 0.18))
+		if is_instance_valid(_head):
+			# Compact officer beret / band
+			ProcMesh.add_part(_head, ProcMesh.box_mesh(Vector3(0.28, 0.06, 0.28), Color(0.55, 0.12, 0.10)), Vector3(0, 0.22, 0.02))
+	elif role == "handler":
+		set_placeholder_color(Color(0.42, 0.55, 0.32))
+
+
+func _build_dog_mesh() -> void:
+	if get_node_or_null("DogRig") != null:
+		if is_instance_valid(_rig):
+			_rig.visible = false
+		return
+	if is_instance_valid(_rig):
+		_rig.visible = false
+	var fur := Color(0.32, 0.26, 0.20)
+	var dark := Color(0.16, 0.14, 0.12)
+	var dog := Node3D.new()
+	dog.name = "DogRig"
+	add_child(dog)
+	# Low-poly quadruped: body, head, snout, legs, tail
+	ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.28, 0.32, 0.62), fur), Vector3(0, 0.42, 0))
+	ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.22, 0.22, 0.24), fur), Vector3(0, 0.55, -0.38))
+	ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.12, 0.10, 0.18), dark), Vector3(0, 0.48, -0.52))
+	ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.08, 0.14, 0.08), fur), Vector3(-0.08, 0.68, -0.36))
+	ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.08, 0.14, 0.08), fur), Vector3(0.08, 0.68, -0.36))
+	for xz in [Vector2(-0.12, 0.22), Vector2(0.12, 0.22), Vector2(-0.12, -0.22), Vector2(0.12, -0.22)]:
+		ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.08, 0.34, 0.08), dark), Vector3(xz.x, 0.17, xz.y))
+	ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.06, 0.06, 0.22), fur), Vector3(0, 0.48, 0.38), Vector3(20, 0, 0))
 
 
 func set_placeholder_color(color: Color) -> void:

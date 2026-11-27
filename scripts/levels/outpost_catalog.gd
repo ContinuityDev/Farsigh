@@ -1,6 +1,14 @@
 extends RefCounted
 class_name OutpostCatalog
 ## Registry of Far Cry 5–inspired outposts (themes, spawns, patrols, alarms, snipers).
+## Guard specs support: sniper, sentry, heavy, officer, dog, handler, chat_pair, interior.
+
+
+static func _g(pos: Vector3, rot: float, patrol: Array, extras: Dictionary = {}) -> Dictionary:
+	var d := {"pos": pos, "rot": rot, "sniper": false, "patrol": patrol}
+	for k in extras.keys():
+		d[k] = extras[k]
+	return d
 
 
 static func all_outposts() -> Array[Dictionary]:
@@ -17,12 +25,21 @@ static func all_outposts() -> Array[Dictionary]:
 			"fog_color": Color(0.64, 0.66, 0.62),
 			"alarms": [Vector3(1.0, 0.0, -9.8)],
 			"reinforce_points": [Vector3(19.0, 0.1, 19.0), Vector3(-19.0, 0.1, 18.0)],
+			# 5 → 12 hostiles. South approach stays lighter for stealth.
 			"guards": [
-				{"pos": Vector3(-10.5, 0.1, 6.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-10.5, 0.1, 8.0), Vector3(-10.5, 0.1, -9.0), Vector3(-4.0, 0.1, -1.0)]},
-				{"pos": Vector3(11.5, 0.1, 2.0), "rot": 180.0, "sniper": false, "patrol": [Vector3(11.5, 0.1, 8.0), Vector3(11.5, 0.1, -8.5), Vector3(5.0, 0.1, 0.0)]},
-				{"pos": Vector3(1.0, 0.1, -9.0), "rot": 90.0, "sniper": false, "patrol": [Vector3(1.0, 0.1, -9.5), Vector3(1.0, 0.2, -13.5), Vector3(1.0, 3.5, -14.0), Vector3(-2.5, 3.5, -14.0)]},
-				{"pos": Vector3(0.0, 0.1, 12.5), "rot": 0.0, "sniper": false, "patrol": [Vector3(0.0, 0.1, 14.5), Vector3(-7.0, 0.1, 11.0), Vector3(5.5, 0.1, 12.0)]},
-				{"pos": Vector3(-15.25, 3.6, -15.25), "rot": -135.0, "sniper": true, "patrol": [Vector3(-15.25, 3.6, -15.25)]},
+				_g(Vector3(-10.5, 0.1, 6.0), 0.0, [Vector3(-10.5, 0.1, 8.0), Vector3(-10.5, 0.1, -9.0), Vector3(-4.0, 0.1, -1.0)]),
+				_g(Vector3(11.5, 0.1, 2.0), 180.0, [Vector3(11.5, 0.1, 8.0), Vector3(11.5, 0.1, -8.5), Vector3(5.0, 0.1, 0.0)]),
+				_g(Vector3(1.0, 0.1, -9.0), 90.0, [Vector3(1.0, 0.1, -9.5), Vector3(1.0, 0.2, -13.5), Vector3(1.0, 3.5, -14.0), Vector3(-2.5, 3.5, -14.0)], {"role": "interior"}),
+				_g(Vector3(0.0, 0.1, 12.5), 0.0, [Vector3(0.0, 0.1, 14.5), Vector3(-7.0, 0.1, 11.0), Vector3(5.5, 0.1, 12.0)]),
+				_g(Vector3(-15.25, 3.6, -15.25), -135.0, [Vector3(-15.25, 3.6, -15.25)], {"sniper": true}),
+				# East rooftop sniper, NW heavy sentry, HQ officer, chat pair by crates, dog + handler
+				_g(Vector3(14.5, 3.55, -8.0), 45.0, [Vector3(14.5, 3.55, -8.0)], {"sniper": true}),
+				_g(Vector3(-14.0, 0.1, 14.0), 180.0, [Vector3(-14.0, 0.1, 14.0)], {"role": "heavy", "sentry": true}),
+				_g(Vector3(2.5, 0.1, -12.0), 0.0, [Vector3(2.5, 0.1, -12.0), Vector3(-1.5, 0.1, -12.0)], {"role": "officer"}),
+				_g(Vector3(-6.0, 0.1, 2.5), 90.0, [Vector3(-6.0, 0.1, 2.5)], {"role": "patrol", "chat_pair": "alpha_crates"}),
+				_g(Vector3(-4.2, 0.1, 2.5), -90.0, [Vector3(-4.2, 0.1, 2.5)], {"role": "patrol", "chat_pair": "alpha_crates"}),
+				_g(Vector3(8.0, 0.1, 10.0), 0.0, [Vector3(8.0, 0.1, 10.0), Vector3(12.0, 0.1, 6.0)], {"role": "handler", "dog_id": "alpha_dog"}),
+				_g(Vector3(9.2, 0.1, 10.0), 0.0, [Vector3(9.2, 0.1, 10.0), Vector3(12.5, 0.1, 6.5)], {"role": "dog", "dog_id": "alpha_dog"}),
 			],
 		},
 		{
@@ -37,13 +54,22 @@ static func all_outposts() -> Array[Dictionary]:
 			"fog_color": Color(0.76, 0.62, 0.48),
 			"alarms": [Vector3(-3.0, 0.0, -5.0), Vector3(10.5, 0.0, 6.0)],
 			"reinforce_points": [Vector3(22.0, 0.1, 20.0), Vector3(-22.0, 0.1, 16.0)],
+			# 6 → 14
 			"guards": [
-				{"pos": Vector3(0.0, 0.1, 14.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-4.0, 0.1, 14.0), Vector3(6.0, 0.1, 14.0), Vector3(1.0, 0.1, 8.0)]},
-				{"pos": Vector3(-10.0, 0.1, 4.0), "rot": 90.0, "sniper": false, "patrol": [Vector3(-12.0, 0.1, 8.0), Vector3(-12.0, 0.1, -6.0), Vector3(-5.0, 0.1, 0.0)]},
-				{"pos": Vector3(10.5, 0.1, -4.0), "rot": -90.0, "sniper": false, "patrol": [Vector3(11.0, 0.1, 5.0), Vector3(11.0, 0.1, -12.0), Vector3(4.0, 0.1, -6.0)]},
-				{"pos": Vector3(-1.0, 0.1, -13.0), "rot": 180.0, "sniper": false, "patrol": [Vector3(-6.0, 0.1, -14.0), Vector3(6.0, 0.1, -14.0), Vector3(0.0, 0.1, -7.0)]},
-				{"pos": Vector3(15.0, 0.1, 10.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(14.0, 0.1, 12.0), Vector3(16.0, 0.1, 0.0)]},
-				{"pos": Vector3(14.0, 5.65, -12.0), "rot": -150.0, "sniper": true, "patrol": [Vector3(14.0, 5.65, -12.0)]},
+				_g(Vector3(0.0, 0.1, 14.0), 0.0, [Vector3(-4.0, 0.1, 14.0), Vector3(6.0, 0.1, 14.0), Vector3(1.0, 0.1, 8.0)]),
+				_g(Vector3(-10.0, 0.1, 4.0), 90.0, [Vector3(-12.0, 0.1, 8.0), Vector3(-12.0, 0.1, -6.0), Vector3(-5.0, 0.1, 0.0)]),
+				_g(Vector3(10.5, 0.1, -4.0), -90.0, [Vector3(11.0, 0.1, 5.0), Vector3(11.0, 0.1, -12.0), Vector3(4.0, 0.1, -6.0)]),
+				_g(Vector3(-1.0, 0.1, -13.0), 180.0, [Vector3(-6.0, 0.1, -14.0), Vector3(6.0, 0.1, -14.0), Vector3(0.0, 0.1, -7.0)]),
+				_g(Vector3(15.0, 0.1, 10.0), 0.0, [Vector3(14.0, 0.1, 12.0), Vector3(16.0, 0.1, 0.0)]),
+				_g(Vector3(14.0, 5.65, -12.0), -150.0, [Vector3(14.0, 5.65, -12.0)], {"sniper": true}),
+				_g(Vector3(-12.0, 3.55, -10.0), -40.0, [Vector3(-12.0, 3.55, -10.0)], {"sniper": true}),
+				_g(Vector3(-8.5, 0.1, -2.0), 0.0, [Vector3(-8.5, 0.1, -2.0), Vector3(-8.5, 3.4, -2.0), Vector3(-5.0, 3.4, -4.0)], {"role": "interior"}),
+				_g(Vector3(6.0, 0.1, 6.0), 180.0, [Vector3(6.0, 0.1, 6.0)], {"role": "heavy", "sentry": true}),
+				_g(Vector3(-2.0, 0.1, -4.0), 90.0, [Vector3(-2.0, 0.1, -4.0), Vector3(2.0, 0.1, -4.0)], {"role": "officer"}),
+				_g(Vector3(4.0, 0.1, 16.0), -20.0, [Vector3(4.0, 0.1, 16.0)], {"role": "patrol", "chat_pair": "ranch_gate"}),
+				_g(Vector3(5.6, 0.1, 16.0), 200.0, [Vector3(5.6, 0.1, 16.0)], {"role": "patrol", "chat_pair": "ranch_gate"}),
+				_g(Vector3(-14.0, 0.1, 10.0), 0.0, [Vector3(-14.0, 0.1, 10.0), Vector3(-10.0, 0.1, 14.0)], {"role": "handler", "dog_id": "ranch_dog"}),
+				_g(Vector3(-13.0, 0.1, 10.5), 0.0, [Vector3(-13.0, 0.1, 10.5), Vector3(-9.5, 0.1, 14.0)], {"role": "dog", "dog_id": "ranch_dog"}),
 			],
 		},
 		{
@@ -58,14 +84,23 @@ static func all_outposts() -> Array[Dictionary]:
 			"fog_color": Color(0.60, 0.68, 0.68),
 			"alarms": [Vector3(2.5, 0.0, -4.0), Vector3(-13.0, 0.0, 2.0)],
 			"reinforce_points": [Vector3(23.0, 0.1, 18.0), Vector3(-23.0, 0.1, -16.0)],
+			# 7 → 15
 			"guards": [
-				{"pos": Vector3(-2.0, 0.1, 15.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-6.0, 0.1, 16.0), Vector3(6.0, 0.1, 15.0), Vector3(0.0, 0.1, 9.0)]},
-				{"pos": Vector3(-11.0, 0.1, 6.0), "rot": 90.0, "sniper": false, "patrol": [Vector3(-13.0, 0.1, 11.0), Vector3(-13.0, 0.1, -6.0), Vector3(-7.0, 0.1, 2.0)]},
-				{"pos": Vector3(11.0, 0.1, 4.0), "rot": -90.0, "sniper": false, "patrol": [Vector3(12.0, 0.1, 10.0), Vector3(12.0, 0.1, -9.0), Vector3(6.0, 0.1, -2.0)]},
-				{"pos": Vector3(0.0, 0.1, -11.0), "rot": 180.0, "sniper": false, "patrol": [Vector3(-6.0, 0.1, -12.0), Vector3(8.0, 0.1, -12.0)]},
-				{"pos": Vector3(4.0, 0.1, 2.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(3.0, 0.1, 5.0), Vector3(3.0, 0.1, -5.0), Vector3(-3.0, 0.1, 0.0)]},
-				{"pos": Vector3(-16.0, 3.6, 14.0), "rot": -45.0, "sniper": true, "patrol": [Vector3(-16.0, 3.6, 14.0)]},
-				{"pos": Vector3(16.0, 3.6, -14.0), "rot": 145.0, "sniper": true, "patrol": [Vector3(16.0, 3.6, -14.0)]},
+				_g(Vector3(-2.0, 0.1, 15.0), 0.0, [Vector3(-6.0, 0.1, 16.0), Vector3(6.0, 0.1, 15.0), Vector3(0.0, 0.1, 9.0)]),
+				_g(Vector3(-11.0, 0.1, 6.0), 90.0, [Vector3(-13.0, 0.1, 11.0), Vector3(-13.0, 0.1, -6.0), Vector3(-7.0, 0.1, 2.0)]),
+				_g(Vector3(11.0, 0.1, 4.0), -90.0, [Vector3(12.0, 0.1, 10.0), Vector3(12.0, 0.1, -9.0), Vector3(6.0, 0.1, -2.0)]),
+				_g(Vector3(0.0, 0.1, -11.0), 180.0, [Vector3(-6.0, 0.1, -12.0), Vector3(8.0, 0.1, -12.0)]),
+				_g(Vector3(4.0, 0.1, 2.0), 0.0, [Vector3(3.0, 0.1, 5.0), Vector3(3.0, 0.1, -5.0), Vector3(-3.0, 0.1, 0.0)]),
+				_g(Vector3(-16.0, 3.6, 14.0), -45.0, [Vector3(-16.0, 3.6, 14.0)], {"sniper": true}),
+				_g(Vector3(16.0, 3.6, -14.0), 145.0, [Vector3(16.0, 3.6, -14.0)], {"sniper": true}),
+				_g(Vector3(-2.0, 3.5, -2.0), 0.0, [Vector3(-4.0, 3.5, -2.0), Vector3(2.0, 3.5, -2.0), Vector3(-2.0, 0.1, 1.0)], {"role": "interior"}),
+				_g(Vector3(8.0, 0.1, -6.0), 180.0, [Vector3(8.0, 0.1, -6.0)], {"role": "heavy", "sentry": true}),
+				_g(Vector3(-8.0, 0.1, -2.0), 0.0, [Vector3(-8.0, 0.1, -2.0), Vector3(-4.0, 0.1, -2.0)], {"role": "officer"}),
+				_g(Vector3(-14.0, 0.1, -10.0), 90.0, [Vector3(-14.0, 0.1, -10.0)], {"role": "sentry"}),
+				_g(Vector3(2.0, 0.1, 18.0), 180.0, [Vector3(2.0, 0.1, 18.0)], {"role": "patrol", "chat_pair": "mill_logs"}),
+				_g(Vector3(3.8, 0.1, 18.0), 0.0, [Vector3(3.8, 0.1, 18.0)], {"role": "patrol", "chat_pair": "mill_logs"}),
+				_g(Vector3(14.0, 0.1, 8.0), -90.0, [Vector3(14.0, 0.1, 8.0), Vector3(10.0, 0.1, 12.0)], {"role": "handler", "dog_id": "mill_dog"}),
+				_g(Vector3(14.8, 0.1, 8.5), -90.0, [Vector3(14.8, 0.1, 8.5), Vector3(10.5, 0.1, 12.5)], {"role": "dog", "dog_id": "mill_dog"}),
 			],
 		},
 		{
@@ -80,13 +115,22 @@ static func all_outposts() -> Array[Dictionary]:
 			"fog_color": Color(0.58, 0.70, 0.76),
 			"alarms": [Vector3(-5.0, 0.0, 2.0)],
 			"reinforce_points": [Vector3(20.0, 0.1, 18.0), Vector3(-20.0, 0.1, 18.0)],
+			# 6 → 14
 			"guards": [
-				{"pos": Vector3(0.0, 0.1, 14.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-6.0, 0.1, 14.0), Vector3(7.0, 0.1, 14.0), Vector3(0.0, 0.1, 7.0)]},
-				{"pos": Vector3(-10.0, 0.1, 4.0), "rot": 90.0, "sniper": false, "patrol": [Vector3(-12.0, 0.1, 9.0), Vector3(-11.0, 0.1, -5.0)]},
-				{"pos": Vector3(9.0, 0.1, 3.0), "rot": -90.0, "sniper": false, "patrol": [Vector3(11.0, 0.1, 9.0), Vector3(9.0, 0.1, -5.0)]},
-				{"pos": Vector3(0.0, 0.35, -10.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(0.0, 0.35, -7.5), Vector3(0.0, 0.35, -18.0)]},
-				{"pos": Vector3(4.5, 0.35, -18.5), "rot": 180.0, "sniper": false, "patrol": [Vector3(-5.0, 0.35, -18.5), Vector3(5.5, 0.35, -18.5)]},
-				{"pos": Vector3(-12.0, 6.75, 1.5), "rot": -135.0, "sniper": true, "patrol": [Vector3(-12.0, 6.75, 1.5)]},
+				_g(Vector3(0.0, 0.1, 14.0), 0.0, [Vector3(-6.0, 0.1, 14.0), Vector3(7.0, 0.1, 14.0), Vector3(0.0, 0.1, 7.0)]),
+				_g(Vector3(-10.0, 0.1, 4.0), 90.0, [Vector3(-12.0, 0.1, 9.0), Vector3(-11.0, 0.1, -5.0)]),
+				_g(Vector3(9.0, 0.1, 3.0), -90.0, [Vector3(11.0, 0.1, 9.0), Vector3(9.0, 0.1, -5.0)]),
+				_g(Vector3(0.0, 0.35, -10.0), 0.0, [Vector3(0.0, 0.35, -7.5), Vector3(0.0, 0.35, -18.0)]),
+				_g(Vector3(4.5, 0.35, -18.5), 180.0, [Vector3(-5.0, 0.35, -18.5), Vector3(5.5, 0.35, -18.5)]),
+				_g(Vector3(-12.0, 6.75, 1.5), -135.0, [Vector3(-12.0, 6.75, 1.5)], {"sniper": true}),
+				_g(Vector3(11.0, 3.55, -6.0), 40.0, [Vector3(11.0, 3.55, -6.0)], {"sniper": true}),
+				_g(Vector3(-6.0, 0.1, -2.0), 0.0, [Vector3(-6.0, 0.1, -2.0), Vector3(-6.0, 3.4, -2.0), Vector3(-3.0, 3.4, 1.0)], {"role": "interior"}),
+				_g(Vector3(6.0, 0.35, -14.0), 180.0, [Vector3(6.0, 0.35, -14.0)], {"role": "heavy", "sentry": true}),
+				_g(Vector3(-3.0, 0.1, 4.0), 90.0, [Vector3(-3.0, 0.1, 4.0), Vector3(-7.0, 0.1, 4.0)], {"role": "officer"}),
+				_g(Vector3(-8.0, 0.1, 12.0), 20.0, [Vector3(-8.0, 0.1, 12.0)], {"role": "patrol", "chat_pair": "dock_bait"}),
+				_g(Vector3(-6.4, 0.1, 12.0), -160.0, [Vector3(-6.4, 0.1, 12.0)], {"role": "patrol", "chat_pair": "dock_bait"}),
+				_g(Vector3(12.0, 0.1, 12.0), -90.0, [Vector3(12.0, 0.1, 12.0), Vector3(8.0, 0.1, 8.0)], {"role": "handler", "dog_id": "dock_dog"}),
+				_g(Vector3(12.8, 0.1, 12.4), -90.0, [Vector3(12.8, 0.1, 12.4), Vector3(8.5, 0.1, 8.5)], {"role": "dog", "dog_id": "dock_dog"}),
 			],
 		},
 		{
@@ -101,15 +145,25 @@ static func all_outposts() -> Array[Dictionary]:
 			"fog_color": Color(0.42, 0.38, 0.42),
 			"alarms": [Vector3(0.0, 0.0, -5.0), Vector3(-10.0, 0.0, 7.0)],
 			"reinforce_points": [Vector3(21.0, 0.1, 18.0), Vector3(-21.0, 0.1, 18.0)],
+			# 8 → 17
 			"guards": [
-				{"pos": Vector3(0.0, 0.1, 15.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-7.0, 0.1, 15.0), Vector3(7.0, 0.1, 15.0), Vector3(0.0, 0.1, 9.0)]},
-				{"pos": Vector3(-11.0, 0.1, 4.0), "rot": 90.0, "sniper": false, "patrol": [Vector3(-13.0, 0.1, 9.0), Vector3(-13.0, 0.1, -8.0), Vector3(-6.0, 0.1, 0.0)]},
-				{"pos": Vector3(11.0, 0.1, 4.0), "rot": -90.0, "sniper": false, "patrol": [Vector3(13.0, 0.1, 10.0), Vector3(13.0, 0.1, -8.0), Vector3(6.0, 0.1, 1.0)]},
-				{"pos": Vector3(0.0, -2.6, -14.5), "rot": 0.0, "sniper": false, "patrol": [Vector3(-2.5, -2.6, -14.5), Vector3(2.5, -2.6, -14.5), Vector3(0.0, 0.1, -9.0)]},
-				{"pos": Vector3(8.0, 0.1, -14.0), "rot": 180.0, "sniper": false, "patrol": [Vector3(4.0, 0.1, -15.0), Vector3(14.0, 0.1, -15.0)]},
-				{"pos": Vector3(-2.0, 0.1, 2.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-5.0, 0.1, 3.0), Vector3(5.0, 0.1, 3.0), Vector3(0.0, 0.1, -3.0)]},
-				{"pos": Vector3(-17.0, 3.6, -16.0), "rot": -140.0, "sniper": true, "patrol": [Vector3(-17.0, 3.6, -16.0)]},
-				{"pos": Vector3(17.0, 3.6, -16.0), "rot": 140.0, "sniper": true, "patrol": [Vector3(17.0, 3.6, -16.0)]},
+				_g(Vector3(0.0, 0.1, 15.0), 0.0, [Vector3(-7.0, 0.1, 15.0), Vector3(7.0, 0.1, 15.0), Vector3(0.0, 0.1, 9.0)]),
+				_g(Vector3(-11.0, 0.1, 4.0), 90.0, [Vector3(-13.0, 0.1, 9.0), Vector3(-13.0, 0.1, -8.0), Vector3(-6.0, 0.1, 0.0)]),
+				_g(Vector3(11.0, 0.1, 4.0), -90.0, [Vector3(13.0, 0.1, 10.0), Vector3(13.0, 0.1, -8.0), Vector3(6.0, 0.1, 1.0)]),
+				_g(Vector3(0.0, -2.6, -14.5), 0.0, [Vector3(-2.5, -2.6, -14.5), Vector3(2.5, -2.6, -14.5), Vector3(0.0, 0.1, -9.0)], {"role": "interior"}),
+				_g(Vector3(8.0, 0.1, -14.0), 180.0, [Vector3(4.0, 0.1, -15.0), Vector3(14.0, 0.1, -15.0)]),
+				_g(Vector3(-2.0, 0.1, 2.0), 0.0, [Vector3(-5.0, 0.1, 3.0), Vector3(5.0, 0.1, 3.0), Vector3(0.0, 0.1, -3.0)]),
+				_g(Vector3(-17.0, 3.6, -16.0), -140.0, [Vector3(-17.0, 3.6, -16.0)], {"sniper": true}),
+				_g(Vector3(17.0, 3.6, -16.0), 140.0, [Vector3(17.0, 3.6, -16.0)], {"sniper": true}),
+				_g(Vector3(0.0, 3.55, -8.0), 0.0, [Vector3(0.0, 3.55, -8.0)], {"sniper": true}),
+				_g(Vector3(-6.0, 0.1, 10.0), 180.0, [Vector3(-6.0, 0.1, 10.0)], {"role": "heavy", "sentry": true}),
+				_g(Vector3(6.0, 0.1, 10.0), 180.0, [Vector3(6.0, 0.1, 10.0)], {"role": "heavy", "sentry": true}),
+				_g(Vector3(-1.0, 0.1, -6.0), 0.0, [Vector3(-1.0, 0.1, -6.0), Vector3(2.0, 0.1, -6.0)], {"role": "officer"}),
+				_g(Vector3(-8.0, 3.4, 2.0), 90.0, [Vector3(-8.0, 3.4, 2.0), Vector3(-4.0, 3.4, 2.0), Vector3(-6.0, 0.1, 4.0)], {"role": "interior"}),
+				_g(Vector3(3.0, 0.1, 18.0), 180.0, [Vector3(3.0, 0.1, 18.0)], {"role": "patrol", "chat_pair": "ridge_gate"}),
+				_g(Vector3(4.8, 0.1, 18.0), 0.0, [Vector3(4.8, 0.1, 18.0)], {"role": "patrol", "chat_pair": "ridge_gate"}),
+				_g(Vector3(14.0, 0.1, 0.0), -90.0, [Vector3(14.0, 0.1, 0.0), Vector3(10.0, 0.1, 6.0)], {"role": "handler", "dog_id": "ridge_dog"}),
+				_g(Vector3(14.8, 0.1, 0.5), -90.0, [Vector3(14.8, 0.1, 0.5), Vector3(10.5, 0.1, 6.5)], {"role": "dog", "dog_id": "ridge_dog"}),
 			],
 		},
 	]
@@ -145,5 +199,13 @@ static func sniper_count(spec: Dictionary) -> int:
 	var n := 0
 	for g in spec.get("guards", []):
 		if bool(g.get("sniper", false)):
+			n += 1
+	return n
+
+
+static func role_count(spec: Dictionary, role: String) -> int:
+	var n := 0
+	for g in spec.get("guards", []):
+		if String(g.get("role", "")) == role:
 			n += 1
 	return n

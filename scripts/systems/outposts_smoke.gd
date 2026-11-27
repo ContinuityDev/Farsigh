@@ -32,13 +32,28 @@ func _run() -> void:
 		var guards := get_nodes_in_group("guards")
 		var expected := OutpostCatalog.guard_count(def)
 		var snipers := 0
+		var heavies := 0
+		var officers := 0
+		var dogs := 0
 		for g in guards:
 			if bool(g.get("is_sniper")):
 				snipers += 1
+			if bool(g.get("is_heavy")):
+				heavies += 1
+			if bool(g.get("is_officer")):
+				officers += 1
+			if bool(g.get("is_dog")):
+				dogs += 1
 		var expected_snipers := OutpostCatalog.sniper_count(def)
-		print("OUTPOST_SMOKE id=%s guards=%d/%d snipers=%d/%d" % [oid, guards.size(), expected, snipers, expected_snipers])
+		print("OUTPOST_SMOKE id=%s guards=%d/%d snipers=%d/%d heavies=%d officers=%d dogs=%d" % [
+			oid, guards.size(), expected, snipers, expected_snipers, heavies, officers, dogs
+		])
 		if guards.size() != expected or snipers != expected_snipers:
 			print("OUTPOST_SMOKE FAIL mismatch on ", oid)
+			quit(2)
+			return
+		if heavies < 1 or officers < 1 or dogs < 1:
+			print("OUTPOST_SMOKE FAIL missing role variety on ", oid)
 			quit(2)
 			return
 

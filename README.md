@@ -11,11 +11,13 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 ## What's inside
 
 ### 5 Far Cry 5–Inspired Outposts & Map Select
-- **Hope County Compound** (`compound_alpha`) — Militia supply depot with 2-storey HQ, watchtower, drive-in garage, 5 guards (1 sniper), 1 alarm.
-- **Seed Family Ranch** (`ranch_redbarn`) — Golden-hour ranch compound with a 2-storey red barn, twin grain silos, 2-storey white farmhouse, hay cover, 6 guards (1 sniper), 2 alarms.
-- **Baron Lumber Mill** (`lumber_mill`) — Pine forest sawmill with 2-storey saw hall, spinning saw deck, drying kiln, log stacks, twin towers, 7 guards (2 snipers), 2 alarms.
-- **Whitetail Bait & Dock** (`river_dock`) — Riverside bait shop, L-shaped wooden pier, patrol boat, 2-storey boathouse, 6 guards (1 sniper), 1 alarm.
-- **Jacob's Ridge Bunker** (`hilltop_bunker`) — Dusk hilltop fortress with a reinforced concrete bunker, walk-down underground bunker basement, radar dishes, helipad, 2-storey barracks, 8 guards (2 snipers), 2 alarms.
+- **Hope County Compound** (`compound_alpha`) — 12 hostiles (2 snipers, heavy sentry, officer, chat pair, dog + handler), 1 alarm. South approach stays lighter for stealth.
+- **Seed Family Ranch** (`ranch_redbarn`) — 14 hostiles (2 snipers, heavy, officer, interior barn patrol, dog + handler), 2 alarms.
+- **Baron Lumber Mill** (`lumber_mill`) — 15 hostiles (2 snipers, heavy, officer, interior saw-hall, dog + handler), 2 alarms.
+- **Whitetail Bait & Dock** (`river_dock`) — 14 hostiles (2 snipers, heavy on the pier, officer, boathouse interior, dog + handler), 1 alarm.
+- **Jacob's Ridge Bunker** (`hilltop_bunker`) — 17 hostiles (3 snipers, twin heavies, officer, basement + barracks interiors, dog + handler), 2 alarms.
+- Roles: **heavies** (tougher body HP/armor; headshots still one-shot), **officers** (faster alarms + extra reinforcements), **dogs** (fast bite, keen hearing) with **handlers**, idle **chat pairs**, rooftop/tower **snipers**, and multi-storey **interior** patrols.
+- AI LOD / tick throttling for far guards keeps mobile browser performance OK.
 - Liberation saves per outpost (`user://outpost_save.json`) and resets on **New Run**.
 
 ### Multi-Storey Buildings & Runtime NavMesh

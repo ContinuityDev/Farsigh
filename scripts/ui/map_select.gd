@@ -80,9 +80,12 @@ func _refresh() -> void:
 		detail_status.text = "STATUS: HOSTILE GARRISON"
 		detail_status.modulate = Color(0.96, 0.65, 0.35)
 	detail_desc.text = String(def.get("description", ""))
-	detail_intel.text = "Garrison: %d Guards (%d Snipers)   |   Alarm Panels: %d" % [
+	detail_intel.text = "Garrison: %d Hostiles (%d Snipers, %d Heavies, %d Officers, %d Dogs)  |  Alarms: %d" % [
 		OutpostCatalog.guard_count(def),
 		OutpostCatalog.sniper_count(def),
+		OutpostCatalog.role_count(def, "heavy"),
+		OutpostCatalog.role_count(def, "officer"),
+		OutpostCatalog.role_count(def, "dog"),
 		OutpostCatalog.alarm_count(def),
 	]
 	var approaches_raw = def.get("approaches", "")
