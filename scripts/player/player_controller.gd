@@ -38,6 +38,15 @@ var is_down: bool = false
 var _capsule: CapsuleShape3D
 var _crouch_toggled: bool = false
 var _capture_fire_suppress: float = 0.0
+var _lean_amount: float = 0.0  # -1 left .. +1 right
+var _is_vaulting: bool = false
+var _vault_t: float = 0.0
+var _vault_dur: float = 0.34
+var _vault_start: Vector3 = Vector3.ZERO
+var _vault_apex: Vector3 = Vector3.ZERO
+var _vault_end: Vector3 = Vector3.ZERO
+var _carry_bob_t: float = 0.0
+var _head_target_y: float = 1.65
 
 
 func _ready() -> void:
@@ -100,18 +109,28 @@ func _physics_process(delta: float) -> void:
 	if pad_look.length() > 0.1:
 		_apply_look(-pad_look.x * GAMEPAD_LOOK_SENS * delta, -pad_look.y * GAMEPAD_LOOK_SENS * delta)
 
+	if _is_vaulting:
+		_step_vault(delta)
+		return
+
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 
 	_handle_crouch()
-	is_aiming = TouchInput.is_action_pressed("aim")
-	camera.fov = lerpf(camera.fov, 55.0 if is_aiming else 70.0, 10.0 * delta)
+	_update_lean(delta)
+	is_aiming = TouchInput.is_action_pressed("aim") and carried_body == null
+	var target_fov := 70.0
+	if is_aiming:
+		target_fov = weapons.get_aim_fov() if is_instance_valid(weapons) and weapons.has_method("get_aim_fov") else 52.0
+	camera.fov = lerpf(camera.fov, target_fov, 10.0 * delta)
 
 	var input_dir := TouchInput.get_move_axis()
 	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 	var speed := WALK_SPEED
-	var sprinting := TouchInput.is_action_pressed("sprint") and not is_crouching and input_dir.length() > 0.1
-	if is_crouching:
+	var sprinting := TouchInput.is_action_pressed("sprint") and not is_crouching and carried_body == null and input_dir.length() > 0.1
+	if carried_body != null:
+		speed = CROUCH_SPEED * 0.72 if is_crouching else WALK_SPEED * 0.68
+	elif is_crouching:
 		speed = CROUCH_SPEED
 	elif sprinting:
 		speed = SPRINT_SPEED
@@ -123,13 +142,19 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0.0, speed)
 		velocity.z = move_toward(velocity.z, 0.0, speed)
 
-	if TouchInput.is_action_just_pressed("jump") and is_on_floor() and not is_crouching:
-		velocity.y = JUMP_VELOCITY
+	if TouchInput.is_action_just_pressed("jump"):
+		if carried_body == null and _try_start_vault():
+			return
+		if is_on_floor() and not is_crouching:
+			velocity.y = JUMP_VELOCITY
 
 	move_and_slide()
+	var horiz_speed := Vector2(velocity.x, velocity.z).length()
 	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
-		var horiz_speed := Vector2(velocity.x, velocity.z).length()
 		weapons.viewmodel_rig.set_move_factor(horiz_speed / WALK_SPEED if is_on_floor() else 0.0)
+		weapons.viewmodel_rig.set_aiming(is_aiming)
+		weapons.viewmodel_rig.set_carrying_body(carried_body != null, carried_body != null and is_crouching)
+	_update_carry_animation(delta, horiz_speed)
 	_update_footsteps(delta, direction.length() > 0.1 and is_on_floor(), sprinting)
 	_handle_combat_input()
 	_handle_interact_input()
@@ -139,6 +164,111 @@ func _apply_look(yaw: float, pitch: float) -> void:
 	rotate_y(yaw)
 	head.rotate_x(pitch)
 	head.rotation.x = clampf(head.rotation.x, deg_to_rad(-85.0), deg_to_rad(85.0))
+	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
+		weapons.viewmodel_rig.add_look_sway(Vector2(yaw * 18.0, pitch * 18.0))
+
+
+func _update_lean(delta: float) -> void:
+	var target_lean := 0.0
+	if TouchInput.is_action_pressed("lean_left"):
+		target_lean -= 1.0
+	if TouchInput.is_action_pressed("lean_right"):
+		target_lean += 1.0
+	# Prevent leaning through walls via short lateral raycast
+	if absf(target_lean) > 0.05 and is_inside_tree():
+		var space := get_world_3d().direct_space_state
+		var origin := global_position + Vector3.UP * _head_target_y
+		var side_dir := transform.basis.x * signf(target_lean)
+		var q := PhysicsRayQueryParameters3D.create(origin, origin + side_dir * 0.56)
+		q.collision_mask = 1
+		q.exclude = [get_rid()]
+		var hit := space.intersect_ray(q)
+		if not hit.is_empty():
+			var clearance := maxf(0.0, origin.distance_to(hit.position) - 0.16)
+			target_lean = signf(target_lean) * clampf(clearance / 0.42, 0.0, 1.0)
+	_lean_amount = lerpf(_lean_amount, target_lean, clampf(delta * 12.0, 0.0, 1.0))
+	if is_instance_valid(head):
+		head.position.x = _lean_amount * 0.42
+		head.position.y = lerpf(head.position.y, _head_target_y - absf(_lean_amount) * 0.06, clampf(delta * 14.0, 0.0, 1.0))
+	if is_instance_valid(camera):
+		camera.rotation.z = lerpf(camera.rotation.z, deg_to_rad(-9.5 * _lean_amount), clampf(delta * 12.0, 0.0, 1.0))
+
+
+func _try_start_vault() -> bool:
+	if not is_inside_tree():
+		return false
+	var space := get_world_3d().direct_space_state
+	var fwd := -transform.basis.z
+	fwd.y = 0.0
+	if fwd.length() < 0.01:
+		return false
+	fwd = fwd.normalized()
+	# 1. Check for a low-to-chest obstacle right ahead (y = 0.45..1.25)
+	var waist := global_position + Vector3.UP * 0.68
+	var q_front := PhysicsRayQueryParameters3D.create(waist, waist + fwd * 1.15)
+	q_front.collision_mask = 1
+	q_front.exclude = [get_rid()]
+	var hit_front := space.intersect_ray(q_front)
+	if hit_front.is_empty():
+		return false
+	# 2. Confirm headroom above the obstacle at y + 1.65 is clear
+	var high := global_position + Vector3.UP * 1.65
+	var q_high := PhysicsRayQueryParameters3D.create(high, high + fwd * 1.35)
+	q_high.collision_mask = 1
+	q_high.exclude = [get_rid()]
+	if not space.intersect_ray(q_high).is_empty():
+		return false
+	# 3. Probe down onto the top surface of the obstacle to find climb/vault height
+	var probe_top := global_position + fwd * 0.95 + Vector3.UP * 1.85
+	var q_down := PhysicsRayQueryParameters3D.create(probe_top, probe_top + Vector3.DOWN * 1.6)
+	q_down.collision_mask = 1
+	q_down.exclude = [get_rid()]
+	var hit_top := space.intersect_ray(q_down)
+	if hit_top.is_empty():
+		return false
+	var climb_h: float = hit_top.position.y - global_position.y
+	if climb_h < 0.35 or climb_h > 1.52:
+		return false
+	_is_vaulting = true
+	_vault_t = 0.0
+	_vault_start = global_position
+	_vault_end = Vector3(hit_top.position.x, hit_top.position.y + 0.08, hit_top.position.z) + fwd * 0.25
+	_vault_apex = (_vault_start + _vault_end) * 0.5 + Vector3.UP * (maxf(climb_h * 0.5, 0.45))
+	velocity = Vector3.ZERO
+	NoiseBus.emit_noise(global_position, 5.0, "vault")
+	return true
+
+
+func _step_vault(delta: float) -> void:
+	_vault_t += delta
+	var u := clampf(_vault_t / _vault_dur, 0.0, 1.0)
+	# Quadratic Bezier arc from start -> apex -> landing
+	var a := _vault_start.lerp(_vault_apex, u)
+	var b := _vault_apex.lerp(_vault_end, u)
+	global_position = a.lerp(b, u)
+	if is_instance_valid(camera):
+		camera.rotation.x = deg_to_rad(-8.0 * sin(u * PI))
+	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
+		weapons.viewmodel_rig.set_vault_progress(u)
+	if u >= 1.0:
+		_is_vaulting = false
+		if is_instance_valid(camera):
+			camera.rotation.x = 0.0
+		if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
+			weapons.viewmodel_rig.set_vault_progress(0.0)
+
+
+func _update_carry_animation(delta: float, horiz_speed: float) -> void:
+	if carried_body == null or not is_instance_valid(carry_point):
+		return
+	if horiz_speed > 0.15:
+		_carry_bob_t += delta * (6.2 if not is_crouching else 4.2)
+	var target_pos := Vector3(0.36, -0.52, -0.78) if is_crouching else Vector3(0.42, -0.18, -0.76)
+	target_pos.x += sin(_carry_bob_t) * 0.035
+	target_pos.y += absf(cos(_carry_bob_t)) * 0.03
+	carry_point.position = carry_point.position.lerp(target_pos, clampf(delta * 10.0, 0.0, 1.0))
+	var target_rot_x := deg_to_rad(-25.0) if is_crouching else deg_to_rad(-80.0)
+	carried_body.rotation.x = lerpf(carried_body.rotation.x, target_rot_x, clampf(delta * 10.0, 0.0, 1.0))
 
 
 func _handle_crouch() -> void:
@@ -156,8 +286,9 @@ func _handle_crouch() -> void:
 		_capsule.height = maxf(target_h, _capsule.radius * 2.0 + 0.05)
 	if is_instance_valid(collision_shape):
 		collision_shape.position.y = target_h * 0.5
+	_head_target_y = target_h - 0.15
 	if is_instance_valid(head):
-		head.position.y = target_h - 0.15
+		head.position.y = _head_target_y
 
 
 func _update_footsteps(delta: float, moving: bool, sprinting: bool) -> void:
@@ -194,6 +325,9 @@ func _handle_combat_input() -> void:
 		weapons.switch_slot(false)
 	if TouchInput.is_action_just_pressed("weapon_next"):
 		weapons.switch_slot(not weapons.active_is_primary)
+	if TouchInput.is_action_just_pressed("inspect_weapon"):
+		if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
+			weapons.viewmodel_rig.play_inspect()
 	if TouchInput.is_action_just_pressed("throw_item"):
 		_throw_rock()
 
@@ -247,6 +381,9 @@ func pick_up_body(body: Node3D) -> void:
 	if body.has_method("set_carried"):
 		body.set_carried(true)
 	carrying_changed.emit(true)
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("show_status"):
+		hud.show_status("Dragging body (crouched) — [E/X] Drop" if is_crouching else "Carrying body — [E/X] Drop", 2.2)
 
 
 func _drop_body() -> void:

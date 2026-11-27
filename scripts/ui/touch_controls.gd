@@ -32,6 +32,9 @@ func _ready() -> void:
 		["ReloadBtn", "reload"],
 		["WeaponBtn", "weapon_next"],
 		["MeleeBtn", "melee"],
+		["InspectBtn", "inspect_weapon"],
+		["LeanLeftBtn", "lean_left"],
+		["LeanRightBtn", "lean_right"],
 	]:
 		var alt := root.get_node_or_null(b[0]) as BaseButton
 		if alt:
@@ -102,7 +105,7 @@ func _in_control(ctrl: Control, screen_pos: Vector2) -> bool:
 
 
 func _over_action_button(screen_pos: Vector2) -> bool:
-	for name in ["FireBtn", "AimBtn", "CrouchBtn", "SprintBtn", "JumpBtn", "InteractBtn", "ThrowBtn", "ReloadBtn", "WeaponBtn", "MeleeBtn"]:
+	for name in ["FireBtn", "AimBtn", "CrouchBtn", "SprintBtn", "JumpBtn", "InteractBtn", "ThrowBtn", "ReloadBtn", "WeaponBtn", "MeleeBtn", "InspectBtn", "LeanLeftBtn", "LeanRightBtn"]:
 		var btn := root.get_node_or_null(name) as Control
 		if btn and btn.get_global_rect().has_point(screen_pos):
 			return true

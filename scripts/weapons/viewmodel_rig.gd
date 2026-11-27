@@ -29,6 +29,16 @@ var _reload_t: float = 0.0
 var _reload_dur: float = 1.4
 var _swap_t: float = 0.0
 var _swap_dur: float = 0.28
+var _inspect_t: float = 0.0
+var _inspect_dur: float = 1.65
+var _takedown_t: float = 0.0
+var _takedown_dur: float = 0.45
+var _takedown_behind: bool = true
+var _vault_p: float = 0.0
+var _carrying: bool = false
+var _dragging: bool = false
+var _sway: Vector2 = Vector2.ZERO
+var _aim_blend: float = 0.0
 
 
 func _ready() -> void:
@@ -343,6 +353,37 @@ func play_reload(duration: float = 1.4) -> void:
 
 func play_swap() -> void:
 	_swap_t = _swap_dur
+	_inspect_t = 0.0
+
+
+func play_inspect() -> void:
+	if _reload_t > 0.0 or _carrying:
+		return
+	_inspect_t = _inspect_dur
+
+
+func play_takedown(from_behind: bool) -> void:
+	_takedown_behind = from_behind
+	_takedown_t = _takedown_dur
+	_inspect_t = 0.0
+
+
+func set_vault_progress(p: float) -> void:
+	_vault_p = clampf(p, 0.0, 1.0)
+
+
+func set_carrying_body(carrying: bool, dragging: bool = false) -> void:
+	_carrying = carrying
+	_dragging = dragging
+
+
+func set_aiming(aiming: bool) -> void:
+	_aim_blend = 1.0 if aiming else 0.0
+
+
+func add_look_sway(delta_xy: Vector2) -> void:
+	_sway.x = clampf(_sway.x - delta_xy.x * 0.0028, -0.045, 0.045)
+	_sway.y = clampf(_sway.y + delta_xy.y * 0.0022, -0.035, 0.035)
 
 
 func get_slot(id: GameState.WeaponId) -> Node3D:
@@ -351,6 +392,7 @@ func get_slot(id: GameState.WeaponId) -> Node3D:
 
 func _process(delta: float) -> void:
 	_idle_time += delta
+	_sway = _sway.lerp(Vector2.ZERO, clampf(delta * 9.0, 0.0, 1.0))
 	var slot: Node3D = _slots.get(_active_id)
 	if not is_instance_valid(slot) or not slot.visible:
 		return
@@ -365,11 +407,18 @@ func _process(delta: float) -> void:
 
 	var base_p: Vector3 = _base_pos.get(_active_id, Vector3(0.22, -0.18, -0.4))
 	var base_r: Vector3 = _base_rot.get(_active_id, Vector3.ZERO)
-	var offset_p := Vector3.ZERO
-	var offset_r := Vector3.ZERO
+	var offset_p := Vector3(_sway.x, _sway.y, 0.0)
+	var offset_r := Vector3(_sway.y * 160.0, _sway.x * 220.0, -_sway.x * 180.0)
 
-	# Subtle breathing idle + walk bob
-	var bob_amp := 0.004 + _move_factor * 0.011
+	# ADS centering
+	if _aim_blend > 0.01 and not _carrying and _inspect_t <= 0.0:
+		offset_p.x -= base_p.x * 0.62 * _aim_blend
+		offset_p.y += 0.042 * _aim_blend
+		offset_p.z += 0.04 * _aim_blend
+
+	# Subtle breathing idle + walk bob (dampened when aiming)
+	var aim_damp := 1.0 - _aim_blend * 0.72
+	var bob_amp := (0.004 + _move_factor * 0.011) * aim_damp
 	var bob_freq := 2.2 + _move_factor * 6.5
 	offset_p.x += sin(_idle_time * bob_freq * 0.5) * bob_amp
 	offset_p.y += absf(cos(_idle_time * bob_freq * 0.5)) * bob_amp * 0.85
@@ -381,6 +430,51 @@ func _process(delta: float) -> void:
 		var ease_u := u * u
 		offset_p.y -= 0.24 * ease_u
 		offset_r.x -= 35.0 * ease_u
+
+	# Weapon inspect showcase animation (rotate to inspect receiver, attachments, and finish)
+	if _inspect_t > 0.0:
+		_inspect_t = maxf(0.0, _inspect_t - delta)
+		var p := 1.0 - (_inspect_t / _inspect_dur)
+		var env := sin(p * PI)
+		var twist := sin(p * TAU)
+		offset_p.x -= 0.11 * env
+		offset_p.y += 0.045 * env
+		offset_p.z += 0.06 * env
+		offset_r.y += 42.0 * env + 18.0 * twist
+		offset_r.z += 28.0 * env - 24.0 * twist
+		offset_r.x += 12.0 * env
+
+	# Close-quarters front/back takedown strike animation
+	if _takedown_t > 0.0:
+		_takedown_t = maxf(0.0, _takedown_t - delta)
+		var p := 1.0 - (_takedown_t / _takedown_dur)
+		var lunge := sin(p * PI)
+		if _takedown_behind:
+			# Stealth sweep across throat/neck
+			offset_p.z -= 0.20 * lunge
+			offset_p.x -= 0.16 * lunge
+			offset_p.y += 0.04 * lunge
+			offset_r.y += 65.0 * lunge
+			offset_r.z -= 40.0 * lunge
+		else:
+			# Frontal CQC jab & follow-through
+			offset_p.z -= 0.24 * lunge
+			offset_p.y += 0.08 * lunge
+			offset_r.x -= 48.0 * lunge
+			offset_r.z += 28.0 * lunge
+
+	# Vaulting / climbing low wall hands-brace dip
+	if _vault_p > 0.001:
+		var v_arc := sin(_vault_p * PI)
+		offset_p.y -= 0.22 * v_arc
+		offset_p.z -= 0.08 * v_arc
+		offset_r.x -= 38.0 * v_arc
+		offset_r.z -= 16.0 * v_arc
+
+	# Carrying / dragging body lowers weapon smoothly out of the way
+	if _carrying:
+		offset_p.y -= 0.28 if not _dragging else 0.32
+		offset_r.x -= 44.0
 
 	# Fire recoil / throw swing
 	if _fire_t > 0.0:
@@ -404,11 +498,14 @@ func _process(delta: float) -> void:
 				if is_instance_valid(_bow_string):
 					_bow_string.position.z = -0.035 * kick
 			GameState.WeaponId.KNIFE:
-				# Forward flick/throw arc
 				offset_p.z -= 0.14 * kick
 				offset_p.x -= 0.08 * kick
 				offset_r.x -= 48.0 * kick
 				offset_r.z += 22.0 * kick
+			_:
+				offset_p.z += 0.042 * kick
+				offset_p.y += 0.012 * kick
+				offset_r.x += 8.5 * kick
 	else:
 		if is_instance_valid(_pistol_slide):
 			_pistol_slide.position.z = 0.0
@@ -426,7 +523,6 @@ func _process(delta: float) -> void:
 		offset_r.x -= 14.0 * dip
 		var mag: Node3D = _magazines.get(_active_id)
 		if is_instance_valid(mag):
-			# Magazine drops out in first half, slaps back in second half
 			var mag_drop := sin(clampf((p - 0.15) / 0.7, 0.0, 1.0) * PI)
 			mag.position.y = (-0.112 if _active_id == GameState.WeaponId.PISTOL else -0.078) - 0.16 * mag_drop
 	else:
@@ -437,5 +533,9 @@ func _process(delta: float) -> void:
 		if is_instance_valid(rmag):
 			rmag.position.y = -0.078
 
-	slot.position = base_p + offset_p
-	slot.rotation_degrees = base_r + offset_r
+	# Smooth spring-damped transition into final pose
+	var target_p := base_p + offset_p
+	var target_r := base_r + offset_r
+	var smooth := clampf(delta * 20.0, 0.0, 1.0)
+	slot.position = slot.position.lerp(target_p, smooth)
+	slot.rotation_degrees = slot.rotation_degrees.lerp(target_r, smooth)

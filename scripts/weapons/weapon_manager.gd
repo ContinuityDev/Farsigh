@@ -256,16 +256,22 @@ func try_melee_takedown(player: Node3D) -> bool:
 	if guard == null:
 		return false
 	if guard.has_method("melee_takedown"):
-		guard.melee_takedown(player)
+		var behind: bool = bool(guard.melee_takedown(player))
 		if is_instance_valid(viewmodel_rig):
-			viewmodel_rig.play_fire(GameState.WeaponId.KNIFE)
-		NoiseBus.emit_noise(guard.global_position, 2.0, "melee_takedown")
+			viewmodel_rig.play_takedown(behind)
+		var hud := get_tree().get_first_node_in_group("hud")
+		if hud and hud.has_method("show_status"):
+			hud.show_status("Stealth Back Takedown!" if behind else "Front CQC Takedown!", 1.6)
+		NoiseBus.emit_noise(guard.global_position, 2.0 if behind else 6.0, "melee_takedown")
 		return true
 	if guard.get_parent() and guard.get_parent().has_method("melee_takedown"):
-		guard.get_parent().melee_takedown(player)
+		var behind2: bool = bool(guard.get_parent().melee_takedown(player))
 		if is_instance_valid(viewmodel_rig):
-			viewmodel_rig.play_fire(GameState.WeaponId.KNIFE)
-		NoiseBus.emit_noise(guard.global_position, 2.0, "melee_takedown")
+			viewmodel_rig.play_takedown(behind2)
+		var hud2 := get_tree().get_first_node_in_group("hud")
+		if hud2 and hud2.has_method("show_status"):
+			hud2.show_status("Stealth Back Takedown!" if behind2 else "Front CQC Takedown!", 1.6)
+		NoiseBus.emit_noise(guard.global_position, 2.0 if behind2 else 6.0, "melee_takedown")
 		return true
 	return false
 

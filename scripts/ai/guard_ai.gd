@@ -113,13 +113,14 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if is_instance_valid(visual):
 		var horiz := Vector2(velocity.x, velocity.z).length()
-		visual.set_locomotion(horiz > 0.25, state == State.ALERT or state == State.COMBAT)
+		visual.set_locomotion(horiz > 0.25, state == State.ALERT or state == State.COMBAT, state == State.SUSPICIOUS)
 	_update_label()
 
 
 func _set_state(s: State) -> void:
 	if state == s:
 		return
+	var prev := state
 	state = s
 	_state_timer = 0.0
 	_going_to_alarm = false
@@ -137,7 +138,10 @@ func _set_state(s: State) -> void:
 			color = Color(0.2, 0.2, 0.2)
 	if is_instance_valid(visual):
 		visual.set_placeholder_color(color)
-		visual.play_state(State.keys()[s])
+		if s == State.ALERT and prev != State.COMBAT:
+			visual.play_radio()
+		else:
+			visual.play_state(State.keys()[s])
 	state_changed.emit(State.keys()[s])
 
 
@@ -357,6 +361,9 @@ func _do_search(delta: float) -> void:
 		if is_instance_valid(alarm):
 			_move_toward(alarm.global_position, ALERT_SPEED)
 			if global_position.distance_to(alarm.global_position) < 1.8:
+				_look_at_pos(alarm.global_position)
+				if is_instance_valid(visual):
+					visual.play_alarm_press()
 				if alarm.has_method("trigger"):
 					alarm.trigger(self)
 				_alarm_used = true
@@ -395,6 +402,9 @@ func _do_combat(delta: float) -> void:
 		if is_instance_valid(alarm) and alarm.has_method("is_disabled") and not alarm.is_disabled():
 			_move_toward(alarm.global_position, COMBAT_SPEED)
 			if global_position.distance_to(alarm.global_position) < 1.8:
+				_look_at_pos(alarm.global_position)
+				if is_instance_valid(visual):
+					visual.play_alarm_press()
 				if alarm.has_method("trigger"):
 					alarm.trigger(self)
 				_alarm_used = true
@@ -523,11 +533,57 @@ func _damage_for_inferred_zone(base: float, zone_name: String) -> float:
 			return base
 
 
-func melee_takedown(_player: Node3D) -> void:
+func is_behind_guard(attacker: Node3D) -> bool:
+	if not is_instance_valid(attacker):
+		return true
+	var guard_fwd := -global_transform.basis.z
+	guard_fwd.y = 0.0
+	var to_guard := global_position - attacker.global_position
+	to_guard.y = 0.0
+	if guard_fwd.length() < 0.01 or to_guard.length() < 0.01:
+		return true
+	return guard_fwd.normalized().dot(to_guard.normalized()) > 0.0
+
+
+func melee_takedown(player: Node3D) -> bool:
+	if state == State.DEAD:
+		return false
+	var from_behind := is_behind_guard(player)
+	_die_takedown(from_behind)
+	return from_behind
+
+
+func _die_takedown(from_behind: bool) -> void:
 	if state == State.DEAD:
 		return
-	# Must be relatively unaware for clean takedown bonus — always lethal in prototype
-	_die(true)
+	state = State.DEAD
+	velocity = Vector3.ZERO
+	died.emit(self)
+	collision_layer = 0
+	collision_mask = 0
+	if is_instance_valid(hit_zones):
+		for hz in hit_zones.get_children():
+			if hz is Area3D:
+				(hz as Area3D).monitorable = false
+	if is_instance_valid(visual):
+		visual.set_placeholder_color(Color(0.2, 0.2, 0.2))
+		visual.play_takedown(from_behind)
+	state_changed.emit("DEAD")
+	var tree := get_tree()
+	if tree:
+		tree.create_timer(0.62).timeout.connect(_spawn_body_and_free)
+
+
+func _spawn_body_and_free() -> void:
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
+	var body_scene: PackedScene = preload("res://scenes/items/body.tscn")
+	var body := body_scene.instantiate() as Node3D
+	if body:
+		get_tree().current_scene.add_child(body)
+		body.global_position = global_position + Vector3.UP * 0.1
+		body.global_rotation.y = global_rotation.y
+	queue_free()
 
 
 func _die(silent: bool) -> void:

@@ -15,6 +15,12 @@ const ANIM_RUN := &"run"
 const ANIM_SHOOT := &"shoot"
 const ANIM_HIT := &"hit"
 const ANIM_DEATH := &"death"
+const ANIM_INVESTIGATE := &"investigate"
+const ANIM_LOOK_AROUND := &"look_around"
+const ANIM_RADIO := &"radio"
+const ANIM_ALARM_PRESS := &"alarm_press"
+const ANIM_TAKEDOWN_BACK := &"takedown_back"
+const ANIM_TAKEDOWN_FRONT := &"takedown_front"
 const LIB_NAME := &"guard"
 
 var _rig: Node3D
@@ -279,11 +285,85 @@ func _build_animations() -> void:
 		_add_rot_track(a, "Rig/Pelvis/RightLeg", [[0.0, Vector3.ZERO], [0.7, Vector3(10, 0, -12)]])
 		lib.add_animation(ANIM_DEATH, a)
 
+	# 7. INVESTIGATE (cautious crouched forward-leaning patrol stride, head scanning)
+	if not lib.has_animation(ANIM_INVESTIGATE):
+		var a := Animation.new()
+		a.length = 0.95
+		a.loop_mode = Animation.LOOP_LINEAR
+		_add_pos_track(a, "Rig/Pelvis", [[0.0, Vector3(0, 0.78, 0)], [0.24, Vector3(0, 0.82, 0)], [0.48, Vector3(0, 0.78, 0)], [0.72, Vector3(0, 0.82, 0)], [0.95, Vector3(0, 0.78, 0)]])
+		_add_rot_track(a, "Rig/Pelvis", [[0.0, Vector3.ZERO], [0.95, Vector3.ZERO]])
+		_add_rot_track(a, "Rig/Pelvis/Torso", [[0.0, Vector3(-16, -6, 0)], [0.48, Vector3(-16, 6, 0)], [0.95, Vector3(-16, -6, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/Head", [[0.0, Vector3(10, -22, 0)], [0.48, Vector3(10, 22, 0)], [0.95, Vector3(10, -22, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/LeftLeg", [[0.0, Vector3(20, 0, 0)], [0.48, Vector3(-20, 0, 0)], [0.95, Vector3(20, 0, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/RightLeg", [[0.0, Vector3(-20, 0, 0)], [0.48, Vector3(20, 0, 0)], [0.95, Vector3(-20, 0, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3(18, 0, 0)], [0.95, Vector3(18, 0, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3(18, 0, 0)], [0.95, Vector3(18, 0, 0)]])
+		lib.add_animation(ANIM_INVESTIGATE, a)
 
-func play(anim_name: StringName, custom_blend: float = 0.12) -> void:
+	# 8. LOOK AROUND (stationary alert scan sweeping head & rifle left-right)
+	if not lib.has_animation(ANIM_LOOK_AROUND):
+		var a := Animation.new()
+		a.length = 2.0
+		a.loop_mode = Animation.LOOP_LINEAR
+		_add_pos_track(a, "Rig/Pelvis", [[0.0, Vector3(0, 0.86, 0)], [1.0, Vector3(0, 0.88, 0)], [2.0, Vector3(0, 0.86, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso", [[0.0, Vector3(-6, -16, 0)], [1.0, Vector3(-6, 16, 0)], [2.0, Vector3(-6, -16, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/Head", [[0.0, Vector3(4, -38, 0)], [0.5, Vector3(-4, 0, 0)], [1.0, Vector3(4, 38, 0)], [1.5, Vector3(-2, 0, 0)], [2.0, Vector3(4, -38, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3(16, -8, 0)], [1.0, Vector3(16, 8, 0)], [2.0, Vector3(16, -8, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3(16, -8, 0)], [1.0, Vector3(16, 8, 0)], [2.0, Vector3(16, -8, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/LeftLeg", [[0.0, Vector3.ZERO], [2.0, Vector3.ZERO]])
+		_add_rot_track(a, "Rig/Pelvis/RightLeg", [[0.0, Vector3.ZERO], [2.0, Vector3.ZERO]])
+		lib.add_animation(ANIM_LOOK_AROUND, a)
+
+	# 9. RADIO (left hand raised to shoulder mic, head tilted, rifle lowered)
+	if not lib.has_animation(ANIM_RADIO):
+		var a := Animation.new()
+		a.length = 0.85
+		a.loop_mode = Animation.LOOP_NONE
+		_add_rot_track(a, "Rig/Pelvis/Torso", [[0.0, Vector3.ZERO], [0.2, Vector3(-4, -10, 0)], [0.65, Vector3(-4, -10, 0)], [0.85, Vector3.ZERO]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/Head", [[0.0, Vector3.ZERO], [0.2, Vector3(8, -14, -16)], [0.65, Vector3(10, -16, -16)], [0.85, Vector3.ZERO]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.2, Vector3(72, 28, -24)], [0.65, Vector3(74, 30, -24)], [0.85, Vector3.ZERO]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.2, Vector3(-16, 0, 0)], [0.65, Vector3(-16, 0, 0)], [0.85, Vector3.ZERO]])
+		lib.add_animation(ANIM_RADIO, a)
+
+	# 10. ALARM PRESS (reaches forward and punches alarm panel button)
+	if not lib.has_animation(ANIM_ALARM_PRESS):
+		var a := Animation.new()
+		a.length = 0.55
+		a.loop_mode = Animation.LOOP_NONE
+		_add_rot_track(a, "Rig/Pelvis/Torso", [[0.0, Vector3.ZERO], [0.2, Vector3(-14, 12, 0)], [0.38, Vector3(-18, 12, 0)], [0.55, Vector3.ZERO]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.2, Vector3(84, -10, 8)], [0.35, Vector3(96, -12, 4)], [0.55, Vector3.ZERO]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.25, Vector3(-12, 0, 0)], [0.55, Vector3.ZERO]])
+		lib.add_animation(ANIM_ALARM_PRESS, a)
+
+	# 11. TAKEDOWN BACK (stealth grab/slash from behind: head snaps back, clutches neck, crumples forward)
+	if not lib.has_animation(ANIM_TAKEDOWN_BACK):
+		var a := Animation.new()
+		a.length = 0.62
+		a.loop_mode = Animation.LOOP_NONE
+		_add_pos_track(a, "Rig/Pelvis", [[0.0, Vector3(0, 0.88, 0)], [0.22, Vector3(0, 0.82, 0.08)], [0.44, Vector3(0, 0.36, -0.10)], [0.62, Vector3(0, 0.16, -0.26)]])
+		_add_rot_track(a, "Rig/Pelvis", [[0.0, Vector3.ZERO], [0.22, Vector3(18, 0, 0)], [0.44, Vector3(-52, 8, -10)], [0.62, Vector3(-86, 10, -14)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/Head", [[0.0, Vector3.ZERO], [0.16, Vector3(44, 14, 10)], [0.44, Vector3(-12, 0, 0)], [0.62, Vector3(-20, 0, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.18, Vector3(68, 35, -18)], [0.62, Vector3(12, 0, 38)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.18, Vector3(68, -35, 18)], [0.62, Vector3(14, 0, -42)]])
+		lib.add_animation(ANIM_TAKEDOWN_BACK, a)
+
+	# 12. TAKEDOWN FRONT (frontal CQC strike/disarm: reels backward, arms flung wide, drops flat)
+	if not lib.has_animation(ANIM_TAKEDOWN_FRONT):
+		var a := Animation.new()
+		a.length = 0.62
+		a.loop_mode = Animation.LOOP_NONE
+		_add_pos_track(a, "Rig/Pelvis", [[0.0, Vector3(0, 0.88, 0)], [0.18, Vector3(0, 0.86, 0.20)], [0.42, Vector3(0, 0.42, 0.34)], [0.62, Vector3(0, 0.16, 0.46)]])
+		_add_rot_track(a, "Rig/Pelvis", [[0.0, Vector3.ZERO], [0.18, Vector3(28, -18, 8)], [0.42, Vector3(68, -10, 14)], [0.62, Vector3(88, -6, 16)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/Head", [[0.0, Vector3.ZERO], [0.15, Vector3(42, -26, -12)], [0.62, Vector3(10, 0, 0)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.18, Vector3(45, -24, 58)], [0.62, Vector3(-10, 0, 62)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.18, Vector3(52, 20, -64)], [0.62, Vector3(-12, 0, -60)]])
+		lib.add_animation(ANIM_TAKEDOWN_FRONT, a)
+
+
+func play(anim_name: StringName, custom_blend: float = 0.18) -> void:
 	if not is_instance_valid(anim_player):
 		return
-	if _is_dead and anim_name != ANIM_DEATH:
+	if _is_dead and anim_name != ANIM_DEATH and anim_name != ANIM_TAKEDOWN_BACK and anim_name != ANIM_TAKEDOWN_FRONT:
 		return
 	if not _has_anim(anim_name):
 		return
@@ -296,26 +376,55 @@ func play(anim_name: StringName, custom_blend: float = 0.12) -> void:
 
 func play_state(state_name: String) -> void:
 	match state_name:
-		"PATROL", "SUSPICIOUS":
-			play(ANIM_WALK)
-		"ALERT", "COMBAT":
-			play(ANIM_RUN)
+		"PATROL":
+			play(ANIM_WALK, 0.22)
+		"SUSPICIOUS":
+			play(ANIM_INVESTIGATE, 0.22)
+		"ALERT":
+			play(ANIM_RUN, 0.18)
+		"COMBAT":
+			play(ANIM_RUN, 0.14)
 		"DEAD":
 			_is_dead = true
-			play(ANIM_DEATH, 0.05)
+			play(ANIM_DEATH, 0.08)
 		_:
-			play(ANIM_IDLE)
+			play(ANIM_IDLE, 0.22)
 
 
-func set_locomotion(moving: bool, running: bool) -> void:
+func set_locomotion(moving: bool, running: bool, suspicious: bool = false) -> void:
 	if _is_dead or _oneshot_timer > 0.0:
 		return
 	if not moving:
-		play(ANIM_IDLE, 0.15)
+		if suspicious:
+			play(ANIM_LOOK_AROUND, 0.24)
+		else:
+			play(ANIM_IDLE, 0.22)
 	elif running:
-		play(ANIM_RUN, 0.12)
+		play(ANIM_RUN, 0.16)
+	elif suspicious:
+		play(ANIM_INVESTIGATE, 0.20)
 	else:
-		play(ANIM_WALK, 0.15)
+		play(ANIM_WALK, 0.20)
+
+
+func play_radio() -> void:
+	if _is_dead:
+		return
+	_oneshot_timer = 0.85
+	play(ANIM_RADIO, 0.12)
+
+
+func play_alarm_press() -> void:
+	if _is_dead:
+		return
+	_oneshot_timer = 0.55
+	play(ANIM_ALARM_PRESS, 0.08)
+
+
+func play_takedown(from_behind: bool) -> void:
+	_is_dead = true
+	_oneshot_timer = 0.65
+	play(ANIM_TAKEDOWN_BACK if from_behind else ANIM_TAKEDOWN_FRONT, 0.05)
 
 
 func play_shoot() -> void:
