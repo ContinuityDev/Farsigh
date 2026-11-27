@@ -17,6 +17,11 @@ func _ready() -> void:
 	# Touch-friendly minimum sizes
 	for b in [continue_btn, new_run_btn, quit_btn]:
 		b.custom_minimum_size = Vector2(280, 56)
+	# Web builds can't quit the browser tab meaningfully
+	if OS.has_feature("web"):
+		quit_btn.visible = false
+		if subtitle:
+			subtitle.text = "Stealth compound assault — playable in your browser"
 
 
 func _refresh_status() -> void:

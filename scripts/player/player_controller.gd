@@ -39,17 +39,33 @@ var _crouch_toggled: bool = false
 
 
 func _ready() -> void:
-	if not TouchInput.is_touch_ui_desired():
+	# Browsers require a user gesture before pointer lock — don't auto-capture on web.
+	if TouchInput.is_touch_ui_desired() or OS.has_feature("web"):
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_capsule = collision_shape.shape as CapsuleShape3D
 	add_to_group("player")
 	weapons.camera_path = weapons.get_path_to(camera)
 	process_mode = Node.PROCESS_MODE_PAUSABLE
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("set_click_to_capture_hint"):
+		hud.set_click_to_capture_hint(TouchInput.is_web_desktop())
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if GameState.is_paused:
 		return
+	# Desktop browser: click/tap canvas to capture mouse for look
+	if OS.has_feature("web") and not TouchInput.is_touch_ui_desired():
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+				var hud := get_tree().get_first_node_in_group("hud")
+				if hud and hud.has_method("set_click_to_capture_hint"):
+					hud.set_click_to_capture_hint(false)
+				get_viewport().set_input_as_handled()
+				return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_apply_look(-event.relative.x * MOUSE_SENS, -event.relative.y * MOUSE_SENS)
 	if event.is_action_pressed("pause_menu"):
@@ -256,8 +272,12 @@ func _on_player_down() -> void:
 func _toggle_pause() -> void:
 	GameState.is_paused = not GameState.is_paused
 	get_tree().paused = GameState.is_paused
-	if GameState.is_paused or TouchInput.is_touch_ui_desired():
+	if GameState.is_paused or TouchInput.is_touch_ui_desired() or OS.has_feature("web"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		if not GameState.is_paused and TouchInput.is_web_desktop():
+			var hud2 := get_tree().get_first_node_in_group("hud")
+			if hud2 and hud2.has_method("set_click_to_capture_hint"):
+				hud2.set_click_to_capture_hint(true)
 	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	var hud := get_tree().get_first_node_in_group("hud")

@@ -1,0 +1,92 @@
+name: Deploy Web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.3-stable"
+  GODOT_VERSION_DIR: "4.3.stable"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Godot editor and templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-web-nothreads
+
+      - name: Download Godot 4.3 headless editor
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/godot" "$HOME/bin"
+          if [ ! -x "$HOME/godot/Godot_v${GODOT_VERSION}_linux.x86_64" ]; then
+            curl -fsSL -o /tmp/godot.zip \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+            unzip -o /tmp/godot.zip -d "$HOME/godot"
+          fi
+          ln -sfn "$HOME/godot/Godot_v${GODOT_VERSION}_linux.x86_64" "$HOME/bin/godot"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          "$HOME/bin/godot" --version
+
+      - name: Download export templates
+        run: |
+          set -euo pipefail
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION_DIR}"
+          mkdir -p "$TEMPLATE_DIR"
+          if [ ! -f "$TEMPLATE_DIR/web_nothreads_release.zip" ]; then
+            curl -fsSL -o /tmp/templates.tpz \
+              "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+            mkdir -p /tmp/godot-templates
+            unzip -o /tmp/templates.tpz -d /tmp/godot-templates
+            cp -f /tmp/godot-templates/templates/* "$TEMPLATE_DIR/"
+          fi
+          test -f "$TEMPLATE_DIR/web_nothreads_release.zip"
+          cat "$TEMPLATE_DIR/version.txt"
+
+      - name: Export Web (no threads)
+        run: |
+          set -euo pipefail
+          mkdir -p build/web
+          # Import project once so remaps/uids exist, then export release Web build.
+          godot --headless --path . --import || true
+          godot --headless --path . --export-release "Web" build/web/index.html
+          # GitHub Pages treats underscore paths specially without this.
+          touch build/web/.nojekyll
+          test -f build/web/index.html
+          test -f build/web/index.wasm
+          test -f build/web/index.pck
+          ls -lh build/web
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

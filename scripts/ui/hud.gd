@@ -15,6 +15,7 @@ extends CanvasLayer
 
 var _status_timer: float = 0.0
 var _detection_display: float = 0.0
+var _capture_hint: Label
 
 
 func _ready() -> void:
@@ -24,13 +25,39 @@ func _ready() -> void:
 	liberated_banner.visible = false
 	status_label.text = ""
 	detection_bar.value = 0
+	_ensure_capture_hint()
 	if touch_controls:
 		touch_controls.visible = TouchInput.is_touch_ui_desired()
+	set_click_to_capture_hint(TouchInput.is_web_desktop())
 	var player := get_tree().get_first_node_in_group("player")
 	if player:
 		_bind_player(player)
 	else:
 		call_deferred("_late_bind")
+
+
+func _ensure_capture_hint() -> void:
+	_capture_hint = get_node_or_null("Root/CaptureHint") as Label
+	if _capture_hint:
+		return
+	_capture_hint = Label.new()
+	_capture_hint.name = "CaptureHint"
+	_capture_hint.text = "Click to capture mouse"
+	_capture_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_capture_hint.add_theme_font_size_override("font_size", 18)
+	_capture_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_capture_hint.offset_left = -180
+	_capture_hint.offset_right = 180
+	_capture_hint.offset_top = -80
+	_capture_hint.offset_bottom = -40
+	_capture_hint.visible = false
+	$Root.add_child(_capture_hint)
+
+
+func set_click_to_capture_hint(show: bool) -> void:
+	_ensure_capture_hint()
+	if _capture_hint:
+		_capture_hint.visible = show
 
 
 func _late_bind() -> void:

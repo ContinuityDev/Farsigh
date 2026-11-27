@@ -1,6 +1,12 @@
 # Outpost Liberation
 
-Godot **4.3** first-person stealth shooter prototype inspired by Far Cry 5 outpost liberation. Approach a greybox compound, clear guards (ideally undetected), and liberate the outpost. Runs on **PC** (Windows / Linux / macOS) and **mobile** (Android / iOS) with the **GL Compatibility** renderer and on-screen touch controls.
+Godot **4.3** first-person stealth shooter prototype inspired by Far Cry 5 outpost liberation. Approach a greybox compound, clear guards (ideally undetected), and liberate the outpost. Runs on **PC** (Windows / Linux / macOS), **mobile** (Android / iOS), and in the **browser** with the **GL Compatibility** renderer and on-screen touch controls.
+
+## Play in browser
+
+**[Play Outpost Liberation](https://continuitydev.github.io/Farsigh/)** — no download required (GitHub Pages Web export, no threads so it works without COOP/COEP headers).
+
+On desktop browsers: click the game once to capture the mouse. On phones: touch controls appear automatically.
 
 ## Requirements
 
@@ -32,9 +38,9 @@ Godot **4.3** first-person stealth shooter prototype inspired by Far Cry 5 outpo
 | Drop body | X | — |
 | Pause | Esc | Start |
 
-### Controls (Mobile)
+### Controls (Mobile / mobile browsers)
 
-Touch controls appear automatically on touchscreens:
+Touch controls appear automatically on native mobile and on web builds when a touchscreen is available:
 
 - **Left virtual stick** — move  
 - **Right-side swipe** — look  
@@ -82,7 +88,21 @@ Systems stay modular: AI listens to `NoiseBus`, persistence goes through `SaveMa
 
 ## Exporting
 
-Presets live in `export_presets.cfg`. Install matching **export templates** in the editor first.
+Presets live in `export_presets.cfg` (including **Web** with `variant/thread_support=false` for GitHub Pages). Install matching **export templates** in the editor first.
+
+### Web / GitHub Pages
+
+Every push to `main` runs [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml): it downloads Godot 4.3 + export templates, exports a **no-threads** Web build, and deploys with `actions/upload-pages-artifact` + `actions/deploy-pages`.
+
+Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+
+Local Web export:
+
+```bash
+mkdir -p build/web
+godot --headless --path . --export-release "Web" build/web/index.html
+# Serve build/web over HTTP (not file://)
+```
 
 ### Windows / Linux / macOS
 

@@ -1,6 +1,6 @@
 extends Node
 ## Bridges on-screen touch controls into InputMap actions and look deltas.
-## Visible only on touch devices (or when force_touch_ui is enabled for testing).
+## Visible on native mobile, and on web builds when a touchscreen is available.
 
 signal look_delta(relative: Vector2)
 
@@ -15,13 +15,21 @@ var _just_released: Dictionary = {}
 
 
 func is_touch_ui_desired() -> bool:
-	## Show virtual controls on phones/tablets only; hide on desktop PC.
+	## Show virtual controls on phones/tablets and touch-capable mobile browsers.
 	## Set force_touch_ui / TOUCH_UI=1 to preview on desktop.
 	if force_touch_ui or OS.get_environment("TOUCH_UI") == "1":
 		return true
 	if OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios"):
 		return true
+	# GitHub Pages / any web build: detect real touch hardware (phones & tablets
+	# in the browser). Desktop browsers without a touchscreen stay mouse-only.
+	if OS.has_feature("web") and DisplayServer.is_touchscreen_available():
+		return true
 	return false
+
+
+func is_web_desktop() -> bool:
+	return OS.has_feature("web") and not is_touch_ui_desired()
 
 
 func set_move_vector(v: Vector2) -> void:
