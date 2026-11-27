@@ -863,7 +863,8 @@ func _fire_at(player: Node3D) -> void:
 		return
 	NoiseBus.emit_noise(global_position, 55.0 if is_sniper else 40.0, "guard_sniper" if is_sniper else "guard_rifle")
 	if player.has_method("apply_damage"):
-		var dmg := 22.0 if is_sniper else (16.0 if is_heavy else 12.0)
+		# Tuned vs player max HP 160 + armour DR (was 12/16/22)
+		var dmg := 18.0 if is_sniper else (14.0 if is_heavy else 10.0)
 		player.apply_damage(dmg, global_position, self)
 	if is_instance_valid(visual):
 		visual.play_shoot()

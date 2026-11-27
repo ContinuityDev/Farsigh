@@ -33,9 +33,21 @@ var aim_blend: float = 0.0
 var _footstep_timer: float = 0.0
 var carried_body: Node3D = null
 var rock_count: int = 5
+var gadget_counts: Dictionary = {}  # gadget_id -> remaining uses this deploy
 var max_detection_seen: float = 0.0
-var hp: float = 100.0
+var max_hp: float = 160.0
+var hp: float = 160.0
+var armour: float = 0.0
+var max_armour: float = 0.0
+var _regen_delay: float = 0.0
+const REGEN_AFTER := 4.0
+const REGEN_RATE := 12.0  # HP/sec after delay
 var is_down: bool = false
+var _wheel_hold_t: float = 0.0
+var _gadget_hold_t: float = 0.0
+var _lethal_hold_t: float = 0.0
+var _swap_press_t: float = 0.0
+const HOLD_WHEEL_SEC := 0.22
 var _capsule: CapsuleShape3D
 var _crouch_toggled: bool = false
 var _aim_toggled: bool = false
@@ -73,9 +85,31 @@ func _ready() -> void:
 	if is_instance_valid(weapons) and is_instance_valid(camera):
 		weapons.camera_path = weapons.get_path_to(camera)
 	process_mode = Node.PROCESS_MODE_PAUSABLE
+	_init_vitals_and_gadgets()
 	var hud := get_tree().get_first_node_in_group("hud")
 	if is_instance_valid(hud) and hud.has_method("set_click_to_capture_hint"):
 		hud.set_click_to_capture_hint(TouchInput.is_web_desktop())
+
+
+func _init_vitals_and_gadgets() -> void:
+	max_hp = 160.0
+	if GameState.owns_ability("armor"):
+		max_hp += 40.0  # Field Plate Insert — this deploy only
+	hp = max_hp
+	max_armour = GameState.armour_max()
+	armour = max_armour
+	gadget_counts = {"rock": 5}
+	if GameState.owns_item("lure"):
+		gadget_counts["lure"] = 3
+	if GameState.owns_item("alarm_jammer"):
+		gadget_counts["alarm_jammer"] = 1
+	if GameState.owns_item("smoke"):
+		gadget_counts["smoke"] = 2
+	if GameState.owns_item("decoy"):
+		gadget_counts["decoy"] = 2
+	rock_count = int(gadget_counts.get("rock", 0))
+	if GameState.selected_gadget == "" or not gadget_counts.has(GameState.selected_gadget):
+		GameState.selected_gadget = "rock"
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -127,6 +161,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if GameState.is_paused or is_down:
 		return
+	_tick_regen(delta)
+	_tick_wheel_holds(delta)
 	if _capture_fire_suppress > 0.0:
 		_capture_fire_suppress = maxf(0.0, _capture_fire_suppress - delta)
 	# Keep desktop-web pointer lock hint synced if browser released lock (e.g. Esc)
@@ -477,23 +513,180 @@ func _handle_combat_input() -> void:
 		weapons.start_reload()
 	if TouchInput.is_action_just_pressed("melee"):
 		weapons.try_melee_takedown(self)
+	# Only two firearm slots
 	if TouchInput.is_action_just_pressed("weapon_1"):
 		weapons.select_slot(0)
 	if TouchInput.is_action_just_pressed("weapon_2"):
 		weapons.select_slot(1)
-	if TouchInput.is_action_just_pressed("weapon_3"):
-		weapons.select_slot(2)
-	if TouchInput.is_action_just_pressed("weapon_4"):
-		weapons.select_slot(3)
-	if TouchInput.is_action_just_pressed("weapon_5"):
-		weapons.select_slot(4)
-	if TouchInput.is_action_just_pressed("weapon_next"):
-		weapons.cycle_slot()
 	if TouchInput.is_action_just_pressed("inspect_weapon"):
 		if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
 			weapons.viewmodel_rig.play_inspect()
-	if TouchInput.is_action_just_pressed("throw_item"):
-		_throw_rock()
+	# Tap lethal / gadget (hold handled in _tick_wheel_holds)
+	if TouchInput.is_action_just_released("use_lethal") or TouchInput.is_action_just_released("throw_item"):
+		var hud_l := get_tree().get_first_node_in_group("hud")
+		if _lethal_hold_t >= HOLD_WHEEL_SEC:
+			if hud_l and hud_l.has_method("close_item_wheel"):
+				hud_l.close_item_wheel(true)
+		elif _lethal_hold_t > 0.0:
+			_use_lethal()
+		_lethal_hold_t = 0.0
+	if TouchInput.is_action_just_released("use_gadget"):
+		var hud_g := get_tree().get_first_node_in_group("hud")
+		if _gadget_hold_t >= HOLD_WHEEL_SEC:
+			if hud_g and hud_g.has_method("close_item_wheel"):
+				hud_g.close_item_wheel(true)
+		elif _gadget_hold_t > 0.0:
+			_use_gadget()
+		_gadget_hold_t = 0.0
+	if TouchInput.is_action_just_released("weapon_wheel"):
+		var hud := get_tree().get_first_node_in_group("hud")
+		if _wheel_hold_t >= HOLD_WHEEL_SEC and hud and hud.has_method("close_weapon_wheel"):
+			hud.close_weapon_wheel(true)
+		_wheel_hold_t = 0.0
+	# Short Swap cycles slots; long-press (touch) opens the wheel instead
+	if TouchInput.is_action_just_released("weapon_next"):
+		if _swap_press_t < 0.35:
+			weapons.cycle_slot()
+		_swap_press_t = 0.0
+
+
+func _tick_wheel_holds(delta: float) -> void:
+	var hud := get_tree().get_first_node_in_group("hud")
+	# Weapon wheel — hold TAB
+	if TouchInput.is_action_pressed("weapon_wheel"):
+		_wheel_hold_t += delta
+		if _wheel_hold_t >= HOLD_WHEEL_SEC and hud and hud.has_method("open_weapon_wheel"):
+			if not (hud.has_method("weapon_wheel_open") and hud.weapon_wheel_open()):
+				hud.open_weapon_wheel(weapons.active_slot if is_instance_valid(weapons) else 0)
+	# Track Swap hold duration (cycle vs long-press wheel on touch)
+	if TouchInput.is_action_pressed("weapon_next"):
+		_swap_press_t += delta
+	# Lethal mini-wheel — hold G
+	var lethal_down := TouchInput.is_action_pressed("use_lethal") or TouchInput.is_action_pressed("throw_item")
+	if lethal_down:
+		_lethal_hold_t += delta
+		if _lethal_hold_t >= HOLD_WHEEL_SEC and hud and hud.has_method("open_lethal_wheel"):
+			var iw = hud.get_node_or_null("ItemMiniWheel")
+			if not (is_instance_valid(iw) and bool(iw.get("open"))):
+				hud.open_lethal_wheel()
+	# Gadget mini-wheel — hold Q/T
+	if TouchInput.is_action_pressed("use_gadget"):
+		_gadget_hold_t += delta
+		if _gadget_hold_t >= HOLD_WHEEL_SEC and hud and hud.has_method("open_gadget_wheel"):
+			var iw2 = hud.get_node_or_null("ItemMiniWheel")
+			if not (is_instance_valid(iw2) and bool(iw2.get("open"))):
+				hud.open_gadget_wheel()
+
+
+func _use_lethal() -> void:
+	if is_instance_valid(weapons):
+		weapons.try_throw_lethal()
+
+
+func _use_gadget() -> void:
+	var gid := GameState.selected_gadget
+	if gid == "" or int(gadget_counts.get(gid, 0)) <= 0:
+		# Fall back to any owned gadget with count
+		for g in GameState.owned_gadget_ids():
+			if int(gadget_counts.get(g, 0)) > 0:
+				gid = String(g)
+				GameState.selected_gadget = gid
+				break
+	if int(gadget_counts.get(gid, 0)) <= 0:
+		return
+	gadget_counts[gid] = int(gadget_counts[gid]) - 1
+	if gid == "rock":
+		rock_count = int(gadget_counts["rock"])
+	match gid:
+		"rock":
+			_throw_gadget_projectile("rock", 3.0, 18.0)
+		"lure":
+			_throw_gadget_projectile("lure", 22.0, 16.0)
+		"decoy":
+			_throw_gadget_projectile("decoy", 28.0, 15.0)
+		"smoke":
+			_deploy_smoke()
+		"alarm_jammer":
+			_use_jammer()
+		_:
+			_throw_gadget_projectile("rock", 3.0, 18.0)
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("refresh_gadget_lethal_hud"):
+		hud.refresh_gadget_lethal_hud()
+
+
+func _throw_gadget_projectile(kind: String, loudness: float, speed: float) -> void:
+	var rock_scene: PackedScene = preload("res://scenes/items/rock.tscn")
+	var rock := rock_scene.instantiate()
+	get_tree().current_scene.add_child(rock)
+	rock.global_position = camera.global_position + (-camera.global_transform.basis.z) * 0.8
+	if rock.has_method("launch"):
+		rock.launch(-camera.global_transform.basis.z, speed, self)
+	NoiseBus.emit_noise(global_position, loudness, kind)
+
+
+func _deploy_smoke() -> void:
+	var pos := global_position + (-global_transform.basis.z) * 2.5 + Vector3.UP * 0.4
+	NoiseBus.emit_noise(pos, 4.0, "smoke")
+	var cloud := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 2.8
+	sphere.height = 5.0
+	cloud.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.7, 0.72, 0.68, 0.45)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	cloud.material_override = mat
+	get_tree().current_scene.add_child(cloud)
+	cloud.global_position = pos
+	get_tree().create_timer(8.0).timeout.connect(func():
+		if is_instance_valid(cloud):
+			cloud.queue_free()
+	)
+
+
+func _use_jammer() -> void:
+	var best: Node = null
+	var best_d := 9999.0
+	for a in get_tree().get_nodes_in_group("alarms"):
+		if not is_instance_valid(a) or not (a is Node3D):
+			continue
+		if a.has_method("is_disabled") and a.is_disabled():
+			continue
+		var d := global_position.distance_to((a as Node3D).global_position)
+		if d < best_d:
+			best_d = d
+			best = a
+	if best and best.has_method("disable"):
+		best.disable()
+		var hud := get_tree().get_first_node_in_group("hud")
+		if hud and hud.has_method("show_status"):
+			hud.show_status("Alarm jammed", 2.0)
+	elif best and best.has_method("set_disabled"):
+		best.set_disabled(true)
+
+
+func gadget_count(gid: String = "") -> int:
+	var id := gid if gid != "" else GameState.selected_gadget
+	return int(gadget_counts.get(id, 0))
+
+
+func total_gadget_count() -> int:
+	var n := 0
+	for k in gadget_counts.keys():
+		n += int(gadget_counts[k])
+	return n
+
+
+func _tick_regen(delta: float) -> void:
+	if hp >= max_hp:
+		_regen_delay = 0.0
+		return
+	if _regen_delay > 0.0:
+		_regen_delay = maxf(0.0, _regen_delay - delta)
+		return
+	hp = minf(max_hp, hp + REGEN_RATE * delta)
 
 
 func _handle_interact_input() -> void:
@@ -521,16 +714,8 @@ func _handle_interact_input() -> void:
 
 
 func _throw_rock() -> void:
-	if rock_count <= 0:
-		return
-	rock_count -= 1
-	var rock_scene: PackedScene = preload("res://scenes/items/rock.tscn")
-	var rock := rock_scene.instantiate()
-	get_tree().current_scene.add_child(rock)
-	rock.global_position = camera.global_position + (-camera.global_transform.basis.z) * 0.8
-	if rock.has_method("launch"):
-		rock.launch(-camera.global_transform.basis.z, 18.0, self)
-	NoiseBus.emit_noise(global_position, 3.0, "throw")
+	GameState.selected_gadget = "rock"
+	_use_gadget()
 
 
 func pick_up_body(body: Node3D) -> void:
@@ -621,10 +806,18 @@ func notify_detection(value: float) -> void:
 func apply_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO, _source: Node = null) -> void:
 	if is_down or amount <= 0.0:
 		return
-	hp = maxf(0.0, hp - amount)
+	var dmg := amount * GameState.armour_damage_mult()
+	if armour > 0.0:
+		var absorbed := minf(armour, dmg)
+		armour -= absorbed
+		dmg -= absorbed
+	hp = maxf(0.0, hp - dmg)
+	_regen_delay = REGEN_AFTER
 	var hud := get_tree().get_first_node_in_group("hud")
 	if is_instance_valid(hud) and hud.has_method("show_status"):
-		hud.show_status("Taking fire! HP %d" % int(hp), 1.2)
+		hud.show_status("Taking fire! HP %d  ARM %d" % [int(hp), int(armour)], 1.2)
+	if is_instance_valid(hud) and hud.has_method("refresh_vitals"):
+		hud.refresh_vitals()
 	if hp <= 0.0:
 		_on_player_down()
 

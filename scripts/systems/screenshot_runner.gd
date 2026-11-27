@@ -5,6 +5,10 @@ extends Node
 
 
 func _ready() -> void:
+	if OS.get_environment("WHEEL_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_wheels_only()
+		return
 	if OS.get_environment("AUTO_CAPTURE") != "1":
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -18,9 +22,15 @@ func _ready() -> void:
 	GameState.mark_liberated("compound_alpha")
 	GameState.mark_liberated("lumber_mill")
 	GameState.mark_liberated("river_dock")
-	GameState.add_currency(1200)
+	GameState.add_currency(2500)
 	GameState.try_purchase("streak_recon")
 	GameState.try_purchase("streak_mortar")
+	GameState.try_purchase("mod_pack")
+	GameState.try_purchase("skin_pack")
+	GameState.try_purchase("ally_sniper")
+	GameState.try_purchase("smoke")
+	GameState.try_purchase("lure")
+	GameState.try_purchase("armour_t1")
 	GameState.set_equipped_streak(0, "recon_drone")
 	GameState.set_equipped_streak(1, "mortar")
 	GameState.set_full_loadout(
@@ -86,7 +96,9 @@ func _ready() -> void:
 		player.look_at(Vector3(-1.0, 2.4, -10.0), Vector3.UP)
 		var wm = player.get_node_or_null("WeaponManager")
 		if is_instance_valid(wm):
-			wm.select_slot(2)  # Compound Bow w/ Explosive Warhead arrow
+			GameState.assign_carried_to_slot(0, GameState.WeaponId.BOW)
+			wm.refresh_slot_from_loadout(0)
+			wm.select_slot(0)
 			await get_tree().create_timer(0.35).timeout
 	await _snap("04_lumber_mill_bow")
 
@@ -102,7 +114,8 @@ func _ready() -> void:
 		player.look_at(Vector3(6.0, 0.6, -15.5), Vector3.UP)
 		var wm = player.get_node_or_null("WeaponManager")
 		if is_instance_valid(wm):
-			wm.select_slot(3)  # Molotov Cocktail lit bottle
+			wm.set_lethal(GameState.WeaponId.MOLOTOV)
+			wm.select_slot(0)
 			await get_tree().create_timer(0.35).timeout
 	await _snap("05_river_dock_molotov")
 
@@ -155,7 +168,7 @@ func _ready() -> void:
 		player.look_at(Vector3(0.0, 2.0, -10.0), Vector3.UP)
 		var wm = player.get_node_or_null("WeaponManager")
 		if is_instance_valid(wm):
-			wm.select_slot(4)  # Kukri Machete
+			wm.select_slot(0)
 	await get_tree().create_timer(0.45).timeout
 	await _snap("08_touch_controls")
 
@@ -333,6 +346,37 @@ func _ready() -> void:
 	if bino and bino.has_method("toggle") and bool(bino.get("active")):
 		bino.toggle()
 
+	# 12. Weapon wheel (TAB radial) + Gadgets/Lethals HUD
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(60.0)
+	await get_tree().create_timer(0.5).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	hud = get_tree().get_first_node_in_group("hud")
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 0.15, 34.0)
+		player.look_at(Vector3(0.0, 1.5, 0.0), Vector3.UP)
+	if is_instance_valid(hud):
+		if hud.has_method("refresh_gadget_lethal_hud"):
+			hud.refresh_gadget_lethal_hud()
+		if hud.has_method("refresh_vitals"):
+			hud.refresh_vitals()
+		await get_tree().create_timer(0.25).timeout
+		await _snap("18_gadgets_lethals_hud")
+		if hud.has_method("open_weapon_wheel"):
+			hud.open_weapon_wheel(0)
+			await get_tree().create_timer(0.4).timeout
+			await _snap("19_weapon_wheel")
+			if hud.has_method("close_weapon_wheel"):
+				hud.close_weapon_wheel(false)
+		if hud.has_method("open_lethal_wheel"):
+			hud.open_lethal_wheel()
+			await get_tree().create_timer(0.35).timeout
+			await _snap("26_lethal_mini_wheel")
+			if hud.has_method("close_item_wheel"):
+				hud.close_item_wheel(false)
+
 	print("AUTO_CAPTURE complete")
 	await get_tree().create_timer(0.2).timeout
 	get_tree().quit()
@@ -353,3 +397,60 @@ func _snap(name: String) -> void:
 	var path := "%s/%s.png" % [docs, name]
 	img.save_png(path)
 	print("Saved screenshot ", path, " scene=", str(get_tree().current_scene))
+
+
+func _snap_wheels_only() -> void:
+	await get_tree().process_frame
+	await get_tree().create_timer(0.4).timeout
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.add_currency(2000)
+	GameState.try_purchase("mod_pack")
+	GameState.try_purchase("skin_pack")
+	GameState.try_purchase("armour_t1")
+	GameState.try_purchase("smoke")
+	GameState.set_full_loadout(
+		GameState.WeaponId.RIFLE,
+		GameState.WeaponId.PISTOL,
+		GameState.WeaponId.BOW,
+		GameState.WeaponId.MOLOTOV,
+		GameState.WeaponId.MACHETE
+	)
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "muzzle", "suppressor")
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "optic", "holo")
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(60.0)
+	await get_tree().create_timer(0.6).timeout
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var hud := get_tree().get_first_node_in_group("hud")
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 0.15, 34.0)
+		player.look_at(Vector3(0.0, 1.5, 0.0), Vector3.UP)
+	if is_instance_valid(hud):
+		if hud.has_method("refresh_gadget_lethal_hud"):
+			hud.refresh_gadget_lethal_hud()
+		if hud.has_method("refresh_vitals"):
+			hud.refresh_vitals()
+	await get_tree().create_timer(0.25).timeout
+	await _snap("18_gadgets_lethals_hud")
+	if is_instance_valid(hud) and hud.has_method("open_weapon_wheel"):
+		hud.open_weapon_wheel(0)
+		await get_tree().create_timer(0.6, true, false, true).timeout
+		await get_tree().process_frame
+		await _snap("19_weapon_wheel")
+		if hud.has_method("close_weapon_wheel"):
+			hud.close_weapon_wheel(false)
+		Engine.time_scale = 1.0
+	if is_instance_valid(hud) and hud.has_method("open_lethal_wheel"):
+		hud.open_lethal_wheel()
+		await get_tree().create_timer(0.6, true, false, true).timeout
+		await get_tree().process_frame
+		await _snap("26_lethal_mini_wheel")
+		if hud.has_method("close_item_wheel"):
+			hud.close_item_wheel(false)
+		Engine.time_scale = 1.0
+	print("WHEEL_SNAP complete")
+	await get_tree().create_timer(0.15).timeout
+	get_tree().quit()

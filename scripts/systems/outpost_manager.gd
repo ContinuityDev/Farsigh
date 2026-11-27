@@ -263,6 +263,11 @@ func _ensure_support_systems() -> void:
 		bino.set_script(load("res://scripts/player/binoculars.gd"))
 		bino.name = "Binoculars"
 		add_child(bino)
+	if get_node_or_null("AllyManager") == null:
+		var am := Node.new()
+		am.set_script(load("res://scripts/systems/ally_manager.gd"))
+		am.name = "AllyManager"
+		add_child(am)
 
 
 func _freeze_player(frozen: bool) -> void:

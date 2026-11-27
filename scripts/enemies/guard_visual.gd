@@ -90,11 +90,14 @@ func _build_humanoid() -> void:
 	_pelvis.add_child(_torso)
 	# Jacket chest (world y ~ 0.94..1.48)
 	ProcMesh.add_part(_torso, ProcMesh.box_mesh(Vector3(0.42, 0.50, 0.25), jacket), Vector3(0, 0.27, 0))
-	# Plate carrier tactical vest + mag pouches
+	# Plate carrier tactical vest + mag pouches + shoulder pads
 	ProcMesh.add_part(_torso, ProcMesh.box_mesh(Vector3(0.45, 0.38, 0.29), vest, 0.78, 0.12), Vector3(0, 0.27, 0))
 	ProcMesh.add_part(_torso, ProcMesh.box_mesh(Vector3(0.10, 0.14, 0.06), vest), Vector3(-0.10, 0.18, -0.16))
 	ProcMesh.add_part(_torso, ProcMesh.box_mesh(Vector3(0.10, 0.14, 0.06), vest), Vector3(0.0, 0.18, -0.16))
 	ProcMesh.add_part(_torso, ProcMesh.box_mesh(Vector3(0.10, 0.14, 0.06), vest), Vector3(0.10, 0.18, -0.16))
+	ProcMesh.add_part(_torso, ProcMesh.box_mesh(Vector3(0.16, 0.08, 0.14), vest, 0.7, 0.15), Vector3(-0.28, 0.46, 0))
+	ProcMesh.add_part(_torso, ProcMesh.box_mesh(Vector3(0.16, 0.08, 0.14), vest, 0.7, 0.15), Vector3(0.28, 0.46, 0))
+	ProcMesh.add_part(_torso, ProcMesh.box_mesh(Vector3(0.38, 0.05, 0.08), accent, 0.6, 0.1), Vector3(0, 0.08, -0.14))  # belt
 	# Militia bandana/chest stripe accent (reflects AI alert state clearly)
 	var chest_badge := ProcMesh.box_mesh(Vector3(0.46, 0.07, 0.30), accent, 0.65, 0.05)
 	ProcMesh.add_part(_torso, chest_badge, Vector3(0, 0.45, 0), Vector3.ZERO, "ChestAccent")
@@ -114,10 +117,12 @@ func _build_humanoid() -> void:
 	var mask := ProcMesh.box_mesh(Vector3(0.22, 0.10, 0.23), accent, 0.85, 0.0)
 	ProcMesh.add_part(_head, mask, Vector3(0, 0.13, -0.005), Vector3.ZERO, "MaskAccent")
 	_accent_meshes.append(mask)
-	# Tactical helmet + brim + dark goggles
+	# Tactical helmet + brim + dark goggles + headset
 	ProcMesh.add_part(_head, ProcMesh.sphere_mesh(0.155, helmet, 0.68, 0.18), Vector3(0, 0.28, 0.005))
 	ProcMesh.add_part(_head, ProcMesh.box_mesh(Vector3(0.24, 0.04, 0.12), helmet, 0.68, 0.18), Vector3(0, 0.27, -0.10))
 	ProcMesh.add_part(_head, ProcMesh.box_mesh(Vector3(0.22, 0.06, 0.05), goggles, 0.25, 0.45), Vector3(0, 0.22, -0.115))
+	ProcMesh.add_part(_head, ProcMesh.box_mesh(Vector3(0.06, 0.05, 0.04), gun, 0.5, 0.3), Vector3(-0.14, 0.22, 0.02))
+	ProcMesh.add_part(_head, ProcMesh.cylinder_mesh(0.01, 0.12, gun, 0.4, 0.5, 5), Vector3(-0.14, 0.28, 0.08), Vector3(20, 0, 0))
 
 	# Left arm (support arm holding rifle handguard)
 	_left_arm = Node3D.new()
@@ -146,6 +151,9 @@ func _build_humanoid() -> void:
 	ProcMesh.add_part(rifle, ProcMesh.cylinder_mesh(0.014, 0.26, gun, 0.35, 0.7, 6), Vector3(0, 0.01, -0.40), Vector3(90, 0, 0))
 	ProcMesh.add_part(rifle, ProcMesh.box_mesh(Vector3(0.04, 0.14, 0.07), vest), Vector3(0, -0.09, -0.10), Vector3(12, 0, 0))
 	ProcMesh.add_part(rifle, ProcMesh.box_mesh(Vector3(0.05, 0.09, 0.20), boot), Vector3(0, -0.01, 0.24))
+	ProcMesh.add_part(rifle, ProcMesh.box_mesh(Vector3(0.05, 0.04, 0.16), vest, 0.5, 0.4), Vector3(0, -0.04, -0.22))  # handguard
+	ProcMesh.add_part(rifle, ProcMesh.box_mesh(Vector3(0.035, 0.07, 0.04), boot), Vector3(0, -0.08, -0.18))  # foregrip
+	ProcMesh.add_part(rifle, ProcMesh.box_mesh(Vector3(0.03, 0.03, 0.08), Color(0.08, 0.09, 0.1)), Vector3(0, 0.05, -0.05))  # rear sight
 	# Sniper optic + subtle scope glint (hidden unless sniper guard)
 	var sniper_kit := Node3D.new()
 	sniper_kit.name = "SniperKit"

@@ -1,8 +1,9 @@
 extends Node
 ## Global run state: selected outpost, per-outpost liberation persistence,
-## 5-slot loadout, and gunsmith weapon customization.
+## 2-slot loadout + carried pool, and gunsmith weapon customization.
 
 const OutpostCatalog = preload("res://scripts/levels/outpost_catalog.gd")
+const AttachmentCatalog = preload("res://scripts/systems/attachment_catalog.gd")
 
 signal outpost_liberated(outpost_id: String)
 signal outpost_status_changed(outpost_id: String, status: String)
@@ -80,8 +81,33 @@ var streak_charges: Dictionary = {}  # streak_id -> int charges owned
 var equipped_streaks: Array = ["", "", ""]  # up to 3 streak ids (must be owned)
 var unlocked_mod_pack: bool = false
 var unlocked_skin_pack: bool = false
+## Paid gunsmith attachments unlocked (shop ids like att_red_dot). Suppressor free.
+var unlocked_attachments: Array = []
+## Persistent armour upgrade tier 0–3 (distinct from Field Plate Insert ability).
+var armour_tier: int = 0
+## Ally hire charges (Guns for Hire) — consumable per run like supports.
+var ally_charges: Dictionary = {}  # ally_id -> int
+var hired_ally: String = ""  # preferred ally type for next deploy
+## Gadget / Lethal selection (separate from the 2 weapon slots).
+var selected_gadget: String = "rock"
+## selected_throwable doubles as the equipped lethal WeaponId
 var run_stats: RunStats = RunStats.new()
 var clearing_in_progress: bool = false
+
+## Firearm-class weapons that can sit in the 2-slot wheel pool.
+const CARRIED_WEAPON_IDS := [
+	WeaponId.PISTOL, WeaponId.RIFLE, WeaponId.BOW, WeaponId.SMG, WeaponId.SHOTGUN,
+	WeaponId.SNIPER, WeaponId.LMG, WeaponId.CROSSBOW, WeaponId.MACHINE_PISTOL,
+	WeaponId.SILENCED_SNIPER, WeaponId.FLAMETHROWER, WeaponId.GRENADE_LAUNCHER,
+	WeaponId.HUNTER_BOW, WeaponId.TRANQ_PISTOL,
+]
+## Lethal throwables (G key / Lethals button). Throwing knives included.
+const LETHAL_WEAPON_IDS := [
+	WeaponId.KNIFE, WeaponId.FRAG, WeaponId.MOLOTOV, WeaponId.THROWING_AXE,
+	WeaponId.C4, WeaponId.PROX_MINE,
+]
+## Non-lethal gadgets (Q/T).
+const GADGET_IDS := ["rock", "lure", "alarm_jammer", "smoke", "decoy"]
 
 ## World load gate — AI / detection stay frozen until the staged outpost load
 ## finishes and the post-spawn grace period elapses.
@@ -158,12 +184,14 @@ func _ensure_defaults() -> void:
 		equipped_streaks.append("")
 	if equipped_streaks.size() > 3:
 		equipped_streaks = equipped_streaks.slice(0, 3)
+	_migrate_attachment_unlocks()
 
 
 func default_mods_for(id: WeaponId) -> Dictionary:
+	## Defaults use only free attachments (suppressor free; optics/mags locked until shop).
 	return {
-		"muzzle": "suppressor" if id == WeaponId.PISTOL else "none",
-		"optic": "scope" if id in [WeaponId.SNIPER, WeaponId.SILENCED_SNIPER] else ("red_dot" if id == WeaponId.RIFLE else "iron"),
+		"muzzle": "suppressor" if id in [WeaponId.PISTOL, WeaponId.SILENCED_SNIPER] else "none",
+		"optic": "iron",
 		"mag": "standard",
 		"underbarrel": "none",
 		"arrow": "standard",
@@ -184,6 +212,8 @@ func get_weapon_mods(id: WeaponId) -> Dictionary:
 
 
 func set_weapon_mod(id: WeaponId, slot: String, value: String) -> void:
+	if not owns_attachment(slot, value):
+		return
 	var m := get_weapon_mods(id)
 	m[slot] = value
 	weapon_mods[str(int(id))] = m
@@ -207,6 +237,10 @@ func start_new_run() -> void:
 	equipped_streaks = ["", "", ""]
 	unlocked_mod_pack = false
 	unlocked_skin_pack = false
+	unlocked_attachments.clear()
+	armour_tier = 0
+	ally_charges.clear()
+	hired_ally = ""
 	outposts.clear()
 	_ensure_defaults()
 	SaveManager.save_game()
@@ -257,13 +291,182 @@ func add_currency(amount: int) -> void:
 	SaveManager.save_game()
 
 
+func owns_attachment(slot: String, value: String) -> bool:
+	if AttachmentCatalog.is_free(slot, value):
+		return true
+	if slot == "skin" and value not in ["default", "factory"]:
+		return unlocked_skin_pack
+	if unlocked_mod_pack:
+		return true
+	var sid := AttachmentCatalog.shop_id_for(slot, value)
+	return sid != "" and sid in unlocked_attachments
+
+
+func unlock_attachment_id(shop_id: String) -> void:
+	if shop_id == "" or shop_id in unlocked_attachments:
+		return
+	unlocked_attachments.append(shop_id)
+
+
+func _migrate_attachment_unlocks() -> void:
+	## Legacy mod_pack → all individual attachments. Otherwise strip unpaid equipped mods
+	## (suppressor + iron/none/standard stay free).
+	if unlocked_mod_pack:
+		for e in AttachmentCatalog.all_attachments():
+			unlock_attachment_id(String(e.get("id", "")))
+	_sanitize_weapon_mods()
+
+
+func _sanitize_weapon_mods() -> void:
+	for key in weapon_mods.keys():
+		var m: Dictionary = weapon_mods[key]
+		for slot in m.keys():
+			var val := String(m[slot])
+			if owns_attachment(String(slot), val):
+				continue
+			# Reset to free default for this slot
+			match String(slot):
+				"muzzle": m[slot] = "none"
+				"optic": m[slot] = "iron"
+				"mag": m[slot] = "standard"
+				"underbarrel": m[slot] = "none"
+				"arrow": m[slot] = "standard"
+				"skin": m[slot] = "default"
+				_: m[slot] = "none"
+		weapon_mods[key] = m
+
+
+func get_ally_charges(ally_id: String) -> int:
+	return int(ally_charges.get(ally_id, 0))
+
+
+func add_ally_charge(ally_id: String, amount: int = 1) -> void:
+	ally_charges[ally_id] = mini(2, get_ally_charges(ally_id) + amount)
+	if hired_ally == "":
+		hired_ally = ally_id
+	SaveManager.save_game()
+
+
+func consume_ally_charge(ally_id: String) -> bool:
+	var n := get_ally_charges(ally_id)
+	if n <= 0:
+		return false
+	ally_charges[ally_id] = n - 1
+	SaveManager.save_game()
+	return true
+
+
+## Prefer hired_ally; else first role with charges. Consumes one charge.
+func consume_hired_ally_for_deploy() -> String:
+	var order: Array = []
+	if hired_ally != "":
+		order.append(hired_ally)
+	for id in ["sniper", "stalker", "gunner", "beast"]:
+		if id not in order:
+			order.append(id)
+	for id in order:
+		if consume_ally_charge(String(id)):
+			return String(id)
+	return ""
+
+
+func is_carried_weapon_id(id: WeaponId) -> bool:
+	return id in CARRIED_WEAPON_IDS
+
+
+func is_lethal_weapon_id(id: WeaponId) -> bool:
+	return id in LETHAL_WEAPON_IDS
+
+
+## Up to 3 unique firearms from primary / secondary / special loadout picks.
+func get_carried_weapons() -> Array:
+	var out: Array = []
+	for wid in [selected_primary, selected_secondary, selected_special]:
+		if not is_carried_weapon_id(wid):
+			continue
+		var found := false
+		for existing in out:
+			if int(existing) == int(wid):
+				found = true
+				break
+		if not found:
+			out.append(wid)
+		if out.size() >= 3:
+			break
+	return out
+
+
+## Assign a carried weapon into slot 1 (0) or slot 2 (1). Swaps if already equipped.
+func assign_carried_to_slot(slot: int, wid: WeaponId) -> void:
+	if not is_carried_weapon_id(wid):
+		return
+	if slot <= 0:
+		if selected_secondary == wid:
+			selected_secondary = selected_primary
+		selected_primary = wid
+	else:
+		if selected_primary == wid:
+			selected_primary = selected_secondary
+		selected_secondary = wid
+	SaveManager.save_game()
+
+
+func owned_lethal_ids() -> Array:
+	var out: Array = []
+	out.append(WeaponId.KNIFE)
+	for wid in LETHAL_WEAPON_IDS:
+		if wid == WeaponId.KNIFE:
+			continue
+		if owns_weapon(wid) or wid == selected_throwable:
+			out.append(wid)
+	return out
+
+
+func owned_gadget_ids() -> Array:
+	var out: Array = ["rock"]
+	for gid in ["lure", "alarm_jammer", "smoke", "decoy"]:
+		if owns_item(gid):
+			out.append(gid)
+	return out
+
+
+func gadget_display_name(gid: String) -> String:
+	match gid:
+		"rock": return "Rock"
+		"lure": return "Lure"
+		"alarm_jammer": return "Jammer"
+		"smoke": return "Smoke"
+		"decoy": return "Decoy"
+		_: return gid.capitalize()
+
+
+func lethal_display_name(wid: WeaponId) -> String:
+	return WeaponData.from_id(wid).display_name
+
+
+func armour_max() -> float:
+	match armour_tier:
+		1: return 20.0
+		2: return 40.0
+		3: return 60.0
+		_: return 0.0
+
+
+func armour_damage_mult() -> float:
+	match armour_tier:
+		1: return 0.85
+		2: return 0.75
+		3: return 0.65
+		_: return 1.0
+
+
 func try_purchase(entry_id: String) -> String:
 	var e: Dictionary = ShopCatalog.entry(entry_id)
 	if e.is_empty():
 		return "Unknown item"
 	var price := int(e.get("price", 0))
 	var kind := String(e.get("kind", ""))
-	# Already owned checks (streaks are consumable — always rebuyable up to cap)
+	# Already owned checks (streaks/allies are consumable — always rebuyable up to cap)
 	match kind:
 		"weapon":
 			if owns_weapon(e.get("weapon") as WeaponId):
@@ -278,6 +481,19 @@ func try_purchase(entry_id: String) -> String:
 			var sid0 := String(e.get("streak", ""))
 			if get_streak_charges(sid0) >= StreakCatalog.max_carry(sid0):
 				return "Carry limit reached (%d)" % StreakCatalog.max_carry(sid0)
+		"ally":
+			var aid0 := String(e.get("ally", ""))
+			if get_ally_charges(aid0) >= 2:
+				return "Carry limit reached (2)"
+		"attachment":
+			if entry_id in unlocked_attachments or unlocked_mod_pack:
+				return "Already unlocked"
+		"armour":
+			var want := int(e.get("tier", 0))
+			if armour_tier >= want:
+				return "Already owned"
+			if want > armour_tier + 1:
+				return "Buy previous armour tier first"
 		"mod":
 			if unlocked_mod_pack:
 				return "Already owned"
@@ -300,8 +516,17 @@ func try_purchase(entry_id: String) -> String:
 			var sid := String(e.get("streak", ""))
 			if sid != "":
 				add_streak_charge(sid, 1)
+		"ally":
+			var aid := String(e.get("ally", ""))
+			if aid != "":
+				add_ally_charge(aid, 1)
+		"attachment":
+			unlock_attachment_id(entry_id)
+		"armour":
+			armour_tier = maxi(armour_tier, int(e.get("tier", 0)))
 		"mod":
 			unlocked_mod_pack = true
+			_migrate_attachment_unlocks()
 		"skin":
 			unlocked_skin_pack = true
 	SaveManager.save_game()
@@ -588,6 +813,10 @@ func serialize() -> Dictionary:
 		"equipped_streaks": equipped_streaks.duplicate(),
 		"unlocked_mod_pack": unlocked_mod_pack,
 		"unlocked_skin_pack": unlocked_skin_pack,
+		"unlocked_attachments": unlocked_attachments.duplicate(),
+		"armour_tier": armour_tier,
+		"ally_charges": ally_charges.duplicate(),
+		"hired_ally": hired_ally,
 	}
 
 
@@ -638,4 +867,13 @@ func deserialize(data: Dictionary) -> void:
 			equipped_streaks[i] = ""
 	unlocked_mod_pack = bool(data.get("unlocked_mod_pack", false))
 	unlocked_skin_pack = bool(data.get("unlocked_skin_pack", false))
+	var ua = data.get("unlocked_attachments", [])
+	if ua is Array:
+		unlocked_attachments = (ua as Array).duplicate()
+	armour_tier = clampi(int(data.get("armour_tier", 0)), 0, 3)
+	var ac = data.get("ally_charges", {})
+	if ac is Dictionary:
+		ally_charges = (ac as Dictionary).duplicate()
+	hired_ally = String(data.get("hired_ally", ""))
 	_ensure_defaults()
+	_migrate_attachment_unlocks()

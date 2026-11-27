@@ -6,6 +6,7 @@ extends Control
 const OutpostCatalog = preload("res://scripts/levels/outpost_catalog.gd")
 const WeaponDataScript = preload("res://scripts/weapons/weapon_data.gd")
 const ViewmodelRigScript = preload("res://scripts/weapons/viewmodel_rig.gd")
+const AttachmentCatalog = preload("res://scripts/systems/attachment_catalog.gd")
 
 const SLOTS := [
 	{"key": "primary", "label": "1. PRIMARY"},
@@ -390,18 +391,29 @@ func _rebuild_mods(wid: GameState.WeaponId, base_w: WeaponData, mods: Dictionary
 		flow.add_theme_constant_override("h_separation", 6)
 		flow.add_theme_constant_override("v_separation", 6)
 		for opt in grp["options"]:
+			var oid := String(opt["id"])
+			var owned := GameState.owns_attachment(gkey, oid)
+			var price := AttachmentCatalog.price_for(gkey, oid)
 			var b := Button.new()
 			b.toggle_mode = true
-			b.button_pressed = (String(opt["id"]) == cur_val)
+			b.button_pressed = (oid == cur_val)
 			b.custom_minimum_size = Vector2(0, 38)
 			b.add_theme_font_size_override("font_size", 13)
-			b.text = String(opt["label"])
-			b.pressed.connect(_on_mod_picked.bind(wid, gkey, String(opt["id"])))
+			if owned:
+				b.text = String(opt["label"])
+			else:
+				b.text = "%s  🔒 $%d" % [String(opt["label"]), price]
+				b.modulate = Color(0.55, 0.55, 0.58)
+				b.disabled = true
+				b.tooltip_text = "Buy in Shop to unlock"
+			b.pressed.connect(_on_mod_picked.bind(wid, gkey, oid))
 			flow.add_child(b)
 		mods_vbox.add_child(flow)
 
 
 func _on_mod_picked(wid: GameState.WeaponId, mod_slot: String, mod_val: String) -> void:
+	if not GameState.owns_attachment(mod_slot, mod_val):
+		return
 	GameState.set_weapon_mod(wid, mod_slot, mod_val)
 	SaveManager.save_loadout()
 	_refresh_all()

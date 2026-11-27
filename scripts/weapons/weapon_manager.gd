@@ -1,11 +1,11 @@
 extends Node
 class_name WeaponManager
-## Manages the 5-slot arsenal (Primary, Secondary, Special/Bow, Throwable, Melee),
-## Gunsmith mod stats, multi-pellet shotguns, recoil, frag/molotov ordnance,
-## melee swings, and retrievable arrows/knives.
+## Two firearm slots (1/2) drawn from a carried pool of up to 3 weapons via the
+## weapon wheel. Lethals and gadgets are separate (G / Q). Melee takedowns stay on F.
 
 signal ammo_changed(mag: int, reserve: int, weapon_name: String)
 signal weapon_switched(weapon_name: String)
+signal lethal_changed(name: String, count: int)
 
 const ARROW_SCENE := preload("res://scenes/items/arrow.tscn")
 const KNIFE_SCENE := preload("res://scenes/items/thrown_knife.tscn")
@@ -13,16 +13,20 @@ const ThrowableOrdnance = preload("res://scripts/items/throwable_ordnance.gd")
 
 @export var camera_path: NodePath
 
-# 5-slot inventory (0: Primary, 1: Secondary, 2: Special/Bow, 3: Throwable, 4: Melee)
+# 2-slot inventory (0: Slot 1, 1: Slot 2)
 var slots: Array[WeaponData] = []
-var mags: Array[int] = [0, 0, 0, 0, 0]
-var reserves: Array[int] = [0, 0, 0, 0, 0]
+var mags: Array[int] = [0, 0]
+var reserves: Array[int] = [0, 0]
 var active_slot: int = 0
 
 # Backward-compatible aliases for tests & HUD
 var primary: WeaponData
 var secondary: WeaponData
 var active_is_primary: bool = true
+
+## Separate lethal inventory (not a weapon slot).
+var lethal: WeaponData
+var lethal_count: int = 0
 
 var _cooldown: float = 0.0
 var _reloading: bool = false
@@ -52,24 +56,17 @@ func _refresh_viewmodel(animate_swap: bool = true) -> void:
 
 func _equip_from_loadout() -> void:
 	slots.clear()
+	mags = [0, 0]
+	reserves = [0, 0]
 	var ids: Array[GameState.WeaponId] = [
 		GameState.selected_primary,
 		GameState.selected_secondary,
-		GameState.selected_special,
-		GameState.selected_throwable,
-		GameState.selected_melee,
 	]
 	for i in range(ids.size()):
 		var wid := ids[i]
+		if not GameState.is_carried_weapon_id(wid):
+			wid = GameState.WeaponId.PISTOL if i == 1 else GameState.WeaponId.RIFLE
 		var w := WeaponData.from_id(wid, GameState.get_weapon_mods(wid))
-		# If Knife is placed in slot 4 (melee), treat it as melee swing instead of throwing
-		if i == 4 and wid == GameState.WeaponId.KNIFE:
-			w.display_name = "Combat Knife"
-			w.projectile_kind = "melee_swing"
-			w.damage = 75.0
-			w.max_range = 2.4
-			w.magazine_size = 1
-			w.reserve_ammo = 0
 		slots.append(w)
 		mags[i] = w.magazine_size
 		reserves[i] = w.reserve_ammo
@@ -77,7 +74,98 @@ func _equip_from_loadout() -> void:
 	secondary = slots[1]
 	active_slot = 0
 	active_is_primary = true
+	_equip_lethal_from_loadout()
 	_emit_ammo()
+
+
+func _equip_lethal_from_loadout() -> void:
+	var lid := GameState.selected_throwable
+	if not GameState.is_lethal_weapon_id(lid):
+		lid = GameState.WeaponId.KNIFE
+	lethal = WeaponData.from_id(lid, {})
+	# Throwing knives: silent, retrievable, headshot one-shots via HitZone
+	if lid == GameState.WeaponId.KNIFE:
+		lethal.display_name = "Throwing Knives"
+		lethal.projectile_kind = "knife"
+		lethal.is_silent = true
+		lethal.noise_loudness = 2.5
+		lethal.damage = 100.0
+		lethal.retrievable_projectile = true
+		lethal.magazine_size = 4
+		lethal.reserve_ammo = 4
+	lethal_count = lethal.magazine_size + lethal.reserve_ammo
+	lethal_changed.emit(lethal.display_name, lethal_count)
+
+
+func refresh_slot_from_loadout(slot_idx: int) -> void:
+	var idx := clampi(slot_idx, 0, 1)
+	var wid := GameState.selected_primary if idx == 0 else GameState.selected_secondary
+	if not GameState.is_carried_weapon_id(wid):
+		return
+	var w := WeaponData.from_id(wid, GameState.get_weapon_mods(wid))
+	while slots.size() <= idx:
+		slots.append(WeaponData.make_pistol())
+		mags.append(0)
+		reserves.append(0)
+	slots[idx] = w
+	mags[idx] = w.magazine_size
+	reserves[idx] = w.reserve_ammo
+	if idx == 0:
+		primary = w
+	else:
+		secondary = w
+	if active_slot == idx:
+		_refresh_viewmodel()
+		_emit_ammo()
+
+
+func set_lethal(wid: GameState.WeaponId) -> void:
+	if not GameState.is_lethal_weapon_id(wid):
+		return
+	GameState.selected_throwable = wid
+	var keep := lethal_count
+	_equip_lethal_from_loadout()
+	# Preserve remaining throws when cycling owned lethals mid-mission if possible
+	lethal_count = mini(keep, lethal.magazine_size + lethal.reserve_ammo)
+	if lethal_count <= 0:
+		lethal_count = lethal.magazine_size
+	lethal_changed.emit(lethal.display_name, lethal_count)
+
+
+func try_throw_lethal() -> bool:
+	if lethal == null or lethal_count <= 0 or _cooldown > 0.0:
+		return false
+	lethal_count -= 1
+	_cooldown = maxf(lethal.fire_rate, 0.35)
+	var cam := get_node_or_null(camera_path) as Camera3D
+	var origin: Vector3
+	var dir: Vector3
+	if cam:
+		origin = cam.global_position
+		dir = -cam.global_transform.basis.z
+	else:
+		origin = get_parent().global_position + Vector3.UP * 1.6
+		dir = -get_parent().global_transform.basis.z
+	NoiseBus.emit_noise(origin, lethal.noise_loudness, lethal.display_name)
+	if is_instance_valid(viewmodel_rig):
+		viewmodel_rig.play_fire(lethal.id)
+	match lethal.projectile_kind:
+		"knife":
+			_spawn_projectile(KNIFE_SCENE, origin, dir, lethal)
+		"frag", "molotov", "c4", "prox_mine":
+			ThrowableOrdnance.spawn_ordnance(get_tree().current_scene, origin + dir * 0.65, dir, lethal.projectile_kind, lethal.damage, lethal.explosion_radius, get_parent())
+		_:
+			# Throwing axe etc.
+			if lethal.projectile_kind == "knife" or lethal.id == GameState.WeaponId.THROWING_AXE:
+				_spawn_projectile(KNIFE_SCENE, origin, dir, lethal)
+			else:
+				ThrowableOrdnance.spawn_ordnance(get_tree().current_scene, origin + dir * 0.65, dir, "frag", lethal.damage, lethal.explosion_radius, get_parent())
+	lethal_changed.emit(lethal.display_name, lethal_count)
+	return true
+
+
+func has_lethal() -> bool:
+	return lethal != null and lethal_count > 0
 
 
 func get_active() -> WeaponData:
@@ -395,13 +483,14 @@ func select_slot(slot_idx: int) -> void:
 
 
 func cycle_slot() -> void:
-	if slots.is_empty():
+	## Swap between the two firearm slots only.
+	if slots.size() < 2:
 		return
-	select_slot((active_slot + 1) % slots.size())
+	select_slot(1 if active_slot == 0 else 0)
 
 
 func select_weapon_index(index: int) -> void:
-	select_slot(clampi(index - 1, 0, maxi(0, slots.size() - 1)))
+	select_slot(clampi(index - 1, 0, 1))
 
 
 func _apply_weapon_hit(collider: Object, damage: float, hit_pos: Vector3) -> void:
@@ -459,12 +548,12 @@ func try_melee_takedown(player: Node3D) -> bool:
 
 
 func add_retrievable_ammo(weapon_hint: String = "") -> void:
+	if weapon_hint == "knife" and lethal != null and lethal.projectile_kind == "knife":
+		lethal_count += 1
+		lethal_changed.emit(lethal.display_name, lethal_count)
+		return
 	for i in range(slots.size()):
-		if weapon_hint == "arrow" and slots[i].id in [GameState.WeaponId.BOW, GameState.WeaponId.CROSSBOW]:
-			reserves[i] += 1
-			_emit_ammo()
-			return
-		elif weapon_hint == "knife" and slots[i].id == GameState.WeaponId.KNIFE and slots[i].projectile_kind == "knife":
+		if weapon_hint == "arrow" and slots[i].id in [GameState.WeaponId.BOW, GameState.WeaponId.CROSSBOW, GameState.WeaponId.HUNTER_BOW]:
 			reserves[i] += 1
 			_emit_ammo()
 			return
@@ -475,7 +564,7 @@ func add_retrievable_ammo(weapon_hint: String = "") -> void:
 
 func _emit_ammo() -> void:
 	var w := get_active()
-	var slot_tag := "[%d] %s" % [active_slot + 1, w.display_name]
+	var slot_tag := "[%d/%d] %s" % [active_slot + 1, 2, w.display_name]
 	ammo_changed.emit(_mag(), _reserve(), slot_tag)
 
 

@@ -33,8 +33,11 @@ func _build_filters() -> void:
 		{"id": "weapon", "label": "Weapons"},
 		{"id": "item", "label": "Items"},
 		{"id": "ability", "label": "Abilities"},
+		{"id": "attachment", "label": "Attachments"},
+		{"id": "armour", "label": "Armour"},
+		{"id": "ally", "label": "Allies"},
 		{"id": "streak", "label": "Streaks"},
-		{"id": "mod", "label": "Mods"},
+		{"id": "mod", "label": "Mod Kits"},
 		{"id": "skin", "label": "Skins"},
 	]:
 		var b := Button.new()
@@ -109,6 +112,13 @@ func _is_owned(e: Dictionary) -> bool:
 			return GameState.unlocked_mod_pack
 		"skin":
 			return GameState.unlocked_skin_pack
+		"attachment":
+			return eid in GameState.unlocked_attachments or GameState.unlocked_mod_pack
+		"armour":
+			return GameState.armour_tier >= int(e.get("tier", 0))
+		"ally":
+			var aid := String(e.get("ally", ""))
+			return GameState.get_ally_charges(aid) >= 2
 	return false
 
 

@@ -222,38 +222,46 @@ func _build_compound_alpha() -> void:
 	_buildings()
 	_courtyard_cover()
 	_vehicles()
-	_watchtower_at(Vector3(-15.25, 0, -15.25))
+	_watchtower_at(Vector3(-18.0, 0, -18.0))
 	_approach_cover()
 	_trees_and_foliage()
 
 
 func _terrain_and_roads() -> void:
-	_box(Vector3(0, -0.5, 0), Vector3(130, 1.0, 130), Color(0.24, 0.31, 0.20), true)
-	_box(Vector3(0, 0.015, 0), Vector3(47, 0.03, 47), Color(0.37, 0.35, 0.30), false)
-	_box(Vector3(0, 0.025, 16), Vector3(6.0, 0.03, 38), Color(0.42, 0.36, 0.27), false)
-	_box(Vector3(-12, 0.025, 2), Vector3(30, 0.03, 4.4), Color(0.42, 0.36, 0.27), false)
-	_box(Vector3(-8, 0.38, 32), Vector3(14, 0.76, 6), Color(0.26, 0.33, 0.22))
-	_box(Vector3(9, 0.38, 32), Vector3(14, 0.76, 6), Color(0.26, 0.33, 0.22))
-	_box(Vector3(-29, 0.35, 0), Vector3(6, 0.7, 14), Color(0.26, 0.33, 0.22))
-	_box(Vector3(8, 0.3, -30), Vector3(12, 0.6, 5), Color(0.26, 0.33, 0.22))
+	# Larger compound footprint (~60×60 yard inside ~160 terrain)
+	_box(Vector3(0, -0.5, 0), Vector3(160, 1.0, 160), Color(0.24, 0.31, 0.20), true)
+	_box(Vector3(0, 0.015, 0), Vector3(58, 0.03, 58), Color(0.37, 0.35, 0.30), false)
+	_box(Vector3(0, 0.025, 20), Vector3(6.0, 0.03, 48), Color(0.42, 0.36, 0.27), false)
+	_box(Vector3(-14, 0.025, 2), Vector3(36, 0.03, 4.4), Color(0.42, 0.36, 0.27), false)
+	_box(Vector3(18, 0.025, 0), Vector3(4.4, 0.03, 36), Color(0.42, 0.36, 0.27), false)  # East approach lane
+	_box(Vector3(-8, 0.38, 38), Vector3(14, 0.76, 6), Color(0.26, 0.33, 0.22))
+	_box(Vector3(9, 0.38, 38), Vector3(14, 0.76, 6), Color(0.26, 0.33, 0.22))
+	_box(Vector3(-34, 0.35, 0), Vector3(6, 0.7, 16), Color(0.26, 0.33, 0.22))
+	_box(Vector3(8, 0.3, -36), Vector3(12, 0.6, 5), Color(0.26, 0.33, 0.22))
 
 
 func _perimeter() -> void:
 	var h := 3.0
 	var t := 0.45
-	var s := 24.0
+	var s := 30.0  # was 24 — larger walled yard
 	var wall_col := Color(0.39, 0.40, 0.37)
 	var post_col := Color(0.24, 0.25, 0.23)
 
-	_fence_segment(Vector3(-12, 0, s), Vector3(16, h, t), wall_col, post_col)
-	_fence_segment(Vector3(12, 0, s), Vector3(16, h, t), wall_col, post_col)
+	# South gate (main)
+	_fence_segment(Vector3(-14, 0, s), Vector3(18, h, t), wall_col, post_col)
+	_fence_segment(Vector3(14, 0, s), Vector3(18, h, t), wall_col, post_col)
 	_gate_arch(Vector3(0, 0, s), post_col, Color(0.48, 0.24, 0.16))
 
-	_fence_segment(Vector3(-10, 0, -s), Vector3(18, h, t), wall_col, post_col)
-	_fence_segment(Vector3(14, 0, -s), Vector3(12, h, t), wall_col, post_col)
-	_fence_segment(Vector3(-s, 0, -12), Vector3(t, h, 18), wall_col, post_col)
-	_fence_segment(Vector3(-s, 0, 14), Vector3(t, h, 16), wall_col, post_col)
-	_fence_segment(Vector3(s, 0, 0), Vector3(t, h, 48), wall_col, post_col)
+	# North service gap
+	_fence_segment(Vector3(-12, 0, -s), Vector3(20, h, t), wall_col, post_col)
+	_fence_segment(Vector3(16, 0, -s), Vector3(14, h, t), wall_col, post_col)
+	# West breach
+	_fence_segment(Vector3(-s, 0, -14), Vector3(t, h, 20), wall_col, post_col)
+	_fence_segment(Vector3(-s, 0, 16), Vector3(t, h, 18), wall_col, post_col)
+	# East drainage culvert entrance (gap mid-east wall)
+	_fence_segment(Vector3(s, 0, -16), Vector3(t, h, 18), wall_col, post_col)
+	_fence_segment(Vector3(s, 0, 16), Vector3(t, h, 18), wall_col, post_col)
+	_gate_arch(Vector3(s, 0, 0), post_col, Color(0.35, 0.38, 0.42))
 
 	for p in [
 		Vector3(-s, 1.75, -s), Vector3(s, 1.75, -s), Vector3(-s, 1.75, s), Vector3(s, 1.75, s)

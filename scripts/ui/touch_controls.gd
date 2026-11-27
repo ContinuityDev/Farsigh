@@ -29,12 +29,15 @@ const ALWAYS_BUTTONS := [
 const CONTEXT_BUTTONS := [
 	["MeleeBtn", "melee"],
 	["InteractBtn", "interact"],
-	["ThrowBtn", "throw_item"],
+	["ThrowBtn", "use_lethal"],
+	["GadgetBtn", "use_gadget"],
 	["ReloadBtn", "reload"],
 	["InspectBtn", "inspect_weapon"],
 	["BinoBtn", "binoculars"],
 	["AdjustZoomBtn", "scope_zoom"],
 ]
+
+const SWAP_LONG_PRESS := 0.35
 
 ## Packed layout for contextual buttons (right side, top → bottom, 2 columns).
 ## [offset_left, offset_top, offset_right, offset_bottom] relative to top-right.
@@ -67,6 +70,8 @@ var _look_dragged: bool = false
 var _action_btns: Array = []  # Array of [Control, String]
 var _context_btns: Array = []  # Array of [Control, String]
 var _layout_tick: float = 0.0
+var _swap_hold_t: float = 0.0
+var _swap_long_fired: bool = false
 
 
 func _ready() -> void:
@@ -132,6 +137,21 @@ func _process(delta: float) -> void:
 		_layout_tick = 0.0
 		if visible:
 			_update_contextual_buttons()
+	# Long-press Swap → weapon wheel
+	if TouchInput.is_action_pressed("weapon_next"):
+		_swap_hold_t += delta
+		if not _swap_long_fired and _swap_hold_t >= SWAP_LONG_PRESS:
+			_swap_long_fired = true
+			var hud := get_tree().get_first_node_in_group("hud")
+			if hud and hud.has_method("open_weapon_wheel"):
+				hud.open_weapon_wheel(0)
+	else:
+		if _swap_long_fired:
+			var hud2 := get_tree().get_first_node_in_group("hud")
+			if hud2 and hud2.has_method("close_weapon_wheel"):
+				hud2.close_weapon_wheel(true)
+		_swap_hold_t = 0.0
+		_swap_long_fired = false
 
 
 func _refresh_visibility() -> void:
@@ -175,9 +195,13 @@ func _update_contextual_buttons() -> void:
 						show["interact"] = true
 						break
 					cur = cur.get_parent()
-	# Rock throw — only with rocks in inventory
-	var rocks := int(player.get("rock_count")) if is_instance_valid(player) else 0
-	show["throw_item"] = rocks > 0
+	# Lethals — only when you own at least one with ammo
+	show["use_lethal"] = is_instance_valid(wm) and wm.has_method("has_lethal") and bool(wm.has_lethal())
+	# Gadgets — only when any gadget count remains
+	var gtot := 0
+	if is_instance_valid(player) and player.has_method("total_gadget_count"):
+		gtot = int(player.total_gadget_count())
+	show["use_gadget"] = gtot > 0
 	# Reload — mag not full AND reserve ammo available
 	show["reload"] = is_instance_valid(wm) and wm.has_method("needs_reload") and bool(wm.needs_reload())
 	# Inspect — whenever a weapon is equipped (not empty-handed)
@@ -188,6 +212,13 @@ func _update_contextual_buttons() -> void:
 	# Adjust Zoom — only while ADS with a variable magnified scope
 	# (binoculars use overlay ± buttons + pinch while raised).
 	show["scope_zoom"] = aiming and is_instance_valid(wm) and wm.has_method("has_scope_overlay") and bool(wm.has_scope_overlay())
+	# Update lethal/gadget button labels
+	var throw_btn := root.get_node_or_null("ThrowBtn") as Button
+	if throw_btn and is_instance_valid(wm) and wm.lethal != null:
+		throw_btn.text = "LETHAL"
+	var gadget_btn := root.get_node_or_null("GadgetBtn") as Button
+	if gadget_btn:
+		gadget_btn.text = "GADGET"
 
 	# Apply visibility + release holds on buttons that disappear mid-press
 	var visible_ctx: Array = []

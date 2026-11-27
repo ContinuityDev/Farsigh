@@ -57,7 +57,7 @@ func trigger(_by: Node = null) -> void:
 			hud.show_status("ALARM — reinforcements inbound!", 3.5)
 
 
-func interact(player: Node) -> void:
+func disable(_by: Node = null) -> void:
 	if disabled:
 		return
 	disabled = true
@@ -65,6 +65,10 @@ func interact(player: Node) -> void:
 	alarm_disabled.emit()
 	_update_visual()
 	NoiseBus.emit_noise(global_position, 2.0, "alarm_disable")
+
+
+func interact(player: Node) -> void:
+	disable(player)
 	var hud := get_tree().get_first_node_in_group("hud")
 	if hud and hud.has_method("show_status"):
 		hud.show_status("Alarm disabled", 2.0)

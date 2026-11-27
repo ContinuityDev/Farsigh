@@ -1,6 +1,9 @@
 extends CanvasLayer
 ## Crosshair, ammo, detection meter, status messages, pause overlay.
 
+const WeaponWheelScript = preload("res://scripts/ui/weapon_wheel.gd")
+const ItemMiniWheelScript = preload("res://scripts/ui/item_mini_wheel.gd")
+
 @onready var crosshair: Control = $Root/Crosshair
 @onready var ammo_label: Label = $Root/AmmoLabel
 @onready var weapon_label: Label = $Root/WeaponLabel
@@ -24,6 +27,11 @@ var _streak_buttons: Array = []
 var _currency_label: Label
 var _scope_zoom_label: Label
 var _hidden_label: Label
+var _weapon_wheel: Control
+var _item_wheel: Control
+var _gadget_lethal_label: Label
+var _armour_bar: ProgressBar
+var _ally_label: Label
 
 
 func _ready() -> void:
@@ -46,6 +54,10 @@ func _ready() -> void:
 	_ensure_streak_buttons()
 	_ensure_currency_label()
 	_ensure_hidden_indicator()
+	_ensure_weapon_wheels()
+	_ensure_gadget_lethal_hud()
+	_ensure_vitals_bars()
+	_ensure_ally_label()
 	if touch_controls:
 		touch_controls.visible = TouchInput.is_touch_ui_desired()
 	set_click_to_capture_hint(TouchInput.is_web_desktop())
@@ -211,10 +223,14 @@ func _process(delta: float) -> void:
 		detection_bar.modulate = Color(0.3, 0.9, 0.4).lerp(Color(0.95, 0.2, 0.15), _detection_display)
 	var player := get_tree().get_first_node_in_group("player")
 	if is_instance_valid(player) and is_instance_valid(rocks_label):
-		var rocks := int(player.get("rock_count"))
 		var hp_val := int(player.get("hp"))
+		var max_hp := int(player.get("max_hp"))
+		var arm := int(player.get("armour"))
 		var stance := "CROUCH" if bool(player.get("is_crouching")) else "STAND"
-		rocks_label.text = "HP: %d  |  %s (C)  |  Rocks: %d" % [hp_val, stance, rocks]
+		rocks_label.text = "HP %d/%d  ARM %d  |  %s" % [hp_val, max_hp if max_hp > 0 else 160, arm, stance]
+		refresh_vitals()
+		refresh_gadget_lethal_hud()
+		refresh_ally_hud()
 
 
 func _on_detection(value: float) -> void:
@@ -773,3 +789,194 @@ func _on_menu_pressed() -> void:
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+
+func _ensure_weapon_wheels() -> void:
+	if _weapon_wheel == null:
+		_weapon_wheel = WeaponWheelScript.new()
+		_weapon_wheel.name = "WeaponWheel"
+		add_child(_weapon_wheel)
+	if _item_wheel == null:
+		_item_wheel = ItemMiniWheelScript.new()
+		_item_wheel.name = "ItemMiniWheel"
+		_item_wheel.picked.connect(_on_item_wheel_picked)
+		add_child(_item_wheel)
+
+
+func _ensure_gadget_lethal_hud() -> void:
+	_gadget_lethal_label = get_node_or_null("Root/GadgetLethalLabel") as Label
+	if _gadget_lethal_label:
+		return
+	_gadget_lethal_label = Label.new()
+	_gadget_lethal_label.name = "GadgetLethalLabel"
+	_gadget_lethal_label.add_theme_font_size_override("font_size", 15)
+	_gadget_lethal_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_gadget_lethal_label.offset_left = 16
+	_gadget_lethal_label.offset_top = -72
+	_gadget_lethal_label.offset_right = 420
+	_gadget_lethal_label.offset_bottom = -16
+	_gadget_lethal_label.modulate = Color(0.88, 0.86, 0.72)
+	$Root.add_child(_gadget_lethal_label)
+
+
+func _ensure_vitals_bars() -> void:
+	_armour_bar = get_node_or_null("Root/ArmourBar") as ProgressBar
+	if _armour_bar:
+		return
+	_armour_bar = ProgressBar.new()
+	_armour_bar.name = "ArmourBar"
+	_armour_bar.max_value = 100
+	_armour_bar.show_percentage = false
+	_armour_bar.custom_minimum_size = Vector2(160, 10)
+	_armour_bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_armour_bar.offset_left = 16
+	_armour_bar.offset_top = 86
+	_armour_bar.offset_right = 176
+	_armour_bar.offset_bottom = 96
+	_armour_bar.modulate = Color(0.45, 0.7, 1.0)
+	$Root.add_child(_armour_bar)
+
+
+func _ensure_ally_label() -> void:
+	_ally_label = get_node_or_null("Root/AllyLabel") as Label
+	if _ally_label:
+		return
+	_ally_label = Label.new()
+	_ally_label.name = "AllyLabel"
+	_ally_label.add_theme_font_size_override("font_size", 14)
+	_ally_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_ally_label.offset_left = 16
+	_ally_label.offset_top = 104
+	_ally_label.offset_right = 360
+	_ally_label.offset_bottom = 128
+	_ally_label.modulate = Color(0.55, 0.85, 1.0)
+	_ally_label.visible = false
+	$Root.add_child(_ally_label)
+
+
+func open_weapon_wheel(slot: int = 0) -> void:
+	_ensure_weapon_wheels()
+	if is_instance_valid(_item_wheel) and bool(_item_wheel.get("open")):
+		_item_wheel.close_wheel(false)
+	_weapon_wheel.open_wheel(slot, TouchInput.is_touch_ui_desired())
+
+
+func close_weapon_wheel(apply: bool = true) -> void:
+	if is_instance_valid(_weapon_wheel):
+		_weapon_wheel.close_wheel(apply)
+
+
+func weapon_wheel_open() -> bool:
+	return is_instance_valid(_weapon_wheel) and bool(_weapon_wheel.get("open"))
+
+
+func open_gadget_wheel() -> void:
+	_ensure_weapon_wheels()
+	if weapon_wheel_open():
+		return
+	var player := get_tree().get_first_node_in_group("player")
+	var entries: Array = []
+	for gid in GameState.owned_gadget_ids():
+		var cnt := 0
+		if is_instance_valid(player) and player.has_method("gadget_count"):
+			cnt = int(player.gadget_count(String(gid)))
+		else:
+			cnt = 1 if String(gid) == "rock" else 0
+		if cnt <= 0:
+			continue
+		entries.append({"id": String(gid), "name": GameState.gadget_display_name(String(gid)), "count": cnt})
+	if entries.is_empty():
+		return
+	_item_wheel.open_for("gadget", entries)
+
+
+func open_lethal_wheel() -> void:
+	_ensure_weapon_wheels()
+	if weapon_wheel_open():
+		return
+	var player := get_tree().get_first_node_in_group("player")
+	var wm = player.get_node_or_null("WeaponManager") if is_instance_valid(player) else null
+	var entries: Array = []
+	for wid in GameState.owned_lethal_ids():
+		var w := WeaponData.from_id(wid as GameState.WeaponId)
+		var cnt := 1
+		if is_instance_valid(wm) and wm.lethal != null and int(wm.lethal.id) == int(wid):
+			cnt = int(wm.lethal_count)
+		elif wid == GameState.WeaponId.KNIFE:
+			cnt = 4
+		else:
+			cnt = w.magazine_size
+		if cnt <= 0:
+			continue
+		entries.append({"id": str(int(wid)), "name": w.display_name, "count": cnt})
+	if entries.is_empty():
+		return
+	_item_wheel.open_for("lethal", entries)
+
+
+func close_item_wheel(apply: bool = true) -> void:
+	if is_instance_valid(_item_wheel):
+		_item_wheel.close_wheel(apply)
+
+
+func _on_item_wheel_picked(kind: String, id: String) -> void:
+	if kind == "gadget":
+		GameState.selected_gadget = id
+		show_status("Gadget: %s" % GameState.gadget_display_name(id), 1.4)
+	elif kind == "lethal":
+		var wid := int(id) as GameState.WeaponId
+		var player := get_tree().get_first_node_in_group("player")
+		if is_instance_valid(player) and player.has_node("WeaponManager"):
+			player.get_node("WeaponManager").set_lethal(wid)
+		show_status("Lethal: %s" % GameState.lethal_display_name(wid), 1.4)
+	refresh_gadget_lethal_hud()
+
+
+func refresh_gadget_lethal_hud() -> void:
+	_ensure_gadget_lethal_hud()
+	if not is_instance_valid(_gadget_lethal_label):
+		return
+	var player := get_tree().get_first_node_in_group("player")
+	var gname := GameState.gadget_display_name(GameState.selected_gadget)
+	var gcnt := 0
+	if is_instance_valid(player) and player.has_method("gadget_count"):
+		gcnt = int(player.gadget_count())
+	var lname := "—"
+	var lcnt := 0
+	if is_instance_valid(player) and player.has_node("WeaponManager"):
+		var wm = player.get_node("WeaponManager")
+		if wm.lethal != null:
+			lname = String(wm.lethal.display_name)
+			lcnt = int(wm.lethal_count)
+	_gadget_lethal_label.text = "GADGET [Q/T]: %s ×%d    LETHAL [G]: %s ×%d\nWHEEL [TAB] · SWAP [1/2]" % [gname, gcnt, lname, lcnt]
+
+
+func refresh_vitals() -> void:
+	_ensure_vitals_bars()
+	var player := get_tree().get_first_node_in_group("player")
+	if not is_instance_valid(player) or not is_instance_valid(_armour_bar):
+		return
+	var max_a := float(player.get("max_armour"))
+	_armour_bar.max_value = maxf(1.0, max_a)
+	_armour_bar.value = float(player.get("armour"))
+	_armour_bar.visible = max_a > 0.0
+
+
+func refresh_ally_hud() -> void:
+	_ensure_ally_label()
+	var am := get_tree().get_first_node_in_group("ally_manager")
+	if not is_instance_valid(am) or not am.has_method("ally_status"):
+		if is_instance_valid(_ally_label):
+			_ally_label.visible = false
+		return
+	var st: Dictionary = am.ally_status()
+	if st.is_empty():
+		_ally_label.visible = false
+		return
+	_ally_label.visible = true
+	var cmds := ["FOLLOW", "HOLD", "ATTACK"]
+	var cmd_i := clampi(int(st.get("cmd", 0)), 0, 2)
+	if bool(st.get("downed", false)):
+		_ally_label.text = "ALLY %s DOWN — approach + E" % String(st.get("name", "Ally"))
+	else:
+		_ally_label.text = "ALLY %s  %s  HP %d  [H]" % [String(st.get("name", "Ally")), cmds[cmd_i], int(st.get("hp", 0))]

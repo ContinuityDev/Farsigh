@@ -22,24 +22,25 @@ static func all_outposts() -> Array[Dictionary]:
 			"layout": "compound_alpha",
 			"unlocks_after": [],
 			"description": "Walled supply yard with barracks, armory, 2-storey HQ, and timber watchtower.",
-			"approaches": "South Gate, West Breach, North Service Gap",
-			"player_spawn": Vector3(0.0, 0.15, 30.0),
+			"approaches": "South Gate, West Breach, North Service Gap, East Culvert",
+			"player_spawn": Vector3(0.0, 0.15, 38.0),
 			"sky_top": Color(0.24, 0.44, 0.70),
 			"sky_horizon": Color(0.76, 0.71, 0.59),
 			"fog_color": Color(0.64, 0.66, 0.62),
 			"alarms": [Vector3(1.0, 0.0, -9.8)],
-			"reinforce_points": [Vector3(19.0, 0.1, 19.0), Vector3(-19.0, 0.1, 18.0)],
-			# 5 → 12 hostiles. South approach stays lighter for stealth.
+			"reinforce_points": [Vector3(24.0, 0.1, 24.0), Vector3(-24.0, 0.1, 22.0)],
+			# Longer perimeter + courtyard loops on the enlarged compound.
 			"guards": [
-				_g(Vector3(-10.5, 0.1, 6.0), 0.0, [Vector3(-10.5, 0.1, 8.0), Vector3(-10.5, 0.1, -9.0), Vector3(-4.0, 0.1, -1.0)]),
-				_g(Vector3(1.0, 0.1, -9.0), 90.0, [Vector3(1.0, 0.1, -9.5), Vector3(1.0, 0.2, -13.5), Vector3(1.0, 3.5, -14.0), Vector3(-2.5, 3.5, -14.0)], {"role": "interior"}),
-				_g(Vector3(-15.25, 3.6, -15.25), -135.0, [Vector3(-15.25, 3.6, -15.25)], {"sniper": true}),
-				# East rooftop sniper, NW heavy sentry, HQ officer, chat pair by crates, dog + handler
-				_g(Vector3(14.5, 3.55, -8.0), 45.0, [Vector3(14.5, 3.55, -8.0)], {"sniper": true}),
-				_g(Vector3(-14.0, 0.1, 14.0), 180.0, [Vector3(-14.0, 0.1, 14.0)], {"role": "heavy", "sentry": true}),
-				_g(Vector3(2.5, 0.1, -12.0), 0.0, [Vector3(2.5, 0.1, -12.0), Vector3(-1.5, 0.1, -12.0)], {"role": "officer"}),
-				_g(Vector3(8.0, 0.1, 10.0), 0.0, [Vector3(8.0, 0.1, 10.0), Vector3(12.0, 0.1, 6.0)], {"role": "handler", "dog_id": "alpha_dog"}),
-				_g(Vector3(9.2, 0.1, 10.0), 0.0, [Vector3(9.2, 0.1, 10.0), Vector3(12.5, 0.1, 6.5)], {"role": "dog", "dog_id": "alpha_dog"}),
+				_g(Vector3(-12.0, 0.1, 8.0), 0.0, [Vector3(-12.0, 0.1, 12.0), Vector3(-12.0, 0.1, -14.0), Vector3(-4.0, 0.1, -14.0), Vector3(-4.0, 0.1, 12.0), Vector3(-12.0, 0.1, 12.0)]),
+				_g(Vector3(1.0, 0.1, -9.0), 90.0, [Vector3(1.0, 0.1, -9.5), Vector3(1.0, 0.2, -13.5), Vector3(1.0, 3.5, -14.0), Vector3(-2.5, 3.5, -14.0), Vector3(-2.5, 3.5, -10.0)], {"role": "interior"}),
+				_g(Vector3(-18.0, 3.6, -18.0), -135.0, [Vector3(-18.0, 3.6, -18.0)], {"sniper": true}),
+				_g(Vector3(18.0, 3.55, -10.0), 45.0, [Vector3(18.0, 3.55, -10.0)], {"sniper": true}),
+				_g(Vector3(-18.0, 0.1, 18.0), 180.0, [Vector3(-18.0, 0.1, 18.0)], {"role": "heavy", "sentry": true}),
+				_g(Vector3(2.5, 0.1, -12.0), 0.0, [Vector3(2.5, 0.1, -12.0), Vector3(-1.5, 0.1, -12.0), Vector3(-1.5, 0.1, -8.0), Vector3(2.5, 0.1, -8.0)], {"role": "officer"}),
+				_g(Vector3(10.0, 0.1, 12.0), 0.0, [Vector3(10.0, 0.1, 12.0), Vector3(16.0, 0.1, 8.0), Vector3(16.0, 0.1, 2.0), Vector3(10.0, 0.1, 2.0)], {"role": "handler", "dog_id": "alpha_dog"}),
+				_g(Vector3(11.2, 0.1, 12.0), 0.0, [Vector3(11.2, 0.1, 12.0), Vector3(16.5, 0.1, 8.5), Vector3(16.5, 0.1, 2.5), Vector3(11.2, 0.1, 2.5)], {"role": "dog", "dog_id": "alpha_dog"}),
+				# East culvert patrol — covers new entrance
+				_g(Vector3(22.0, 0.1, 0.0), 90.0, [Vector3(22.0, 0.1, -8.0), Vector3(22.0, 0.1, 8.0), Vector3(16.0, 0.1, 8.0), Vector3(16.0, 0.1, -8.0)]),
 			],
 		},
 		{

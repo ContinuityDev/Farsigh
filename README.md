@@ -1,6 +1,6 @@
 # Farsigh — Outpost Liberation
 
-Godot **4.3** first-person stealth shooter inspired by Far Cry 5 outpost liberation. Pick an outpost on the Hope County map, customize a 5-slot loadout at the Gunsmith workbench, infiltrate multi-storey compounds, and liberate every outpost stealthily or loud. Runs on **PC** (Windows / Linux / macOS), **mobile** (Android / iOS), and in the **browser** with the **GL Compatibility** renderer and full touch controls.
+Godot **4.3** first-person stealth shooter inspired by Far Cry 5 outpost liberation. Pick an outpost on the Hope County map, customize a **2-slot** firearm loadout (up to 3 carried weapons via the weapon wheel) at the Gunsmith, hire Guns-for-Hire allies, and liberate every outpost stealthily or loud. Runs on **PC** (Windows / Linux / macOS), **mobile** (Android / iOS), and in the **browser** with the **GL Compatibility** renderer and full touch controls.
 
 ## Play in browser
 
@@ -22,8 +22,9 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 - Difficulty labels on Outpost Select; Hope Dollar clears scale with difficulty (Extreme/Boss pay more). Replay beaten compounds at 50% payout.
 - Roles: **heavies**, **officers**, **commanders**, **dogs** + **handlers**, rooftop **snipers**, multi-storey **interior** patrols.
 - AI LOD + staged loading screen keep mobile WebGL workable.
-- **Hope Dollars** shop: weapons, items, and **buyable consumable supports** (Recon Drone, Mortar, Fangs, EMP, Overwatch, Gunship). Charges save to profile; New Run starts at zero. Free binoculars tagging (+ Pro upgrade in shop).
+- **Hope Dollars** shop: weapons, items, **paid gunsmith attachments** (suppressor free), **persistent armour tiers**, **Guns for Hire** allies, and **buyable consumable supports** (Recon Drone, Mortar, Fangs, EMP, Overwatch, Gunship). Charges save to profile; New Run starts at zero. Free binoculars tagging (+ Pro upgrade in shop).
 - Liberation saves per outpost (`user://outpost_save.json`) and resets on **New Run**.
+- **Player vitals**: 160 HP with regen after 4s out of combat; armour bar from shop upgrades (DR + capacity). Field Plate Insert remains a one-deploy HP buff.
 
 ### Multi-Storey Buildings & Runtime NavMesh
 - Multi-room & multi-storey structures with interior partitions, stairs, reachable parapet rooftops, drive-in garages, an underground bunker basement, cutout see-through glass windows, and interactive hinged doors (`E` to toggle, guards auto-open them).
@@ -39,14 +40,17 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 - Scope overlay + breath-hold sway dampening for magnified scopes. Crosshair hides in ADS. Gunsmith optic choice persists into the field.
 - Mobile touch actions are contextual: Takedown / Reload / Use / Rock / ZOOM / Binos only show when usable (no dead buttons).
 
-### 14-Weapon Arsenal & 5-Slot Gunsmith
-- **Primary**: AR-C Assault Rifle, MP-40 / Vector SMG, M133 Pump Shotgun (8 pellets), MBP .50 Sniper Rifle (scope overlay), M60 LMG.
-- **Secondary**: 1911 Tactical Pistol, Skorpion Machine Pistol.
-- **Special / Bow**: Compound Bow, Tactical Crossbow.
-- **Throwables**: Throwing Knives, M67 Frag Grenade, Molotov Cocktail (fire area-of-effect).
-- **Melee**: Kukri Machete, Aluminum Bat.
-- **Gunsmith mods** (visible on the 3D workbench preview and live first-person viewmodel, with stat deltas): Suppressor, Compensator, Red Dot, Holo Sight, 4x Scope, Extended Mag, Vertical Grip, Tactical Laser, Standard / Fire / Explosive arrows & bolts, and 6 weapon skins/finishes.
-- Headshots are always one-shot with every weapon. Loadout and mods persist across sessions (`user://loadout_prefs.json`).
+### Arsenal — 2 Weapon Slots + Weapon Wheel
+- Carry up to **3 firearms** in the loadout pool; equip any two into **Slot 1 / Slot 2**.
+- Hold **TAB** (long-press **Swap** on mobile) for the radial weapon wheel (slight time slow) — mouse/stick aim, release to assign into the active slot.
+- Keys **1 / 2** or short **Swap** switch between the two slots.
+- **Gunsmith**: paid attachments locked until bought (🔒 + price). **Suppressor is always free.** Advanced Mod Kit unlocks the full set.
+- **Melee**: Kukri / Bat + F takedowns.
+
+### Gadgets & Lethals
+- **Gadgets** (Q or T / touch GADGET): rocks, lures, smoke, decoys, alarm jammer — tap to use, hold for mini-wheel.
+- **Lethals** (G / touch LETHAL): throwing knives (silent, retrievable, one-shot headshot), frags, molotovs, C4, prox mines, throwing axes — tap to throw, hold for mini-wheel.
+- HUD shows selected gadget/lethal and remaining counts. Touch buttons only appear when you own at least one.
 
 ## How to run locally
 
@@ -69,11 +73,14 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 | Adjust Zoom (sniper 4/6/8×) | Mouse wheel or N while ADS | — |
 | Breath-hold (steady scope) | Shift while ADS | L3 while ADS |
 | Reload | R | Y |
-| Weapon inspect | I or T | — |
-| Interact / door / body / alarm | E | X |
+| Weapon inspect | I | — |
+| Interact / door / body / alarm / revive ally | E | X |
 | Takedown (front or back) | F | R3 |
-| Throw rock (distraction) | G | Select / Back |
-| Switch weapon slot | 1–5 or Q | D-pad right |
+| Lethal (tap throw / hold wheel) | G | Select / Back |
+| Gadget (tap use / hold wheel) | Q or T | — |
+| Weapon wheel (hold) | Tab | — |
+| Switch weapon slot | 1 / 2 or Swap | D-pad right |
+| Ally command cycle | H | — |
 | Drop carried body | X | — |
 | Pause / Gunsmith shortcut | Esc | Start |
 
