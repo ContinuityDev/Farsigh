@@ -9,6 +9,10 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_wheels_only()
 		return
+	if OS.get_environment("HAYDEN_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_controls_and_bushes()
+		return
 	if OS.get_environment("AUTO_CAPTURE") != "1":
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -397,6 +401,79 @@ func _snap(name: String) -> void:
 	var path := "%s/%s.png" % [docs, name]
 	img.save_png(path)
 	print("Saved screenshot ", path, " scene=", str(get_tree().current_scene))
+
+
+func _snap_controls_and_bushes() -> void:
+	## Controls settings UI + leafy bush clusters (after redo).
+	await get_tree().process_frame
+	await get_tree().create_timer(0.35).timeout
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.add_currency(500)
+	GameState.select_outpost("compound_alpha")
+	# Controls page from main menu
+	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.4).timeout
+	var menu := get_tree().current_scene
+	if is_instance_valid(menu) and menu.has_method("_on_controls_from_menu"):
+		menu._on_controls_from_menu()
+	elif is_instance_valid(menu):
+		var panel = load("res://scripts/ui/controls_settings.gd").new()
+		panel.name = "ControlsSettings"
+		menu.add_child(panel)
+	await get_tree().create_timer(0.45).timeout
+	# Scroll PC list so Combat binds are visible in the capture
+	var ctrl := menu.get_node_or_null("ControlsSettings") if is_instance_valid(menu) else null
+	if is_instance_valid(ctrl) and "_pc_scroll" in ctrl:
+		await get_tree().process_frame
+		(ctrl._pc_scroll as ScrollContainer).scroll_vertical = 160
+	await get_tree().create_timer(0.25).timeout
+	await _snap("28_controls_settings")
+	# Bush clusters at south approach
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(60.0)
+	await get_tree().create_timer(0.7).timeout
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(-6.0, 0.9, 36.0)
+		player.look_at(Vector3(-8.0, 0.6, 32.0), Vector3.UP)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation.x = deg_to_rad(-12.0)
+		player.set("is_crouching", true)
+	await get_tree().create_timer(0.4).timeout
+	await _snap("29_bush_clusters_after")
+	# Ranch entrance cluster for variety
+	GameState.select_outpost("ranch_redbarn")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(60.0)
+	await get_tree().create_timer(0.6).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(-8.0, 0.8, 36.0)
+		player.look_at(Vector3(-10.0, 0.5, 33.0), Vector3.UP)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation.x = deg_to_rad(-10.0)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("30_ranch_bush_clusters")
+	# Guard role looks — frame a few hostiles in compound
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(60.0)
+	await get_tree().create_timer(0.5).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 1.2, 22.0)
+		player.look_at(Vector3(-12.0, 1.4, 10.0), Vector3.UP)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("31_scaled_compound_guards")
+	print("HAYDEN_SNAP complete")
+	await get_tree().create_timer(0.15).timeout
+	get_tree().quit()
 
 
 func _snap_wheels_only() -> void:

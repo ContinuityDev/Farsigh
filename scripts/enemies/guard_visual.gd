@@ -464,7 +464,7 @@ func set_sniper_look(enabled: bool) -> void:
 
 
 func apply_role_look(role: String, heavy: bool = false, officer: bool = false, dog: bool = false) -> void:
-	## Visual variants for heavy / officer / dog without swapping scenes.
+	## Visual variants for heavy / officer / sniper / dog without swapping scenes.
 	if dog:
 		_build_dog_mesh()
 		return
@@ -475,19 +475,51 @@ func apply_role_look(role: String, heavy: bool = false, officer: bool = false, d
 		if is_instance_valid(_pelvis):
 			_pelvis.scale = Vector3(1.12, 1.0, 1.1)
 		set_placeholder_color(Color(0.35, 0.28, 0.48))
+		# Plate carrier + helmet brow
+		if is_instance_valid(_torso) and _torso.get_node_or_null("HeavyPlate") == null:
+			var plate := ProcMesh.box_mesh(Vector3(0.42, 0.28, 0.18), Color(0.22, 0.20, 0.28))
+			plate.name = "HeavyPlate"
+			ProcMesh.add_part(_torso, plate, Vector3(0, 0.05, 0.16))
+		if is_instance_valid(_head) and _head.get_node_or_null("HeavyHelm") == null:
+			var helm := ProcMesh.box_mesh(Vector3(0.34, 0.14, 0.34), Color(0.18, 0.16, 0.22))
+			helm.name = "HeavyHelm"
+			ProcMesh.add_part(_head, helm, Vector3(0, 0.18, 0.02))
 	elif role == "commander":
 		set_placeholder_color(Color(0.72, 0.18, 0.22))
-		if is_instance_valid(_head):
-			ProcMesh.add_part(_head, ProcMesh.box_mesh(Vector3(0.32, 0.08, 0.32), Color(0.92, 0.78, 0.22)), Vector3(0, 0.24, 0.02))
+		if is_instance_valid(_head) and _head.get_node_or_null("CmdHat") == null:
+			var hat := ProcMesh.box_mesh(Vector3(0.32, 0.08, 0.32), Color(0.92, 0.78, 0.22))
+			hat.name = "CmdHat"
+			ProcMesh.add_part(_head, hat, Vector3(0, 0.24, 0.02))
 		if is_instance_valid(_torso):
 			_torso.scale = Vector3(1.1, 1.05, 1.12)
 	elif officer:
 		set_placeholder_color(Color(0.82, 0.62, 0.18))
-		if is_instance_valid(_head):
-			# Compact officer beret / band
-			ProcMesh.add_part(_head, ProcMesh.box_mesh(Vector3(0.28, 0.06, 0.28), Color(0.55, 0.12, 0.10)), Vector3(0, 0.22, 0.02))
+		if is_instance_valid(_head) and _head.get_node_or_null("OfficerBeret") == null:
+			var beret := ProcMesh.box_mesh(Vector3(0.28, 0.06, 0.28), Color(0.55, 0.12, 0.10))
+			beret.name = "OfficerBeret"
+			ProcMesh.add_part(_head, beret, Vector3(0, 0.22, 0.02))
 	elif role == "handler":
 		set_placeholder_color(Color(0.42, 0.55, 0.32))
+		if is_instance_valid(_torso) and _torso.get_node_or_null("HandlerVest") == null:
+			var vest := ProcMesh.box_mesh(Vector3(0.38, 0.22, 0.14), Color(0.30, 0.42, 0.22))
+			vest.name = "HandlerVest"
+			ProcMesh.add_part(_torso, vest, Vector3(0, 0.02, 0.14))
+	elif role == "sniper" or role == "sentry":
+		# Olive ghillie accents + brimmed hat
+		set_placeholder_color(Color(0.28, 0.38, 0.20) if role == "sniper" else Color(0.48, 0.42, 0.32))
+		if is_instance_valid(_head) and _head.get_node_or_null("RoleHat") == null:
+			var brim := ProcMesh.box_mesh(Vector3(0.36, 0.05, 0.36), Color(0.22, 0.28, 0.16))
+			brim.name = "RoleHat"
+			ProcMesh.add_part(_head, brim, Vector3(0, 0.20, 0.02))
+		if role == "sniper" and is_instance_valid(_torso) and _torso.get_node_or_null("Ghillie") == null:
+			var gh := ProcMesh.box_mesh(Vector3(0.44, 0.35, 0.22), Color(0.24, 0.36, 0.16))
+			gh.name = "Ghillie"
+			ProcMesh.add_part(_torso, gh, Vector3(0, 0.0, 0.12))
+	elif role == "interior":
+		set_placeholder_color(Color(0.55, 0.48, 0.38))
+	else:
+		# Default patrol militia — drab green/brown stripe
+		set_placeholder_color(Color(0.40, 0.44, 0.28))
 
 
 func _build_dog_mesh() -> void:

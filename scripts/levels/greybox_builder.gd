@@ -12,6 +12,8 @@ const OutpostCatalog = preload("res://scripts/levels/outpost_catalog.gd")
 var current_outpost_id: String = ""
 ## When true, skip Kenney GLB foliage / barriers (mobile web GPU relief).
 var lightweight_props: bool = false
+var _leaf_tex: ImageTexture = null
+var _leaf_mat_cache: Dictionary = {}  # Color html -> StandardMaterial3D
 
 
 func _ready() -> void:
@@ -135,6 +137,10 @@ func _collect_bakeable_meshes(node: Node, parent_xf: Transform3D, by_mat: Dictio
 	for c in node.get_children():
 		if c.is_in_group("doors") or c.get_class() == "InteractiveDoor":
 			continue
+		# Keep alpha-cut leafy bushes / wind foliage unbaked (scissor + wind need live meshes)
+		var cname := String(c.name)
+		if cname.begins_with("BushCluster") or cname.begins_with("HideBush") or c.is_in_group("foliage_wind"):
+			continue
 		if c is StaticBody3D:
 			# Keep colliders; still recurse in case meshes are nested oddly
 			_collect_bakeable_meshes(c, parent_xf * (c as Node3D).transform, by_mat, to_free)
@@ -251,17 +257,21 @@ func _perimeter() -> void:
 	_fence_segment(Vector3(-14, 0, s), Vector3(18, h, t), wall_col, post_col)
 	_fence_segment(Vector3(14, 0, s), Vector3(18, h, t), wall_col, post_col)
 	_gate_arch(Vector3(0, 0, s), post_col, Color(0.48, 0.24, 0.16))
+	_entry_cover(Vector3(-6, 0, s + 4), Vector3(6, 0, s + 4))
 
 	# North service gap
 	_fence_segment(Vector3(-12, 0, -s), Vector3(20, h, t), wall_col, post_col)
 	_fence_segment(Vector3(16, 0, -s), Vector3(14, h, t), wall_col, post_col)
+	_entry_cover(Vector3(-2, 0, -s - 3), Vector3(6, 0, -s - 3))
 	# West breach
 	_fence_segment(Vector3(-s, 0, -14), Vector3(t, h, 20), wall_col, post_col)
 	_fence_segment(Vector3(-s, 0, 16), Vector3(t, h, 18), wall_col, post_col)
+	_entry_cover(Vector3(-s - 3, 0, -2), Vector3(-s - 3, 0, 6))
 	# East drainage culvert entrance (gap mid-east wall)
 	_fence_segment(Vector3(s, 0, -16), Vector3(t, h, 18), wall_col, post_col)
 	_fence_segment(Vector3(s, 0, 16), Vector3(t, h, 18), wall_col, post_col)
 	_gate_arch(Vector3(s, 0, 0), post_col, Color(0.35, 0.38, 0.42))
+	_entry_cover(Vector3(s + 3, 0, -4), Vector3(s + 3, 0, 4))
 
 	for p in [
 		Vector3(-s, 1.75, -s), Vector3(s, 1.75, -s), Vector3(-s, 1.75, s), Vector3(s, 1.75, s)
@@ -360,26 +370,22 @@ func _trees_and_foliage() -> void:
 	for i in range(pine_limit):
 		_pine_tree(pine_positions[i], 0.85 + float(i % 4) * 0.18)
 
-	var grass_spots := [
-		Vector3(-5.5, 0, 29.0), Vector3(5.2, 0, 29.4), Vector3(-10.0, 0, 25.4),
-		Vector3(10.5, 0, 25.4), Vector3(-25.2, 0, 8.5), Vector3(-25.4, 0, -5.0),
-		Vector3(3.0, 0, -25.4), Vector3(13.0, 0, -25.4), Vector3(-19.0, 0, 25.4),
-		Vector3(18.0, 0, 25.4), Vector3(-2.5, 0, 27.2), Vector3(2.8, 0, 27.6),
-		Vector3(-14.0, 0, 18.0), Vector3(16.0, 0, 18.5), Vector3(-19.0, 0, -18.0),
+	# Natural bush clusters (3–8) along fences, building edges, approach routes
+	var clusters := [
+		{"c": Vector3(-8.0, 0, 33.0), "n": 5},
+		{"c": Vector3(8.5, 0, 33.0), "n": 4},
+		{"c": Vector3(-22.0, 0, 14.0), "n": 6},
+		{"c": Vector3(33.0, 0, 4.0), "n": 5},
+		{"c": Vector3(-16.0, 0, -33.0), "n": 4},
+		{"c": Vector3(15.0, 0, -33.0), "n": 5},
+		{"c": Vector3(-33.0, 0, -2.0), "n": 6},
+		{"c": Vector3(14.0, 0, 18.0), "n": 3},  # building edge
+		{"c": Vector3(-12.0, 0, 18.5), "n": 4},
 	]
 	if lightweight_props:
-		grass_spots = grass_spots.slice(0, 6)
-	_scatter_grass(grass_spots)
-	# Extra hide bushes along stealth approaches / courtyard edges
-	var bush_spots := [
-		Vector3(-8.0, 0, 27.5), Vector3(8.5, 0, 27.0), Vector3(-22.0, 0, 14.0),
-		Vector3(22.5, 0, 12.0), Vector3(-16.0, 0, -22.0), Vector3(15.0, 0, -22.5),
-		Vector3(-28.0, 0, -2.0), Vector3(28.0, 0, 4.0),
-	]
-	if lightweight_props:
-		bush_spots = bush_spots.slice(0, 4)
-	for bp in bush_spots:
-		_add_hide_bush(bp, 2.4, 1.45)
+		clusters = clusters.slice(0, 5)
+	for cl in clusters:
+		_bush_cluster(cl["c"], int(cl["n"]))
 
 
 # ============================================================================
@@ -393,20 +399,32 @@ func _build_ranch() -> void:
 
 
 func _ranch_terrain_fences() -> void:
-	_box(Vector3(0, -0.5, 0), Vector3(140, 1.0, 140), Color(0.34, 0.39, 0.21), true)
-	_box(Vector3(0, 0.015, 0), Vector3(52, 0.03, 52), Color(0.45, 0.37, 0.26), false)
-	_box(Vector3(0, 0.025, 22), Vector3(6.5, 0.03, 34), Color(0.48, 0.39, 0.27), false)
-	_box(Vector3(-18, 0.08, 30), Vector3(18, 0.16, 12), Color(0.68, 0.56, 0.22), false)
-	_box(Vector3(18, 0.08, 30), Vector3(18, 0.16, 12), Color(0.66, 0.54, 0.21), false)
+	# ~25% larger pasture (half-fence 24→30)
+	_box(Vector3(0, -0.5, 0), Vector3(175, 1.0, 175), Color(0.34, 0.39, 0.21), true)
+	_box(Vector3(0, 0.015, 0), Vector3(65, 0.03, 65), Color(0.45, 0.37, 0.26), false)
+	_box(Vector3(0, 0.025, 28), Vector3(8.0, 0.03, 42), Color(0.48, 0.39, 0.27), false)
+	_box(Vector3(-22, 0.08, 36), Vector3(22, 0.16, 14), Color(0.68, 0.56, 0.22), false)
+	_box(Vector3(22, 0.08, 36), Vector3(22, 0.16, 14), Color(0.66, 0.54, 0.21), false)
 	var rail_col := Color(0.46, 0.34, 0.21)
-	_ranch_fence(Vector3(-15, 0, 24), Vector3(18, 1.35, 0.3), rail_col)
-	_ranch_fence(Vector3(15, 0, 24), Vector3(18, 1.35, 0.3), rail_col)
-	_gate_arch(Vector3(0, 0, 24), rail_col, Color(0.56, 0.16, 0.12))
-	_ranch_fence(Vector3(-24, 0, 0), Vector3(0.3, 1.35, 48), rail_col)
-	_ranch_fence(Vector3(24, 0, -10), Vector3(0.3, 1.35, 22), rail_col)
-	_ranch_fence(Vector3(24, 0, 15), Vector3(0.3, 1.35, 16), rail_col)
-	_ranch_fence(Vector3(-10, 0, -24), Vector3(24, 1.35, 0.3), rail_col)
-	_ranch_fence(Vector3(14, 0, -24), Vector3(14, 1.35, 0.3), rail_col)
+	var s := 30.0
+	# South driveway gate
+	_ranch_fence(Vector3(-18, 0, s), Vector3(22, 1.35, 0.3), rail_col)
+	_ranch_fence(Vector3(18, 0, s), Vector3(22, 1.35, 0.3), rail_col)
+	_gate_arch(Vector3(0, 0, s), rail_col, Color(0.56, 0.16, 0.12))
+	_entry_cover(Vector3(-6, 0, s + 4), Vector3(6, 0, s + 4))
+	# West orchard breach (split wall)
+	_ranch_fence(Vector3(-s, 0, -16), Vector3(0.3, 1.35, 24), rail_col)
+	_ranch_fence(Vector3(-s, 0, 16), Vector3(0.3, 1.35, 24), rail_col)
+	_entry_cover(Vector3(-s - 3, 0, -2), Vector3(-s - 3, 0, 4))
+	# East pasture gap
+	_ranch_fence(Vector3(s, 0, -14), Vector3(0.3, 1.35, 24), rail_col)
+	_ranch_fence(Vector3(s, 0, 16), Vector3(0.3, 1.35, 20), rail_col)
+	_gate_arch(Vector3(s, 0, 2), rail_col, Color(0.50, 0.28, 0.14))
+	_entry_cover(Vector3(s + 3, 0, -2), Vector3(s + 3, 0, 6))
+	# North silo lane
+	_ranch_fence(Vector3(-14, 0, -s), Vector3(28, 1.35, 0.3), rail_col)
+	_ranch_fence(Vector3(16, 0, -s), Vector3(16, 1.35, 0.3), rail_col)
+	_entry_cover(Vector3(0, 0, -s - 3), Vector3(6, 0, -s - 3))
 
 
 func _ranch_buildings() -> void:
@@ -448,15 +466,18 @@ func _ranch_foliage() -> void:
 	var pine_n := 8 if lightweight_props else 14
 	for i in range(pine_n):
 		var ang := float(i) * TAU / float(pine_n)
-		var r := 33.0 + float(i % 3) * 4.0
+		var r := 36.0 + float(i % 3) * 4.0
 		_pine_tree(Vector3(cos(ang) * r, 0, sin(ang) * r), 0.9 + float(i % 3) * 0.22)
-	var grass := [
-		Vector3(-6, 0, 26), Vector3(6, 0, 26), Vector3(-16, 0, 20), Vector3(16, 0, 20),
-		Vector3(26, 0, 2), Vector3(-26, 0, -4), Vector3(0, 0, -26), Vector3(10, 0, 4),
+	var clusters := [
+		{"c": Vector3(-10, 0, 34), "n": 5}, {"c": Vector3(10, 0, 34), "n": 4},
+		{"c": Vector3(-34, 0, 2), "n": 6}, {"c": Vector3(34, 0, 4), "n": 5},
+		{"c": Vector3(2, 0, -34), "n": 4}, {"c": Vector3(-16, 0, 20), "n": 3},
+		{"c": Vector3(16, 0, 18), "n": 4},
 	]
 	if lightweight_props:
-		grass = grass.slice(0, 4)
-	_scatter_grass(grass)
+		clusters = clusters.slice(0, 4)
+	for cl in clusters:
+		_bush_cluster(cl["c"], int(cl["n"]))
 
 
 # ============================================================================
@@ -470,19 +491,31 @@ func _build_lumber_mill() -> void:
 
 
 func _lumber_terrain() -> void:
-	_box(Vector3(0, -0.5, 0), Vector3(140, 1.0, 140), Color(0.20, 0.27, 0.17), true)
-	_box(Vector3(0, 0.015, 0), Vector3(54, 0.03, 50), Color(0.46, 0.38, 0.26), false)
-	_box(Vector3(0, 0.025, 0), Vector3(8.0, 0.03, 52), Color(0.38, 0.31, 0.22), false)
+	# ~25% larger timber yard (half-fence 25→31)
+	_box(Vector3(0, -0.5, 0), Vector3(175, 1.0, 175), Color(0.20, 0.27, 0.17), true)
+	_box(Vector3(0, 0.015, 0), Vector3(67, 0.03, 62), Color(0.46, 0.38, 0.26), false)
+	_box(Vector3(0, 0.025, 0), Vector3(10.0, 0.03, 64), Color(0.38, 0.31, 0.22), false)
 	var wall_col := Color(0.35, 0.28, 0.21)
 	var post_col := Color(0.20, 0.18, 0.16)
-	_fence_segment(Vector3(-15, 0, 25), Vector3(18, 2.8, 0.4), wall_col, post_col)
-	_fence_segment(Vector3(15, 0, 25), Vector3(18, 2.8, 0.4), wall_col, post_col)
-	_gate_arch(Vector3(0, 0, 25), post_col, Color(0.55, 0.34, 0.12))
-	_fence_segment(Vector3(-25, 0, -8), Vector3(0.4, 2.8, 26), wall_col, post_col)
-	_fence_segment(Vector3(-25, 0, 17), Vector3(0.4, 2.8, 14), wall_col, post_col)
-	_fence_segment(Vector3(25, 0, -10), Vector3(0.4, 2.8, 24), wall_col, post_col)
-	_fence_segment(Vector3(25, 0, 15), Vector3(0.4, 2.8, 16), wall_col, post_col)
-	_fence_segment(Vector3(0, 0, -25), Vector3(38, 2.8, 0.4), wall_col, post_col)
+	var s := 31.0
+	# Main haul road (south)
+	_fence_segment(Vector3(-18, 0, s), Vector3(22, 2.8, 0.4), wall_col, post_col)
+	_fence_segment(Vector3(18, 0, s), Vector3(22, 2.8, 0.4), wall_col, post_col)
+	_gate_arch(Vector3(0, 0, s), post_col, Color(0.55, 0.34, 0.12))
+	_entry_cover(Vector3(-7, 0, s + 4), Vector3(7, 0, s + 4))
+	# West timber trail
+	_fence_segment(Vector3(-s, 0, -12), Vector3(0.4, 2.8, 28), wall_col, post_col)
+	_fence_segment(Vector3(-s, 0, 18), Vector3(0.4, 2.8, 16), wall_col, post_col)
+	_entry_cover(Vector3(-s - 3, 0, 4), Vector3(-s - 3, 0, 10))
+	# East creek bank
+	_fence_segment(Vector3(s, 0, -14), Vector3(0.4, 2.8, 26), wall_col, post_col)
+	_fence_segment(Vector3(s, 0, 16), Vector3(0.4, 2.8, 18), wall_col, post_col)
+	_gate_arch(Vector3(s, 0, 2), post_col, Color(0.40, 0.45, 0.28))
+	_entry_cover(Vector3(s + 3, 0, -2), Vector3(s + 3, 0, 6))
+	# North rail spur (new gap)
+	_fence_segment(Vector3(-16, 0, -s), Vector3(22, 2.8, 0.4), wall_col, post_col)
+	_fence_segment(Vector3(16, 0, -s), Vector3(22, 2.8, 0.4), wall_col, post_col)
+	_entry_cover(Vector3(-4, 0, -s - 3), Vector3(4, 0, -s - 3))
 
 
 func _lumber_buildings() -> void:
@@ -517,15 +550,17 @@ func _lumber_foliage() -> void:
 	var pine_n := 10 if lightweight_props else 20
 	for i in range(pine_n):
 		var ang := float(i) * TAU / float(pine_n)
-		var r := 31.0 + float(i % 4) * 3.5
+		var r := 36.0 + float(i % 4) * 3.5
 		_pine_tree(Vector3(cos(ang) * r, 0, sin(ang) * r), 1.0 + float(i % 3) * 0.24)
-	var grass := [
-		Vector3(-10, 0, 28), Vector3(10, 0, 28), Vector3(-28, 0, 6), Vector3(28, 0, -4),
-		Vector3(-14, 0, 22), Vector3(14, 0, 22),
+	var clusters := [
+		{"c": Vector3(-10, 0, 35), "n": 5}, {"c": Vector3(10, 0, 35), "n": 4},
+		{"c": Vector3(-35, 0, 6), "n": 6}, {"c": Vector3(35, 0, 2), "n": 5},
+		{"c": Vector3(0, 0, -35), "n": 4}, {"c": Vector3(-14, 0, 22), "n": 3},
 	]
 	if lightweight_props:
-		grass = grass.slice(0, 4)
-	_scatter_grass(grass)
+		clusters = clusters.slice(0, 4)
+	for cl in clusters:
+		_bush_cluster(cl["c"], int(cl["n"]))
 
 
 # ============================================================================
@@ -539,11 +574,12 @@ func _build_river_dock() -> void:
 
 
 func _river_terrain() -> void:
-	_box(Vector3(0, -0.5, 22), Vector3(140, 1.0, 62), Color(0.24, 0.32, 0.21), true)
-	_box(Vector3(0, 0.015, 11), Vector3(44, 0.03, 24), Color(0.39, 0.37, 0.33), false)
-	_box(Vector3(0, 0.025, 24), Vector3(6.5, 0.03, 22), Color(0.42, 0.38, 0.31), false)
-	_box(Vector3(0, -0.1, -6.2), Vector3(70, 1.4, 0.7), Color(0.32, 0.24, 0.16), true)
-	var water_mi := ProcMesh.box_mesh(Vector3(140, 0.2, 68), Color(0.11, 0.34, 0.44, 0.92))
+	# ~25% larger riverside lot + longer pier
+	_box(Vector3(0, -0.5, 27), Vector3(175, 1.0, 76), Color(0.24, 0.32, 0.21), true)
+	_box(Vector3(0, 0.015, 14), Vector3(55, 0.03, 30), Color(0.39, 0.37, 0.33), false)
+	_box(Vector3(0, 0.025, 30), Vector3(8.0, 0.03, 28), Color(0.42, 0.38, 0.31), false)
+	_box(Vector3(0, -0.1, -7.5), Vector3(88, 1.4, 0.875), Color(0.32, 0.24, 0.16), true)
+	var water_mi := ProcMesh.box_mesh(Vector3(175, 0.2, 85), Color(0.11, 0.34, 0.44, 0.92))
 	if GraphicsQuality:
 		water_mi.material_override = GraphicsQuality.make_water_material(
 			Color(0.18, 0.46, 0.52, 0.88), Color(0.06, 0.22, 0.34, 0.95)
@@ -556,36 +592,52 @@ func _river_terrain() -> void:
 		water_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		water_mi.material_override = water_mat
 	water_mi.add_to_group("water_fx")
-	water_mi.position = Vector3(0, -0.45, -40)
+	water_mi.position = Vector3(0, -0.45, -48)
 	add_child(water_mi)
-	_add_box_collider(Vector3(0, -1.2, -40), Vector3(140, 0.5, 68), 0.0)
+	_add_box_collider(Vector3(0, -1.2, -48), Vector3(175, 0.5, 85), 0.0)
 	var plank := Color(0.45, 0.34, 0.23)
 	var piling := Color(0.28, 0.20, 0.13)
-	_box(Vector3(0, 0.12, -12.5), Vector3(4.8, 0.24, 14.0), plank, true)
-	_box(Vector3(0, 0.12, -18.5), Vector3(16.0, 0.24, 4.2), plank, true)
-	for px in [-7.2, -2.2, 2.2, 7.2]:
-		for pz in [-8.0, -13.0, -18.5]:
-			if absf(px) > 3.0 and pz > -16.0:
+	_box(Vector3(0, 0.12, -14.0), Vector3(5.5, 0.24, 17.0), plank, true)
+	_box(Vector3(0, 0.12, -21.0), Vector3(18.0, 0.24, 5.0), plank, true)
+	for px in [-8.0, -2.5, 2.5, 8.0]:
+		for pz in [-9.0, -15.0, -21.0]:
+			if absf(px) > 3.5 and pz > -18.0:
 				continue
 			ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.22, 2.6, piling, 0.9, 0.0, 8), Vector3(px, -0.4, pz))
 			ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.24, 0.85, piling, 0.88, 0.0, 8), Vector3(px, 0.65, pz))
-	_patrol_boat(Vector3(10.5, -0.15, -16.0), -12.0)
+	_patrol_boat(Vector3(12.0, -0.15, -18.5), -12.0)
 
 
 func _river_buildings() -> void:
-	_hollow_building(Vector3(11, 0, 7), Vector3(9.5, 3.6, 7.5), Color(0.32, 0.44, 0.42), Color(0.28, 0.22, 0.18), "W")
+	_hollow_building(Vector3(12, 0, 8), Vector3(9.5, 3.6, 7.5), Color(0.32, 0.44, 0.42), Color(0.28, 0.22, 0.18), "W")
 	var neon := ProcMesh.box_mesh(Vector3(3.0, 0.55, 0.14), Color(1.0, 0.38, 0.16))
 	neon.material_override = ProcMesh.emissive(Color(1.0, 0.42, 0.18), 2.0)
-	ProcMesh.add_part(self, neon, Vector3(11, 3.25, 10.95))
-	BuildingKit.build_multi_storey(self, Vector3(-12, 0, 1.5), 9.6, 9.4, 3.3, Color(0.48, 0.40, 0.31), Color(0.26, 0.28, 0.30), "E", true, "E")
-	_box(Vector3(0, 3.3, 6), Vector3(6.8, 0.26, 4.2), Color(0.55, 0.20, 0.16))
-	_box(Vector3(-2.8, 1.65, 6), Vector3(0.25, 3.3, 0.25), Color(0.8, 0.8, 0.78))
-	_box(Vector3(2.8, 1.65, 6), Vector3(0.25, 3.3, 0.25), Color(0.8, 0.8, 0.78))
-	_box(Vector3(-0.8, 0.8, 6), Vector3(0.7, 1.6, 0.55), Color(0.68, 0.18, 0.14))
-	_box(Vector3(0.8, 0.8, 6), Vector3(0.7, 1.6, 0.55), Color(0.68, 0.18, 0.14))
-	_fence_segment(Vector3(-14, 0, 22), Vector3(16, 2.2, 0.35), Color(0.36, 0.35, 0.31), Color(0.22, 0.22, 0.20))
-	_fence_segment(Vector3(14, 0, 22), Vector3(16, 2.2, 0.35), Color(0.36, 0.35, 0.31), Color(0.22, 0.22, 0.20))
-	_gate_arch(Vector3(0, 0, 22), Color(0.24, 0.25, 0.24), Color(0.18, 0.42, 0.45))
+	ProcMesh.add_part(self, neon, Vector3(12, 3.25, 11.95))
+	BuildingKit.build_multi_storey(self, Vector3(-13, 0, 2.0), 9.6, 9.4, 3.3, Color(0.48, 0.40, 0.31), Color(0.26, 0.28, 0.30), "E", true, "E")
+	_box(Vector3(0, 3.3, 7), Vector3(6.8, 0.26, 4.2), Color(0.55, 0.20, 0.16))
+	_box(Vector3(-2.8, 1.65, 7), Vector3(0.25, 3.3, 0.25), Color(0.8, 0.8, 0.78))
+	_box(Vector3(2.8, 1.65, 7), Vector3(0.25, 3.3, 0.25), Color(0.8, 0.8, 0.78))
+	_box(Vector3(-0.8, 0.8, 7), Vector3(0.7, 1.6, 0.55), Color(0.68, 0.18, 0.14))
+	_box(Vector3(0.8, 0.8, 7), Vector3(0.7, 1.6, 0.55), Color(0.68, 0.18, 0.14))
+	var fence_col := Color(0.36, 0.35, 0.31)
+	var post_col := Color(0.22, 0.22, 0.20)
+	var sz := 28.0
+	# South highway lot gate
+	_fence_segment(Vector3(-17, 0, sz), Vector3(20, 2.2, 0.35), fence_col, post_col)
+	_fence_segment(Vector3(17, 0, sz), Vector3(20, 2.2, 0.35), fence_col, post_col)
+	_gate_arch(Vector3(0, 0, sz), Color(0.24, 0.25, 0.24), Color(0.18, 0.42, 0.45))
+	_entry_cover(Vector3(-6, 0, sz + 3), Vector3(6, 0, sz + 3))
+	# West riverbank approach (partial palisade + gap)
+	_fence_segment(Vector3(-28, 0, 18), Vector3(0.35, 2.2, 16), fence_col, post_col)
+	_fence_segment(Vector3(-28, 0, 4), Vector3(0.35, 2.2, 10), fence_col, post_col)
+	_entry_cover(Vector3(-30, 0, 10), Vector3(-30, 0, 14))
+	# East boat launch
+	_fence_segment(Vector3(28, 0, 16), Vector3(0.35, 2.2, 18), fence_col, post_col)
+	_fence_segment(Vector3(28, 0, -2), Vector3(0.35, 2.2, 12), fence_col, post_col)
+	_gate_arch(Vector3(28, 0, 6), Color(0.24, 0.25, 0.24), Color(0.20, 0.40, 0.48))
+	_entry_cover(Vector3(30, 0, 4), Vector3(30, 0, 8))
+	# North pier crawl (open toward water — bush markers only)
+	_entry_cover(Vector3(-8, 0, -4), Vector3(8, 0, -4))
 
 
 func _river_props() -> void:
@@ -613,9 +665,15 @@ func _river_foliage() -> void:
 		pines = pines.slice(0, 4)
 	for p in pines:
 		_pine_tree(p, 1.05)
-	_scatter_grass([
-		Vector3(-8, 0, 24), Vector3(8, 0, 24), Vector3(-18, 0, 18), Vector3(18, 0, 18),
-	])
+	var clusters := [
+		{"c": Vector3(-8, 0, 32), "n": 5}, {"c": Vector3(8, 0, 32), "n": 4},
+		{"c": Vector3(-32, 0, 12), "n": 6}, {"c": Vector3(32, 0, 6), "n": 5},
+		{"c": Vector3(-10, 0, -2), "n": 3}, {"c": Vector3(10, 0, -2), "n": 3},
+	]
+	if lightweight_props:
+		clusters = clusters.slice(0, 4)
+	for cl in clusters:
+		_bush_cluster(cl["c"], int(cl["n"]))
 
 
 # ============================================================================
@@ -629,24 +687,35 @@ func _build_hilltop_bunker() -> void:
 
 
 func _hill_terrain() -> void:
+	# ~25% larger ridge yard (half-fence 25→31)
 	var ridge := Color(0.32, 0.31, 0.27)
-	_box(Vector3(0, -0.5, 29.9), Vector3(140, 1.0, 80.2), ridge, true)
-	_box(Vector3(0, -0.5, -44.1), Vector3(140, 1.0, 51.8), ridge, true)
-	_box(Vector3(-37.8, -0.5, -14.2), Vector3(64.4, 1.0, 8.0), ridge, true)
-	_box(Vector3(37.8, -0.5, -14.2), Vector3(64.4, 1.0, 8.0), ridge, true)
-	_box(Vector3(0, 0.015, 8), Vector3(54, 0.03, 36), Color(0.37, 0.36, 0.34), false)
-	_box(Vector3(0, 0.025, 22), Vector3(6.2, 0.03, 30), Color(0.30, 0.30, 0.29), false)
+	_box(Vector3(0, -0.5, 36), Vector3(175, 1.0, 100), ridge, true)
+	_box(Vector3(0, -0.5, -52), Vector3(175, 1.0, 64), ridge, true)
+	_box(Vector3(-45, -0.5, -16), Vector3(80, 1.0, 10), ridge, true)
+	_box(Vector3(45, -0.5, -16), Vector3(80, 1.0, 10), ridge, true)
+	_box(Vector3(0, 0.015, 10), Vector3(67, 0.03, 45), Color(0.37, 0.36, 0.34), false)
+	_box(Vector3(0, 0.025, 28), Vector3(7.5, 0.03, 36), Color(0.30, 0.30, 0.29), false)
 	var conc := Color(0.44, 0.45, 0.43)
 	var steel := Color(0.20, 0.21, 0.22)
-	_fence_segment(Vector3(-15, 0, 25), Vector3(18, 3.2, 0.6), conc, steel)
-	_fence_segment(Vector3(15, 0, 25), Vector3(18, 3.2, 0.6), conc, steel)
-	_gate_arch(Vector3(0, 0, 25), steel, Color(0.32, 0.34, 0.28))
-	_fence_segment(Vector3(-25, 0, -10), Vector3(0.6, 3.2, 24), conc, steel)
-	_fence_segment(Vector3(-25, 0, 15), Vector3(0.6, 3.2, 16), conc, steel)
-	_fence_segment(Vector3(25, 0, -10), Vector3(0.6, 3.2, 24), conc, steel)
-	_fence_segment(Vector3(25, 0, 15), Vector3(0.6, 3.2, 16), conc, steel)
-	_fence_segment(Vector3(-8, 0, -25), Vector3(26, 3.2, 0.6), conc, steel)
-	_fence_segment(Vector3(16, 0, -25), Vector3(14, 3.2, 0.6), conc, steel)
+	var s := 31.0
+	# South switchback / gatehouse
+	_fence_segment(Vector3(-18, 0, s), Vector3(22, 3.2, 0.6), conc, steel)
+	_fence_segment(Vector3(18, 0, s), Vector3(22, 3.2, 0.6), conc, steel)
+	_gate_arch(Vector3(0, 0, s), steel, Color(0.32, 0.34, 0.28))
+	_entry_cover(Vector3(-7, 0, s + 4), Vector3(7, 0, s + 4))
+	# West cliff / sewer cut (wider gap)
+	_fence_segment(Vector3(-s, 0, -14), Vector3(0.6, 3.2, 26), conc, steel)
+	_fence_segment(Vector3(-s, 0, 16), Vector3(0.6, 3.2, 18), conc, steel)
+	_entry_cover(Vector3(-s - 3, 0, 2), Vector3(-s - 3, 0, 8))
+	# East trench / scaffold breach
+	_fence_segment(Vector3(s, 0, -16), Vector3(0.6, 3.2, 22), conc, steel)
+	_fence_segment(Vector3(s, 0, 16), Vector3(0.6, 3.2, 18), conc, steel)
+	_gate_arch(Vector3(s, 0, 2), steel, Color(0.28, 0.32, 0.30))
+	_entry_cover(Vector3(s + 3, 0, -2), Vector3(s + 3, 0, 6))
+	# North bunker rear gap
+	_fence_segment(Vector3(-14, 0, -s), Vector3(26, 3.2, 0.6), conc, steel)
+	_fence_segment(Vector3(16, 0, -s), Vector3(18, 3.2, 0.6), conc, steel)
+	_entry_cover(Vector3(0, 0, -s - 3), Vector3(6, 0, -s - 3))
 
 
 func _hill_buildings() -> void:
@@ -709,10 +778,19 @@ func _hill_foliage() -> void:
 	var n := 8 if lightweight_props else 12
 	for i in range(n):
 		var ang := float(i) * TAU / float(n)
-		var r := 31.0 + float(i % 3) * 3.0
+		var r := 36.0 + float(i % 3) * 3.0
 		_boulder(Vector3(cos(ang) * r, 0.65, sin(ang) * r), 1.35)
 		if i % 2 == 0:
 			_pine_tree(Vector3(cos(ang + 0.2) * (r + 3.5), 0, sin(ang + 0.2) * (r + 3.5)), 0.85)
+	var clusters := [
+		{"c": Vector3(-8, 0, 35), "n": 5}, {"c": Vector3(8, 0, 35), "n": 4},
+		{"c": Vector3(-35, 0, 4), "n": 6}, {"c": Vector3(35, 0, 4), "n": 5},
+		{"c": Vector3(2, 0, -35), "n": 4}, {"c": Vector3(-10, 0, 18), "n": 3},
+	]
+	if lightweight_props:
+		clusters = clusters.slice(0, 4)
+	for cl in clusters:
+		_bush_cluster(cl["c"], int(cl["n"]))
 
 
 # ============================================================================
@@ -1040,13 +1118,187 @@ func _boulder(pos: Vector3, radius: float) -> void:
 	_add_box_collider(pos, Vector3(radius * 1.7, radius * 1.15, radius * 1.6), 0.0)
 
 
+func _entry_cover(a: Vector3, b: Vector3) -> void:
+	## Bush + tall-grass cover strung along an entrance approach (A→B).
+	var mid := (a + b) * 0.5
+	_bush_cluster(mid, 5 if lightweight_props else 7, 2.4)
+	var along := (b - a)
+	if along.length() > 2.5:
+		_bush_cluster(a.lerp(b, 0.2), 3, 1.8)
+		_bush_cluster(a.lerp(b, 0.8), 3, 1.8)
+
+
+func _bush_cluster(center: Vector3, count: int = 5, spread: float = 2.2) -> void:
+	## Natural group of 3–8 leafy bushes + grass around the base + one hide zone.
+	count = clampi(count, 3, 8)
+	var root := Node3D.new()
+	root.name = "BushCluster"
+	root.position = center
+	add_child(root)
+	var bush_n := count if not lightweight_props else mini(count, 5)
+	for i in range(bush_n):
+		var ang := float(i) * TAU / float(bush_n) + float(i % 3) * 0.17
+		var r := spread * (0.18 + float(i % 4) * 0.12)
+		var scale := 0.75 + float(i % 5) * 0.12
+		_leafy_bush(root, Vector3(cos(ang) * r, 0, sin(ang) * r), scale, float(i * 37 % 360))
+	# Tall grass patch blending into ground at cluster base
+	_scatter_grass_at(root, center, mini(6 if lightweight_props else 10, bush_n * 2), spread * 0.95)
+	# Single hide volume matching the whole cluster
+	var zone := Area3D.new()
+	zone.set_script(load("res://scripts/levels/foliage_hide_zone.gd"))
+	zone.name = "HideZone"
+	var cs := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = spread * 0.95
+	shape.height = 1.55
+	cs.shape = shape
+	cs.position = Vector3(0, 0.7, 0)
+	zone.add_child(cs)
+	root.add_child(zone)
+
+
+func _leaf_texture() -> ImageTexture:
+	if _leaf_tex != null:
+		return _leaf_tex
+	# Dense multi-lobe canopy silhouette for alpha-cut cards (shared atlas).
+	var img := Image.create(96, 96, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for y in range(96):
+		for x in range(96):
+			var u := (float(x) - 47.5) / 47.5
+			var v := (float(y) - 47.5) / 47.5
+			# Cluster of overlapping leaf blobs (not a single flat leaf)
+			var d1 := Vector2(u * 1.05, v * 1.15 + 0.08).length()
+			var d2 := Vector2(u * 1.3 + 0.22, v * 1.1 - 0.18).length()
+			var d3 := Vector2(u * 1.3 - 0.25, v * 1.05 - 0.12).length()
+			var d4 := Vector2(u * 1.15, v * 1.35 + 0.28).length()
+			var cover := 0.0
+			if d1 < 0.72:
+				cover = maxf(cover, 1.0 - d1 / 0.72)
+			if d2 < 0.48:
+				cover = maxf(cover, 0.9 - d2 / 0.48)
+			if d3 < 0.46:
+				cover = maxf(cover, 0.88 - d3 / 0.46)
+			if d4 < 0.42:
+				cover = maxf(cover, 0.85 - d4 / 0.42)
+			# Edge chew + holes for leafy silhouette
+			if cover > 0.05:
+				var edge_noise := absf(sin(u * 17.0 + v * 13.0) * cos(u * 9.0 - v * 11.0))
+				if cover < 0.35 and edge_noise > 0.72:
+					cover = 0.0
+				elif cover > 0.55 and edge_noise > 0.93 and absf(u) > 0.15:
+					cover *= 0.35  # soft interior hole
+			if cover > 0.08:
+				# Vein darkening toward center + tip brightening
+				var shade := 0.55 + 0.45 * cover
+				shade *= 0.78 + 0.22 * (1.0 - absf(u) * 0.6)
+				shade *= 0.9 + 0.1 * (0.5 - v)
+				img.set_pixel(x, y, Color(shade, shade, shade, 1.0))
+	_leaf_tex = ImageTexture.create_from_image(img)
+	return _leaf_tex
+
+
+func _leaf_card_material(color: Color) -> Material:
+	var key := color.to_html(false)
+	if _leaf_mat_cache.has(key):
+		return _leaf_mat_cache[key]
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.albedo_texture = _leaf_texture()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	mat.alpha_scissor_threshold = 0.45
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.roughness = 0.95
+	mat.metallic = 0.0
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	_leaf_mat_cache[key] = mat
+	return mat
+
+
+func _leafy_bush(parent: Node3D, local_pos: Vector3, scale: float, yaw_deg: float) -> void:
+	## Crossed alpha-cut leaf cards + darker AO interior — cheap on mobile.
+	var bush := Node3D.new()
+	bush.position = local_pos
+	bush.rotation_degrees.y = yaw_deg
+	bush.scale = Vector3(scale, scale, scale)
+	parent.add_child(bush)
+	var mid := Color(0.22, 0.44, 0.17)
+	var lite := Color(0.32, 0.52, 0.20)
+	var dark := Color(0.08, 0.18, 0.07)
+	# Small dark AO core — cards carry the silhouette
+	var core := ProcMesh.sphere_mesh(0.16, dark, 0.98, 0.0)
+	core.scale = Vector3(1.0, 0.75, 1.0)
+	core.add_to_group("foliage_wind")
+	ProcMesh.add_part(bush, core, Vector3(0, 0.38, 0))
+	var card_n := 2 if lightweight_props else 3
+	for i in range(card_n):
+		var col := mid if i % 2 == 0 else lite
+		if i == 0:
+			col = dark.lerp(mid, 0.55)
+		var plane := PlaneMesh.new()
+		plane.size = Vector2(1.25 + float(i) * 0.1, 1.15 + float(i % 2) * 0.1)
+		plane.orientation = PlaneMesh.FACE_Z
+		var mi := MeshInstance3D.new()
+		mi.mesh = plane
+		mi.material_override = _leaf_card_material(col)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.add_to_group("foliage_wind")
+		mi.position = Vector3(float(i % 2) * 0.04 - 0.02, 0.58 + float(i) * 0.03, float(i) * 0.02)
+		mi.rotation_degrees = Vector3(float(i % 2) * 6.0 - 3.0, float(i) * (90.0 if card_n == 2 else 60.0) + float(i) * 7.0, float(i % 2) * 10.0 - 5.0)
+		bush.add_child(mi)
+	# Extra side card for volume (desktop / high detail)
+	if not lightweight_props:
+		var outer := PlaneMesh.new()
+		outer.size = Vector2(1.05, 0.9)
+		outer.orientation = PlaneMesh.FACE_Z
+		var om := MeshInstance3D.new()
+		om.mesh = outer
+		om.material_override = _leaf_card_material(lite.darkened(0.05))
+		om.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		om.add_to_group("foliage_wind")
+		om.position = Vector3(0.12, 0.5, 0.06)
+		om.rotation_degrees = Vector3(8, 28, -8)
+		bush.add_child(om)
+
+
+func _scatter_grass_at(parent: Node3D, _world_center: Vector3, count: int, radius: float) -> void:
+	## Tall grass blades around a bush cluster base (local MultiMesh, cheap).
+	if count <= 0:
+		return
+	var tuft_col := Color(0.24, 0.42, 0.15)
+	var mm := MultiMeshInstance3D.new()
+	mm.name = "ClusterGrass"
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	var blade := BoxMesh.new()
+	blade.size = Vector3(0.10, 0.62, 0.06)
+	multimesh.mesh = blade
+	multimesh.instance_count = count
+	if GraphicsQuality:
+		mm.material_override = GraphicsQuality.make_foliage_material(tuft_col)
+	else:
+		mm.material_override = ProcMesh.mat(tuft_col, 0.92, 0.0)
+	mm.add_to_group("foliage_wind")
+	mm.multimesh = multimesh
+	mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mm)
+	for i in range(count):
+		var ang := float(i) * 2.399963  # golden angle
+		var r := radius * (0.35 + fmod(float(i) * 0.17, 0.55))
+		var h := 0.75 + float(i % 4) * 0.14
+		var xf := Transform3D()
+		xf = xf.scaled(Vector3(1.0, h, 1.0))
+		xf = xf.rotated(Vector3.UP, ang)
+		xf.origin = Vector3(cos(ang) * r, 0.31 * h, sin(ang) * r)
+		multimesh.set_instance_transform(i, xf)
+
+
 func _scatter_grass(grass_spots: Array) -> void:
-	## MultiMesh tufts + hide zones (crouch = hidden). Wind shader on Med/High.
+	## Standalone grass patches (no hide zones — those live on bush clusters).
 	var tuft_col := Color(0.22, 0.38, 0.16)
 	var count := grass_spots.size()
 	if count == 0:
 		return
-	# One MultiMesh for all tufts — cheap on mobile
 	var mm := MultiMeshInstance3D.new()
 	mm.name = "GrassMultiMesh"
 	var multimesh := MultiMesh.new()
@@ -1077,48 +1329,6 @@ func _scatter_grass(grass_spots: Array) -> void:
 			xf.origin = p + Vector3(ox, 0.28 * h, oz)
 			multimesh.set_instance_transform(idx, xf)
 			idx += 1
-		_add_hide_bush(p, 1.8, 1.1)
-	# Optional Kenney accents on PC / high detail
-	if not lightweight_props:
-		var kenney_n := mini(4, count)
-		for i in range(kenney_n):
-			var scene := KENNEY_GRASS if i % 2 == 0 else KENNEY_GRASS_SMALL
-			var tuft := scene.instantiate()
-			if tuft is Node3D:
-				var n := tuft as Node3D
-				n.position = grass_spots[i] + Vector3(0.4, 0, 0.2)
-				n.rotation_degrees.y = float(i * 47 % 360)
-				n.scale = Vector3(1.5, 1.5, 1.5)
-				add_child(n)
-
-
-func _add_hide_bush(pos: Vector3, radius: float = 2.2, height: float = 1.35) -> void:
-	## Visual bush cluster + Area3D hide volume along stealth routes / outskirts.
-	var bush_col := Color(0.16, 0.32, 0.14)
-	var bush_dark := Color(0.12, 0.24, 0.11)
-	var root := Node3D.new()
-	root.name = "HideBush"
-	root.position = pos
-	add_child(root)
-	for i in range(3 if lightweight_props else 5):
-		var ang := float(i) * TAU / 5.0
-		var r := radius * (0.25 + float(i % 3) * 0.08)
-		var leaf := ProcMesh.sphere_mesh(0.55 + float(i % 2) * 0.12, bush_col if i % 2 == 0 else bush_dark, 0.9, 0.0)
-		if GraphicsQuality:
-			leaf.material_override = GraphicsQuality.make_foliage_material(bush_col if i % 2 == 0 else bush_dark)
-		leaf.add_to_group("foliage_wind")
-		ProcMesh.add_part(root, leaf, Vector3(cos(ang) * r, 0.55 + float(i % 3) * 0.15, sin(ang) * r))
-	var zone := Area3D.new()
-	zone.set_script(load("res://scripts/levels/foliage_hide_zone.gd"))
-	zone.name = "HideZone"
-	var cs := CollisionShape3D.new()
-	var shape := CylinderShape3D.new()
-	shape.radius = radius * 0.85
-	shape.height = height
-	cs.shape = shape
-	cs.position = Vector3(0, height * 0.45, 0)
-	zone.add_child(cs)
-	root.add_child(zone)
 
 
 func _pine_tree(pos: Vector3, scale_h: float) -> void:

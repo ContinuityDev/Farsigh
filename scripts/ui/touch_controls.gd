@@ -137,6 +137,7 @@ func _process(delta: float) -> void:
 		_layout_tick = 0.0
 		if visible:
 			_update_contextual_buttons()
+			_apply_touch_prefs()
 	# Long-press Swap → weapon wheel
 	if TouchInput.is_action_pressed("weapon_next"):
 		_swap_hold_t += delta
@@ -248,6 +249,25 @@ func _update_contextual_buttons() -> void:
 		b.offset_right = float(slot[2])
 		b.offset_bottom = float(slot[3])
 		b.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+
+
+func _apply_touch_prefs() -> void:
+	## Button size + opacity from Controls settings (saved on profile).
+	if not is_instance_valid(root):
+		return
+	var sc := clampf(GameState.touch_btn_scale, 0.7, 1.4)
+	var op := clampf(GameState.touch_btn_opacity, 0.35, 1.0)
+	for pair in _action_btns:
+		var btn: Control = pair[0]
+		if not is_instance_valid(btn):
+			continue
+		btn.scale = Vector2(sc, sc)
+		btn.modulate.a = op
+	# Stick / look pad: opacity only (size stays layout-fixed)
+	if is_instance_valid(stick_base):
+		stick_base.modulate.a = op
+	if is_instance_valid(look_pad):
+		look_pad.modulate.a = minf(op + 0.1, 1.0)
 
 
 func _release_action_holds(action: String) -> void:

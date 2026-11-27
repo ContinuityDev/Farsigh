@@ -716,7 +716,24 @@ func _ensure_settings_buttons() -> void:
 		fs.pressed.connect(_on_fullscreen_pressed)
 		vbox.add_child(fs)
 		vbox.move_child(fs, _settings_insert_index(vbox))
+	if vbox.get_node_or_null("ControlsBtn") == null:
+		var ctrl := Button.new()
+		ctrl.name = "ControlsBtn"
+		ctrl.text = "Controls…"
+		ctrl.custom_minimum_size = Vector2(0, 36)
+		ctrl.pressed.connect(_on_controls_pressed)
+		vbox.add_child(ctrl)
+		vbox.move_child(ctrl, _settings_insert_index(vbox))
 	_refresh_settings_ui()
+
+
+func _on_controls_pressed() -> void:
+	if get_node_or_null("ControlsSettings") != null:
+		return
+	var panel = load("res://scripts/ui/controls_settings.gd").new()
+	panel.name = "ControlsSettings"
+	panel.closed.connect(func(): pass)
+	add_child(panel)
 
 
 func _settings_insert_index(vbox: VBoxContainer) -> int:

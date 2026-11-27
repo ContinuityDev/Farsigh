@@ -93,6 +93,9 @@ Touch controls appear automatically on native mobile and on web builds when a to
 - **Always-on** — move stick, look, `FIRE`, `AIM`, `JUMP/VLT`, `CROUCH`, `SPRINT`, `PEEK L/R`, `SWAP`
 - **Contextual** — `TAKEDOWN` (enemy in range), `RELOAD` (mag not full + reserve), `USE` (interactable/body), `ROCK` (rocks left), `ZOOM` (ADS + variable scope), `BINOS` (hidden while ADS), `INSPECT`
 - **Settings** (main menu + pause): separate **Mouse Look** / **Touch Look** sliders with live %, **ADS/Scope** multiplier, optional **4×/6×/8×** scope mults, **Invert Y**, graphics quality, Touch Aim Hold/Toggle, Tap-to-Fire, Fullscreen. Saved to `user://loadout_prefs.json` and applied live.
+- **Controls** (Settings → Controls…): full PC rebind list (movement, peek, fire/aim, reload, swap, Tab wheel, Q/T gadget, G lethal, binos, zoom, ally command, use/revive, inspect, takedown…), click-then-press with conflict warnings + Reset Defaults; Mobile/Touch help for contextual buttons; touch button size/opacity + sensitivity sliders. Overrides save to the profile.
+- **Foliage**: natural bush clusters (3–8) of crossed alpha-cut leaf cards with grass bases + matching hide zones along fences, building edges, and approach routes (cheap on mobile).
+
 - Look-swipes never fire — mouse-from-touch stays on so menus/gunsmith respond to taps, but fire/aim ignore mouse while the touch UI is up; only the on-screen **FIRE** button shoots (PC LMB unchanged)
 - **BINOS** stays tappable while raised (toggle down); pinch or overlay **±** zoom; PC **B** + wheel still work
 - Per-guard **?** / **!** awareness meters; hearing → investigate only (never instant spot); delayed interruptible shout/radio (~1.5–3s)
@@ -126,6 +129,11 @@ Captured from a running Godot 4.3 session (`AUTO_CAPTURE=1`):
 | Per-Guard Alert Meters | ![Alert Meters](docs/screenshots/23_guard_alert_meters.png) |
 | Foliage Hide / HIDDEN HUD | ![Foliage Hidden](docs/screenshots/24_foliage_hidden.png) |
 | Water Shader (High) | ![Water High](docs/screenshots/25_water_high.png) |
+| Bush clusters (before) | ![Bush Before](docs/screenshots/27_bush_before.png) |
+| Controls settings (PC rebinds) | ![Controls](docs/screenshots/28_controls_settings.png) |
+| Bush clusters (after) | ![Bush After](docs/screenshots/29_bush_clusters_after.png) |
+| Ranch bush clusters | ![Ranch Bushes](docs/screenshots/30_ranch_bush_clusters.png) |
+| Scaled compound + role guards | ![Scaled Compound](docs/screenshots/31_scaled_compound_guards.png) |
 
 ```bash
 # Automated screenshot capture (needs a display; use OpenGL if Vulkan is unavailable)
@@ -147,13 +155,13 @@ Prototype code is free to use and extend for learning and game jams.
 
 ## Garrison sizes
 
-| Outpost | Hostiles | Difficulty |
-|---|---|---|
-| Hope County Compound | 8 | Standard |
-| Seed Family Ranch | 10 | Standard |
-| Baron Lumber Mill | 10 | Standard |
-| Whitetail Dock | 10 | Standard |
-| Jacob's Ridge Bunker | 12 | Hard |
-| Eden's Gate Fortress | 13 | Extreme (locked) |
-| Labour Camp | 12 | Extreme (locked) |
-| Joseph's Cathedral HQ | 12 | Boss (locked) |
+| Outpost | Hostiles | Difficulty | Entrances |
+|---|---|---|---|
+| Hope County Compound | 9 | Standard | South Gate, West Breach, North Service Gap, East Culvert |
+| Seed Family Ranch | 12 | Standard | South Driveway, East Pasture, West Orchard, North Silo Lane |
+| Baron Lumber Mill | 12 | Standard | Main Haul Road, West Timber Trail, East Creek Bank, North Rail Spur |
+| Whitetail Dock | 12 | Standard | South Highway Lot, West Riverbank, East Boat Launch, North Pier Crawl |
+| Jacob's Ridge Bunker | 14 | Hard | South Switchback, West Cliff Gap, East Trench, North Bunker Rear |
+| Eden's Gate Fortress | 13 | Extreme (locked) | South Gatehouse, West Sewer Cut, East Scaffold Breach |
+| Labour Camp | 12 | Extreme (locked) | South Prison Gate, East Fence Cut, West Drainage Culvert |
+| Joseph's Cathedral HQ | 12 | Boss (locked) | South Processional, West Choir Breach, North Bell Tower |

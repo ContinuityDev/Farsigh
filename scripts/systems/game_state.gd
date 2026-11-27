@@ -4,6 +4,7 @@ extends Node
 
 const OutpostCatalog = preload("res://scripts/levels/outpost_catalog.gd")
 const AttachmentCatalog = preload("res://scripts/systems/attachment_catalog.gd")
+const InputBindings = preload("res://scripts/systems/input_bindings.gd")
 
 signal outpost_liberated(outpost_id: String)
 signal outpost_status_changed(outpost_id: String, status: String)
@@ -70,6 +71,10 @@ var look_sensitivity: float = 1.0  # legacy alias → mouse_look_sensitivity
 var touch_aim_toggle: bool = false  # false = hold Aim button, true = tap to toggle
 var tap_to_fire: bool = false  # optional: short look-pad tap fires (off by default)
 var graphics_quality: int = 2  # 0 Low / 1 Medium / 2 High (GraphicsQuality)
+## PC keybind overrides: action -> {keycode, mouse}
+var keybind_overrides: Dictionary = {}
+var touch_btn_scale: float = 1.0
+var touch_btn_opacity: float = 0.75
 
 # Progression / shop / streaks (persisted)
 var currency: int = 0
@@ -152,6 +157,7 @@ func _ready() -> void:
 func _load_save() -> void:
 	SaveManager.load_game()
 	_ensure_defaults()
+	apply_keybinds()
 
 
 func _ensure_defaults() -> void:
@@ -695,6 +701,9 @@ func serialize_loadout() -> Dictionary:
 		"touch_aim_toggle": touch_aim_toggle,
 		"tap_to_fire": tap_to_fire,
 		"graphics_quality": graphics_quality,
+		"keybind_overrides": keybind_overrides.duplicate(true),
+		"touch_btn_scale": touch_btn_scale,
+		"touch_btn_opacity": touch_btn_opacity,
 	}
 
 
@@ -720,7 +729,13 @@ func deserialize_loadout(data: Dictionary) -> void:
 	touch_aim_toggle = bool(data.get("touch_aim_toggle", touch_aim_toggle))
 	tap_to_fire = bool(data.get("tap_to_fire", tap_to_fire))
 	graphics_quality = clampi(int(data.get("graphics_quality", graphics_quality)), 0, 2)
+	var kb = data.get("keybind_overrides", {})
+	if kb is Dictionary:
+		keybind_overrides = (kb as Dictionary).duplicate(true)
+	touch_btn_scale = clampf(float(data.get("touch_btn_scale", touch_btn_scale)), 0.7, 1.4)
+	touch_btn_opacity = clampf(float(data.get("touch_btn_opacity", touch_btn_opacity)), 0.35, 1.0)
 	_ensure_defaults()
+	apply_keybinds()
 
 
 func set_mouse_look_sensitivity(value: float) -> void:
@@ -757,6 +772,43 @@ func set_scope_sens_8x(value: float) -> void:
 func set_invert_y(enabled: bool) -> void:
 	invert_y = enabled
 	SaveManager.save_loadout()
+
+
+func set_touch_btn_scale(value: float) -> void:
+	touch_btn_scale = clampf(value, 0.7, 1.4)
+	SaveManager.save_loadout()
+
+
+func set_touch_btn_opacity(value: float) -> void:
+	touch_btn_opacity = clampf(value, 0.35, 1.0)
+	SaveManager.save_loadout()
+
+
+func set_keybind(action: String, keycode: int, is_mouse: bool = false) -> void:
+	keybind_overrides[action] = {"keycode": keycode, "mouse": is_mouse}
+	apply_keybinds()
+	SaveManager.save_loadout()
+
+
+func reset_keybinds() -> void:
+	keybind_overrides.clear()
+	apply_keybinds()
+	SaveManager.save_loadout()
+
+
+func apply_keybinds() -> void:
+	InputBindings.apply_overrides(keybind_overrides)
+	# Keep T as alternate for gadget unless rebound away from Q default
+	if not keybind_overrides.has("use_gadget") or int(keybind_overrides["use_gadget"].get("keycode", KEY_Q)) == KEY_Q:
+		if InputMap.has_action("use_gadget"):
+			var has_t := false
+			for ev in InputMap.action_get_events("use_gadget"):
+				if ev is InputEventKey and (ev as InputEventKey).physical_keycode == KEY_T:
+					has_t = true
+			if not has_t:
+				var kb := InputEventKey.new()
+				kb.physical_keycode = KEY_T
+				InputMap.action_add_event("use_gadget", kb)
 
 
 func set_look_sensitivity(value: float) -> void:

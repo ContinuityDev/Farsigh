@@ -140,6 +140,12 @@ func _ensure_settings_panel() -> void:
 		_refresh_menu_settings()
 	)
 	box.add_child(inv)
+	var controls := Button.new()
+	controls.name = "ControlsBtn"
+	controls.text = "Controls…"
+	controls.custom_minimum_size = Vector2(0, 44)
+	controls.pressed.connect(_on_controls_from_menu)
+	box.add_child(controls)
 	var close := Button.new()
 	close.text = "Close"
 	close.custom_minimum_size = Vector2(0, 48)
@@ -147,6 +153,14 @@ func _ensure_settings_panel() -> void:
 	box.add_child(close)
 	add_child(_settings_panel)
 	_refresh_menu_settings()
+
+
+func _on_controls_from_menu() -> void:
+	if get_node_or_null("ControlsSettings") != null:
+		return
+	var panel = load("res://scripts/ui/controls_settings.gd").new()
+	panel.name = "ControlsSettings"
+	add_child(panel)
 
 
 func _add_menu_slider(parent: VBoxContainer, key: String, title: String, value: float, min_v: float, max_v: float, setter: Callable) -> void:
