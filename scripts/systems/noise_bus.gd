@@ -12,4 +12,7 @@ signal noise_emitted(position: Vector3, loudness: float, source: String)
 func emit_noise(world_pos: Vector3, loudness: float, source: String = "generic") -> void:
 	if loudness <= 0.0:
 		return
+	# Ignore hearing while the outpost is still loading / in spawn grace
+	if GameState.is_detection_frozen():
+		return
 	noise_emitted.emit(world_pos, loudness, source)

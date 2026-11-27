@@ -52,7 +52,9 @@ func _run() -> void:
 	gs.set_ads_sensitivity(0.55)
 
 	# 3. Deploy outpost and exercise live ADS
+	gs.begin_world_load()
 	change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await gs.wait_world_ready()
 	await process_frame
 	await process_frame
 	await create_timer(0.6).timeout

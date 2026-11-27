@@ -37,6 +37,8 @@ func is_disabled() -> bool:
 func trigger(_by: Node = null) -> void:
 	if disabled or triggered:
 		return
+	if GameState.is_detection_frozen():
+		return
 	triggered = true
 	alarm_triggered.emit()
 	_update_visual()

@@ -361,6 +361,7 @@ func _on_deploy() -> void:
 	SaveManager.save_loadout()
 	if GameState.has_active_run:
 		SaveManager.save_game()
+	GameState.begin_world_load()
 	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
 
 

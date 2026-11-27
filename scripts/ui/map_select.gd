@@ -108,6 +108,7 @@ func _on_gunsmith_pressed() -> void:
 
 func _on_deploy_pressed() -> void:
 	GameState.select_outpost(_selected_id)
+	GameState.begin_world_load()
 	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
 
 

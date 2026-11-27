@@ -159,6 +159,10 @@ func _cache_patrol() -> void:
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
+	# Frozen during staged outpost load + short post-spawn grace
+	if GameState.is_detection_frozen():
+		velocity = Vector3.ZERO
+		return
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 

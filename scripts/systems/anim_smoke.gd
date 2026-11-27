@@ -15,7 +15,9 @@ func _run() -> void:
 	sm.clear_save()
 	gs.start_new_run()
 	gs.select_outpost("compound_alpha")
+	gs.begin_world_load()
 	change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await gs.wait_world_ready()
 	await process_frame
 	await process_frame
 	await create_timer(0.45).timeout

@@ -127,7 +127,9 @@ func _run() -> void:
 	# 7. Deploy outpost under touch UI — look swipe must not consume ammo
 	touch.force_touch_ui = true
 	gs.select_outpost("compound_alpha")
+	gs.begin_world_load()
 	change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await gs.wait_world_ready()
 	await process_frame
 	await process_frame
 	await create_timer(0.5).timeout

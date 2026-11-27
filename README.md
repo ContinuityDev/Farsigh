@@ -18,6 +18,7 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 - **Jacob's Ridge Bunker** (`hilltop_bunker`) — 17 hostiles (3 snipers, twin heavies, officer, basement + barracks interiors, dog + handler), 2 alarms.
 - Roles: **heavies** (tougher body HP/armor; headshots still one-shot), **officers** (faster alarms + extra reinforcements), **dogs** (fast bite, keen hearing) with **handlers**, idle **chat pairs**, rooftop/tower **snipers**, and multi-storey **interior** patrols.
 - AI LOD / tick throttling for far guards keeps mobile browser performance OK.
+- Staged outpost loading screen (progress + tips) builds environment → geometry → props → navmesh → guards → weapons → HUD, then spawns the player last. Detection / alarms / hearing stay frozen until load finishes plus a ~1.5s grace. Mobile web uses lightweight props and chunked mesh uploads so GL Compatibility doesn’t starve.
 - Liberation saves per outpost (`user://outpost_save.json`) and resets on **New Run**.
 
 ### Multi-Storey Buildings & Runtime NavMesh

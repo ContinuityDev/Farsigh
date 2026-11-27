@@ -58,7 +58,9 @@ func _run() -> void:
 		return
 
 	# 4. Deploy to outpost and verify WeaponManager picked up modded SMG (extended mag + suppressed)
+	gs.begin_world_load()
 	change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await gs.wait_world_ready()
 	await process_frame
 	await process_frame
 	await create_timer(0.35).timeout

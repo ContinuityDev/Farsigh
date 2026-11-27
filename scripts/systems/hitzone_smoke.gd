@@ -8,7 +8,9 @@ func _run() -> void:
 	var gs := root.get_node("GameState")
 	gs.start_new_run()
 	gs.set_loadout(gs.WeaponId.PISTOL, gs.WeaponId.KNIFE)
+	gs.begin_world_load()
 	change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await gs.wait_world_ready()
 	await process_frame
 	await process_frame
 	await create_timer(1.0).timeout

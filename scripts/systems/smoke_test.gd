@@ -11,10 +11,12 @@ func _run() -> void:
 	var gs := root.get_node("GameState")
 	gs.start_new_run()
 	gs.set_loadout(gs.WeaponId.BOW, gs.WeaponId.KNIFE)
+	gs.begin_world_load()
 	change_scene_to_file("res://scenes/levels/outpost.tscn")
 	await process_frame
 	await process_frame
-	await create_timer(1.2).timeout
+	await gs.wait_world_ready()
+	await create_timer(0.4).timeout
 	var guards := get_nodes_in_group("guards")
 	print("SMOKE guards=", guards.size())
 	for g in guards:

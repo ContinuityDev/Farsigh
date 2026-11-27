@@ -25,7 +25,9 @@ func _run() -> void:
 	for def in OutpostCatalog.get_all():
 		var oid: String = def["id"]
 		gs.select_outpost(oid)
+		gs.begin_world_load()
 		change_scene_to_file("res://scenes/levels/outpost.tscn")
+		await gs.wait_world_ready()
 		await process_frame
 		await process_frame
 		await create_timer(0.35).timeout
@@ -59,7 +61,9 @@ func _run() -> void:
 
 	# Liberate ranch_redbarn only and check per-outpost persistence
 	gs.select_outpost("ranch_redbarn")
+	gs.begin_world_load()
 	change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await gs.wait_world_ready()
 	await process_frame
 	await process_frame
 	await create_timer(0.35).timeout

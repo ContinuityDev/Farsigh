@@ -58,7 +58,22 @@ var _throw_arc_mat: StandardMaterial3D = null
 func _ready() -> void:
 	_setup_poses()
 	_ensure_slots()
-	rebuild_all_from_state()
+	# During staged outpost load, OutpostManager rebuilds viewmodels in a later
+	# chunk so we don't sync-build 14 weapons on the same frame as greybox.
+	if GameState.world_loading:
+		hide_all()
+	else:
+		rebuild_all_from_state()
+		hide_all()
+
+
+## Rebuild one weapon per frame so mobile WebGL can upload meshes.
+func rebuild_all_async(host: Node) -> void:
+	_ensure_slots()
+	for wid in _slots.keys():
+		rebuild_weapon(wid, GameState.get_weapon_mods(wid))
+		if is_instance_valid(host):
+			await host.get_tree().process_frame
 	hide_all()
 
 

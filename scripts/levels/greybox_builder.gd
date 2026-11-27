@@ -9,19 +9,33 @@ const KENNEY_WALL_LOW: PackedScene = preload("res://assets/kenney/wall-low.glb")
 const BuildingKit = preload("res://scripts/levels/building_kit.gd")
 
 var current_outpost_id: String = ""
+## When true, skip Kenney GLB foliage / barriers (mobile web GPU relief).
+var lightweight_props: bool = false
 
 
 func _ready() -> void:
-	if current_outpost_id == "":
-		build_outpost(GameState.selected_outpost_id)
+	# Do NOT auto-build here — OutpostManager stages the load and yields between
+	# chunks so mobile WebGL can upload meshes without starving the context.
+	lightweight_props = OS.has_feature("web") or OS.has_feature("mobile")
+
+
+func clear_geometry() -> void:
+	for c in get_children():
+		c.queue_free()
+	current_outpost_id = ""
 
 
 func build_outpost(outpost_id: String) -> void:
+	## Sync build (smoke tests / tools). Prefer build_outpost_async in gameplay.
 	if current_outpost_id == outpost_id and get_child_count() > 0:
 		return
 	current_outpost_id = outpost_id
 	for c in get_children():
 		c.queue_free()
+	_build_sync(outpost_id)
+
+
+func _build_sync(outpost_id: String) -> void:
 	match outpost_id:
 		"ranch_redbarn":
 			_build_ranch()
@@ -33,6 +47,163 @@ func build_outpost(outpost_id: String) -> void:
 			_build_hilltop_bunker()
 		_:
 			_build_compound_alpha()
+
+
+func build_outpost_async(outpost_id: String, on_stage: Callable = Callable()) -> PackedStringArray:
+	## Chunked build with frame yields so mobile browsers keep WebGL alive.
+	var errors: PackedStringArray = []
+	current_outpost_id = outpost_id
+	for c in get_children():
+		c.queue_free()
+	# Let frees apply before we start allocating
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var stages: Array = _stage_plan(outpost_id)
+	var i := 0
+	for stage in stages:
+		i += 1
+		var label := String(stage.get("label", "Building…"))
+		if on_stage.is_valid():
+			on_stage.call(label, float(i - 1) / float(maxi(stages.size(), 1)))
+		var fn: Callable = stage.get("fn", Callable())
+		if fn.is_valid():
+			var err := await _run_stage(fn, label)
+			if err != "":
+				errors.append(err)
+		# Two frames: one to process nodes, one for GPU upload / draw
+		await get_tree().process_frame
+		await get_tree().process_frame
+	# Web/mobile: bake hundreds of MeshInstance3D into few ArrayMeshes so
+	# Compatibility / WebGL can actually draw the outpost (draw-call ceiling).
+	if lightweight_props:
+		if on_stage.is_valid():
+			on_stage.call("Optimizing meshes…", 0.95)
+		await _consolidate_static_meshes()
+		await get_tree().process_frame
+		await get_tree().process_frame
+	if on_stage.is_valid():
+		on_stage.call("Geometry ready", 1.0)
+	print("GREYBOX_READY id=", outpost_id, " children=", get_child_count(), " lightweight=", lightweight_props)
+	return errors
+
+
+## Merge static MeshInstance3D children (skip doors) into one ArrayMesh per material.
+func _consolidate_static_meshes() -> void:
+	var by_mat: Dictionary = {}  # Material -> Array[{mesh, xf}]
+	var to_free: Array[Node] = []
+	_collect_bakeable_meshes(self, Transform3D.IDENTITY, by_mat, to_free)
+	if by_mat.is_empty():
+		return
+	for mat in by_mat.keys():
+		var entries: Array = by_mat[mat]
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var appended := 0
+		for entry in entries:
+			var mesh: Mesh = entry["mesh"]
+			var xf: Transform3D = entry["xf"]
+			if mesh == null or mesh.get_surface_count() < 1:
+				continue
+			st.append_from(mesh, 0, xf)
+			appended += 1
+		if appended == 0:
+			continue
+		var baked := st.commit()
+		if baked == null:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.name = "BakedMesh"
+		mi.mesh = baked
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+		add_child(mi)
+	for n in to_free:
+		if is_instance_valid(n):
+			n.queue_free()
+	print("GREYBOX_BAKE materials=", by_mat.size(), " freed=", to_free.size())
+
+
+func _collect_bakeable_meshes(node: Node, parent_xf: Transform3D, by_mat: Dictionary, to_free: Array[Node]) -> void:
+	for c in node.get_children():
+		if c.is_in_group("doors") or c.get_class() == "InteractiveDoor":
+			continue
+		if c is StaticBody3D:
+			# Keep colliders; still recurse in case meshes are nested oddly
+			_collect_bakeable_meshes(c, parent_xf * (c as Node3D).transform, by_mat, to_free)
+			continue
+		var xf := parent_xf
+		if c is Node3D:
+			xf = parent_xf * (c as Node3D).transform
+		if c is MeshInstance3D:
+			var mi := c as MeshInstance3D
+			if mi.mesh != null and mi.mesh.get_surface_count() > 0:
+				var mat: Material = mi.material_override
+				if mat == null and mi.mesh.get_surface_count() > 0:
+					mat = mi.mesh.surface_get_material(0)
+				if mat == null:
+					mat = ProcMesh.mat(Color(0.5, 0.5, 0.5))
+				if not by_mat.has(mat):
+					by_mat[mat] = []
+				by_mat[mat].append({"mesh": mi.mesh, "xf": xf})
+				to_free.append(mi)
+			continue
+		_collect_bakeable_meshes(c, xf, by_mat, to_free)
+
+
+func _run_stage(fn: Callable, label: String) -> String:
+	# GDScript has no try/catch; validate after call
+	fn.call()
+	if not is_inside_tree():
+		return "%s: greybox left the tree" % label
+	return ""
+
+
+func _stage_plan(outpost_id: String) -> Array:
+	match outpost_id:
+		"ranch_redbarn":
+			return [
+				{"label": "Pasture & fences", "fn": Callable(self, "_ranch_terrain_fences")},
+				{"label": "Barn & farmhouse", "fn": Callable(self, "_ranch_buildings")},
+				{"label": "Hay & vehicles", "fn": Callable(self, "_ranch_props_vehicles")},
+				{"label": "Trees & foliage", "fn": Callable(self, "_ranch_foliage")},
+			]
+		"lumber_mill":
+			return [
+				{"label": "Mill yard", "fn": Callable(self, "_lumber_terrain")},
+				{"label": "Mill buildings", "fn": Callable(self, "_lumber_buildings")},
+				{"label": "Logs & cover", "fn": Callable(self, "_lumber_props")},
+				{"label": "Trees & foliage", "fn": Callable(self, "_lumber_foliage")},
+			]
+		"river_dock":
+			return [
+				{"label": "River & docks", "fn": Callable(self, "_river_terrain")},
+				{"label": "Warehouse & office", "fn": Callable(self, "_river_buildings")},
+				{"label": "Boats & cover", "fn": Callable(self, "_river_props")},
+				{"label": "Trees & foliage", "fn": Callable(self, "_river_foliage")},
+			]
+		"hilltop_bunker":
+			return [
+				{"label": "Hill terrain", "fn": Callable(self, "_hill_terrain")},
+				{"label": "Bunker structure", "fn": Callable(self, "_hill_buildings")},
+				{"label": "Emplacements", "fn": Callable(self, "_hill_props")},
+				{"label": "Trees & foliage", "fn": Callable(self, "_hill_foliage")},
+			]
+		_:
+			return [
+				{"label": "Terrain & roads", "fn": Callable(self, "_terrain_and_roads")},
+				{"label": "Perimeter walls", "fn": Callable(self, "_perimeter")},
+				{"label": "Buildings", "fn": Callable(self, "_buildings")},
+				{"label": "Courtyard cover", "fn": Callable(self, "_courtyard_cover")},
+				{"label": "Vehicles", "fn": Callable(self, "_vehicles")},
+				{"label": "Watchtower", "fn": Callable(self, "_stage_watchtower_alpha")},
+				{"label": "Approach cover", "fn": Callable(self, "_approach_cover")},
+				{"label": "Trees & foliage", "fn": Callable(self, "_trees_and_foliage")},
+			]
+
+
+func _stage_watchtower_alpha() -> void:
+	_watchtower_at(Vector3(-15.25, 0, -15.25))
 
 
 # ============================================================================
@@ -169,7 +340,9 @@ func _trees_and_foliage() -> void:
 		Vector3(-18, 0, -33), Vector3(-4, 0, -35), Vector3(18, 0, -33), Vector3(31, 0, -24),
 		Vector3(33, 0, -6), Vector3(32, 0, 12), Vector3(30, 0, 25),
 	]
-	for i in range(pine_positions.size()):
+	# Mobile / web: fewer pines to cut mesh + draw pressure
+	var pine_limit := 6 if lightweight_props else pine_positions.size()
+	for i in range(pine_limit):
 		_pine_tree(pine_positions[i], 0.85 + float(i % 4) * 0.18)
 
 	var grass_spots := [
@@ -179,6 +352,8 @@ func _trees_and_foliage() -> void:
 		Vector3(18.0, 0, 25.4), Vector3(-2.5, 0, 27.2), Vector3(2.8, 0, 27.6),
 		Vector3(-14.0, 0, 18.0), Vector3(16.0, 0, 18.5), Vector3(-19.0, 0, -18.0),
 	]
+	if lightweight_props:
+		grass_spots = grass_spots.slice(0, 6)
 	_scatter_grass(grass_spots)
 
 
@@ -186,15 +361,18 @@ func _trees_and_foliage() -> void:
 # 2. SEED FAMILY RANCH (Big red barn, twin grain silos, farmhouse, hay bales)
 # ============================================================================
 func _build_ranch() -> void:
-	# Golden farmland pasture & dirt barnyard
+	_ranch_terrain_fences()
+	_ranch_buildings()
+	_ranch_props_vehicles()
+	_ranch_foliage()
+
+
+func _ranch_terrain_fences() -> void:
 	_box(Vector3(0, -0.5, 0), Vector3(140, 1.0, 140), Color(0.34, 0.39, 0.21), true)
 	_box(Vector3(0, 0.015, 0), Vector3(52, 0.03, 52), Color(0.45, 0.37, 0.26), false)
 	_box(Vector3(0, 0.025, 22), Vector3(6.5, 0.03, 34), Color(0.48, 0.39, 0.27), false)
-	# Golden wheat field strips flanking the road
 	_box(Vector3(-18, 0.08, 30), Vector3(18, 0.16, 12), Color(0.68, 0.56, 0.22), false)
 	_box(Vector3(18, 0.08, 30), Vector3(18, 0.16, 12), Color(0.66, 0.54, 0.21), false)
-
-	# Wooden split-rail ranch fences (with south gate, east orchard breach, north hayfield gap)
 	var rail_col := Color(0.46, 0.34, 0.21)
 	_ranch_fence(Vector3(-15, 0, 24), Vector3(18, 1.35, 0.3), rail_col)
 	_ranch_fence(Vector3(15, 0, 24), Vector3(18, 1.35, 0.3), rail_col)
@@ -205,32 +383,24 @@ func _build_ranch() -> void:
 	_ranch_fence(Vector3(-10, 0, -24), Vector3(24, 1.35, 0.3), rail_col)
 	_ranch_fence(Vector3(14, 0, -24), Vector3(14, 1.35, 0.3), rail_col)
 
-	# Iconic 2-Storey Big Red Barn (center-north) with hayloft, interior stairs, and reachable roof overlook
+
+func _ranch_buildings() -> void:
 	var barn_red := Color(0.58, 0.15, 0.12)
 	var barn_roof := Color(0.24, 0.25, 0.27)
 	BuildingKit.build_multi_storey(self, Vector3(-2, 0, -7), 12.6, 9.6, 3.4, barn_red, barn_roof, "S", true, "W")
-	# White barn X-trim accent above front doorway
 	_box(Vector3(-2, 6.95, -2.0), Vector3(2.8, 0.18, 0.18), Color(0.92, 0.90, 0.85), false)
-
-	# Twin Silver Galvanized Grain Silos (east of barn) + sniper catwalk perch
 	_grain_silo(Vector3(14, 0, -12), 2.5, 8.8)
 	_grain_silo(Vector3(14, 0, -5), 2.5, 8.2)
-	# Steel catwalk platform wrapping the silos at y=5.5 (sniper stands at 14, 5.6, -12)
 	_box(Vector3(14, 5.4, -12), Vector3(6.2, 0.28, 6.2), Color(0.32, 0.34, 0.36), true)
 	_box(Vector3(14, 5.4, -8.5), Vector3(2.2, 0.25, 5.0), Color(0.32, 0.34, 0.36), true)
-	# Walkable stairs up to the silo platform
 	BuildingKit.build_stairs(self, Vector3(9.4, 0.08, -12), Vector3(11.1, 5.45, -12), 1.4, Color(0.30, 0.32, 0.34))
-
-	# 2-Storey White Clapboard Ranch Farmhouse (west) + porch
 	BuildingKit.build_multi_storey(self, Vector3(-15, 0, 4), 8.8, 8.8, 3.2, Color(0.82, 0.80, 0.74), Color(0.28, 0.24, 0.22), "E", true, "E")
 	_box(Vector3(-9.8, 0.15, 4), Vector3(2.0, 0.3, 8.5), Color(0.44, 0.34, 0.24))
-	# Drive-in Farm Equipment Garage (southeast)
 	BuildingKit.build_garage(self, Vector3(14, 0, 12), 8.6, 6.4, 3.4, Color(0.46, 0.38, 0.29), Color(0.30, 0.28, 0.26), "W")
-
-	# Ranch Windmill tower (northeast)
 	_windmill(Vector3(-16, 0, -16))
 
-	# Stacked Golden Hay Bales & Corral Cover
+
+func _ranch_props_vehicles() -> void:
 	for spec in [
 		[Vector3(-4, 0, 8), 0.0], [Vector3(-2.3, 0, 8.3), 12.0], [Vector3(-3.1, 1.05, 8.1), 5.0],
 		[Vector3(5, 0, 6), 80.0], [Vector3(6.4, 0, 6.2), -10.0],
@@ -239,39 +409,45 @@ func _build_ranch() -> void:
 		[Vector3(4, 0, -16), 0.0], [Vector3(-8, 0, 16), 30.0],
 	]:
 		_hay_bale(spec[0], spec[1])
-
 	_sandbag_wall(Vector3(-6, 0, 18), 3.4, 15.0)
 	_sandbag_wall(Vector3(7, 0, 17), 3.4, -18.0)
 	_crate(Vector3(-2, 0, -5), 1.2, 8.0)
 	_barrel(Vector3(9, 0, 10), true)
 	_barrel(Vector3(9.8, 0, 10.4), true)
 	_barrel(Vector3(-8, 0, -12), false)
-
-	# Vehicles: blue farm pickup + red utility truck
 	_pickup_truck(Vector3(4.5, 0, 11.5), -35.0, Color(0.18, 0.35, 0.56), false)
 	_pickup_truck(Vector3(-14.0, 0, -8.0), 75.0, Color(0.58, 0.20, 0.14), true)
 
-	# Perimeter Montana pines & grass
-	for i in range(14):
-		var ang := float(i) * TAU / 14.0
+
+func _ranch_foliage() -> void:
+	var pine_n := 8 if lightweight_props else 14
+	for i in range(pine_n):
+		var ang := float(i) * TAU / float(pine_n)
 		var r := 33.0 + float(i % 3) * 4.0
 		_pine_tree(Vector3(cos(ang) * r, 0, sin(ang) * r), 0.9 + float(i % 3) * 0.22)
-	_scatter_grass([
+	var grass := [
 		Vector3(-6, 0, 26), Vector3(6, 0, 26), Vector3(-16, 0, 20), Vector3(16, 0, 20),
 		Vector3(26, 0, 2), Vector3(-26, 0, -4), Vector3(0, 0, -26), Vector3(10, 0, 4),
-	])
+	]
+	if lightweight_props:
+		grass = grass.slice(0, 4)
+	_scatter_grass(grass)
 
 
 # ============================================================================
 # 3. BARON LUMBER MILL (Saw shed, log pyramids, drying kiln, logging trucks)
 # ============================================================================
 func _build_lumber_mill() -> void:
-	# Sawdust & dark forest earth
+	_lumber_terrain()
+	_lumber_buildings()
+	_lumber_props()
+	_lumber_foliage()
+
+
+func _lumber_terrain() -> void:
 	_box(Vector3(0, -0.5, 0), Vector3(140, 1.0, 140), Color(0.20, 0.27, 0.17), true)
 	_box(Vector3(0, 0.015, 0), Vector3(54, 0.03, 50), Color(0.46, 0.38, 0.26), false)
 	_box(Vector3(0, 0.025, 0), Vector3(8.0, 0.03, 52), Color(0.38, 0.31, 0.22), false)
-
-	# Corrugated timber/steel yard wall with multiple log-chute gaps
 	var wall_col := Color(0.35, 0.28, 0.21)
 	var post_col := Color(0.20, 0.18, 0.16)
 	_fence_segment(Vector3(-15, 0, 25), Vector3(18, 2.8, 0.4), wall_col, post_col)
@@ -283,31 +459,25 @@ func _build_lumber_mill() -> void:
 	_fence_segment(Vector3(25, 0, 15), Vector3(0.4, 2.8, 16), wall_col, post_col)
 	_fence_segment(Vector3(0, 0, -25), Vector3(38, 2.8, 0.4), wall_col, post_col)
 
-	# Main 2-Storey Saw Mill Hall (multi-room ground saw floor + 2nd floor catwalk overlook + rooftop)
+
+func _lumber_buildings() -> void:
 	BuildingKit.build_multi_storey(self, Vector3(0, 0, -10), 14.5, 8.6, 3.4, Color(0.44, 0.33, 0.22), Color(0.25, 0.28, 0.30), "S", true, "E")
-	# Circular saw table & shining steel blade inside saw hall
 	_box(Vector3(-2.5, 0.6, -10), Vector3(5.2, 1.1, 1.3), Color(0.28, 0.29, 0.31))
 	ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.75, 0.08, Color(0.76, 0.78, 0.80), 0.25, 0.85, 14), Vector3(-2.5, 1.4, -10), Vector3(90, 0, 0))
-	# Steel smokestack on saw hall roof
 	ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.42, 6.5, Color(0.22, 0.23, 0.24), 0.6, 0.5, 10), Vector3(5.5, 9.8, -12.5))
-
-	# Lumber Drying Kiln (west) & Drive-in Logging Garage (east)
 	_hollow_building(Vector3(-16, 0, -2), Vector3(8, 3.8, 11), Color(0.40, 0.37, 0.33), Color(0.26, 0.24, 0.22), "E")
 	BuildingKit.build_garage(self, Vector3(16, 0, -2), 8.2, 8.0, 3.5, Color(0.48, 0.39, 0.28), Color(0.29, 0.25, 0.21), "W")
-
-	# Elevated Catwalk / Sniper Watchtower on NE corner (-16, 0, 14) & (16, 0, -14)
 	_watchtower_at(Vector3(16, 0, -14))
 	_watchtower_at(Vector3(-16, 0, 14))
 
-	# Stacked Timber Log Pyramids forming tight stealth lanes
+
+func _lumber_props() -> void:
 	_log_pile(Vector3(-8, 0, 8), 0.0)
 	_log_pile(Vector3(8, 0, 8), 12.0)
 	_log_pile(Vector3(0, 0, 2), 90.0)
 	_log_pile(Vector3(-8, 0, -16), 5.0)
 	_log_pile(Vector3(9, 0, 16), -18.0)
 	_log_pile(Vector3(-4, 0, 17), 85.0)
-
-	# Logging Trucks & Yard Props
 	_pickup_truck(Vector3(-12, 0, 18), 25.0, Color(0.62, 0.36, 0.12), false)
 	_pickup_truck(Vector3(14, 0, 10), -65.0, Color(0.26, 0.32, 0.24), true)
 	_crate(Vector3(-4, 0, 8), 1.2, 6.0)
@@ -317,30 +487,37 @@ func _build_lumber_mill() -> void:
 	_barrel(Vector3(-10, 0, 2), false)
 	_sandbag_wall(Vector3(0, 0, 14), 3.6, 0.0)
 
-	# Dense Montana conifer timber surrounding mill
-	for i in range(20):
-		var ang := float(i) * TAU / 20.0
+
+func _lumber_foliage() -> void:
+	var pine_n := 10 if lightweight_props else 20
+	for i in range(pine_n):
+		var ang := float(i) * TAU / float(pine_n)
 		var r := 31.0 + float(i % 4) * 3.5
 		_pine_tree(Vector3(cos(ang) * r, 0, sin(ang) * r), 1.0 + float(i % 3) * 0.24)
-	_scatter_grass([
+	var grass := [
 		Vector3(-10, 0, 28), Vector3(10, 0, 28), Vector3(-28, 0, 6), Vector3(28, 0, -4),
 		Vector3(-14, 0, 22), Vector3(14, 0, 22),
-	])
+	]
+	if lightweight_props:
+		grass = grass.slice(0, 4)
+	_scatter_grass(grass)
 
 
 # ============================================================================
 # 4. WHITETAIL BAIT & DOCK (River, wooden pier, patrol boat, bait shop, boathouse)
 # ============================================================================
 func _build_river_dock() -> void:
-	# Shoreline ground on south half (z >= -6)
+	_river_terrain()
+	_river_buildings()
+	_river_props()
+	_river_foliage()
+
+
+func _river_terrain() -> void:
 	_box(Vector3(0, -0.5, 22), Vector3(140, 1.0, 62), Color(0.24, 0.32, 0.21), true)
-	# Gravel parking lot & dockside road
 	_box(Vector3(0, 0.015, 11), Vector3(44, 0.03, 24), Color(0.39, 0.37, 0.33), false)
 	_box(Vector3(0, 0.025, 24), Vector3(6.5, 0.03, 22), Color(0.42, 0.38, 0.31), false)
-	# Wooden riverfront seawall bulkhead along z = -6
 	_box(Vector3(0, -0.1, -6.2), Vector3(70, 1.4, 0.7), Color(0.32, 0.24, 0.16), true)
-
-	# Shimmering Montana River Water (north half, z < -6)
 	var water_mat := StandardMaterial3D.new()
 	water_mat.albedo_color = Color(0.11, 0.34, 0.44, 0.92)
 	water_mat.roughness = 0.15
@@ -349,47 +526,37 @@ func _build_river_dock() -> void:
 	water_mi.material_override = water_mat
 	water_mi.position = Vector3(0, -0.45, -40)
 	add_child(water_mi)
-	# Invisible riverbed floor so nothing falls forever
 	_add_box_collider(Vector3(0, -1.2, -40), Vector3(140, 0.5, 68), 0.0)
-
-	# Main Wooden Pier extending out over the river + T-dock crosshead
 	var plank := Color(0.45, 0.34, 0.23)
 	var piling := Color(0.28, 0.20, 0.13)
 	_box(Vector3(0, 0.12, -12.5), Vector3(4.8, 0.24, 14.0), plank, true)
 	_box(Vector3(0, 0.12, -18.5), Vector3(16.0, 0.24, 4.2), plank, true)
-	# Pier timber pilings
 	for px in [-7.2, -2.2, 2.2, 7.2]:
 		for pz in [-8.0, -13.0, -18.5]:
 			if absf(px) > 3.0 and pz > -16.0:
 				continue
 			ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.22, 2.6, piling, 0.9, 0.0, 8), Vector3(px, -0.4, pz))
 			ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.24, 0.85, piling, 0.88, 0.0, 8), Vector3(px, 0.65, pz))
-
-	# Moored Militia Patrol Boat tied beside the east T-dock
 	_patrol_boat(Vector3(10.5, -0.15, -16.0), -12.0)
 
-	# Bait & Tackle Shop (southeast shore) with glowing BAIT neon bar
+
+func _river_buildings() -> void:
 	_hollow_building(Vector3(11, 0, 7), Vector3(9.5, 3.6, 7.5), Color(0.32, 0.44, 0.42), Color(0.28, 0.22, 0.18), "W")
 	var neon := ProcMesh.box_mesh(Vector3(3.0, 0.55, 0.14), Color(1.0, 0.38, 0.16))
 	neon.material_override = ProcMesh.emissive(Color(1.0, 0.42, 0.18), 2.0)
 	ProcMesh.add_part(self, neon, Vector3(11, 3.25, 10.95))
-
-	# 2-Storey Boathouse (west shore) with multi-room interior, stairs, and reachable rooftop sniper deck
 	BuildingKit.build_multi_storey(self, Vector3(-12, 0, 1.5), 9.6, 9.4, 3.3, Color(0.48, 0.40, 0.31), Color(0.26, 0.28, 0.30), "E", true, "E")
-
-	# Fuel Pump Canopy & Dockside Cover
 	_box(Vector3(0, 3.3, 6), Vector3(6.8, 0.26, 4.2), Color(0.55, 0.20, 0.16))
 	_box(Vector3(-2.8, 1.65, 6), Vector3(0.25, 3.3, 0.25), Color(0.8, 0.8, 0.78))
 	_box(Vector3(2.8, 1.65, 6), Vector3(0.25, 3.3, 0.25), Color(0.8, 0.8, 0.78))
 	_box(Vector3(-0.8, 0.8, 6), Vector3(0.7, 1.6, 0.55), Color(0.68, 0.18, 0.14))
 	_box(Vector3(0.8, 0.8, 6), Vector3(0.7, 1.6, 0.55), Color(0.68, 0.18, 0.14))
-
-	# Low perimeter wood/chainlink fence on landward sides
 	_fence_segment(Vector3(-14, 0, 22), Vector3(16, 2.2, 0.35), Color(0.36, 0.35, 0.31), Color(0.22, 0.22, 0.20))
 	_fence_segment(Vector3(14, 0, 22), Vector3(16, 2.2, 0.35), Color(0.36, 0.35, 0.31), Color(0.22, 0.22, 0.20))
 	_gate_arch(Vector3(0, 0, 22), Color(0.24, 0.25, 0.24), Color(0.18, 0.42, 0.45))
 
-	# Crates, fish coolers, fuel drums, pickup truck
+
+func _river_props() -> void:
 	for spec in [
 		[Vector3(-4, 0, 12), 1.15, 10.0], [Vector3(5, 0, 13), 1.2, -15.0],
 		[Vector3(-3, 0, -2), 1.15, 4.0], [Vector3(4, 0, -2), 1.2, -6.0],
@@ -402,13 +569,17 @@ func _build_river_dock() -> void:
 	_sandbag_wall(Vector3(0, 0, 15.5), 3.6, 0.0)
 	_pickup_truck(Vector3(-12.5, 0, 14.5), 22.0, Color(0.24, 0.42, 0.36), false)
 
-	# Shore boulders & pines
+
+func _river_foliage() -> void:
 	for p in [Vector3(-22, 0.4, -4), Vector3(22, 0.4, -4), Vector3(-24, 0.5, 12), Vector3(24, 0.5, 14)]:
 		_boulder(p, 1.1)
-	for p in [
+	var pines := [
 		Vector3(-24, 0, 26), Vector3(-16, 0, 28), Vector3(15, 0, 28), Vector3(24, 0, 24),
 		Vector3(-28, 0, 6), Vector3(-26, 0, -2), Vector3(26, 0, 4), Vector3(27, 0, -3),
-	]:
+	]
+	if lightweight_props:
+		pines = pines.slice(0, 4)
+	for p in pines:
 		_pine_tree(p, 1.05)
 	_scatter_grass([
 		Vector3(-8, 0, 24), Vector3(8, 0, 24), Vector3(-18, 0, 18), Vector3(18, 0, 18),
@@ -419,7 +590,13 @@ func _build_river_dock() -> void:
 # 5. JACOB'S RIDGE BUNKER (Concrete bunker, radar dishes, helipad, trenches)
 # ============================================================================
 func _build_hilltop_bunker() -> void:
-	# Rocky highland ridge gravel — split around underground bunker basement [x:-5.6..5.6, z:-18.2..-10.2]
+	_hill_terrain()
+	_hill_buildings()
+	_hill_props()
+	_hill_foliage()
+
+
+func _hill_terrain() -> void:
 	var ridge := Color(0.32, 0.31, 0.27)
 	_box(Vector3(0, -0.5, 29.9), Vector3(140, 1.0, 80.2), ridge, true)
 	_box(Vector3(0, -0.5, -44.1), Vector3(140, 1.0, 51.8), ridge, true)
@@ -427,8 +604,6 @@ func _build_hilltop_bunker() -> void:
 	_box(Vector3(37.8, -0.5, -14.2), Vector3(64.4, 1.0, 8.0), ridge, true)
 	_box(Vector3(0, 0.015, 8), Vector3(54, 0.03, 36), Color(0.37, 0.36, 0.34), false)
 	_box(Vector3(0, 0.025, 22), Vector3(6.2, 0.03, 30), Color(0.30, 0.30, 0.29), false)
-
-	# Heavy reinforced concrete perimeter walls with 3 tactical breaches
 	var conc := Color(0.44, 0.45, 0.43)
 	var steel := Color(0.20, 0.21, 0.22)
 	_fence_segment(Vector3(-15, 0, 25), Vector3(18, 3.2, 0.6), conc, steel)
@@ -441,30 +616,31 @@ func _build_hilltop_bunker() -> void:
 	_fence_segment(Vector3(-8, 0, -25), Vector3(26, 3.2, 0.6), conc, steel)
 	_fence_segment(Vector3(16, 0, -25), Vector3(14, 3.2, 0.6), conc, steel)
 
-	# Underground Walk-Down Concrete Basement Cellar beneath the Bunker!
+
+func _hill_buildings() -> void:
 	BuildingKit.build_basement(self, Vector3(0, 0, -14.2), 11.2, 8.0, 2.8)
-	# 2-Storey Reinforced Concrete Command Bunker rising above the cellar + Reachable Radar Rooftop
-	# (Ground floor open around cellar stairs, upper level & radar roof reachable via exterior stairs)
 	var bunker_wall := Color(0.45, 0.46, 0.44)
 	var bunker_roof := Color(0.32, 0.33, 0.32)
 	BuildingKit._build_wall_face(self, Vector3(0, 0, -14.2), Vector3(0, 0, 4.2), 12.0, 3.4, 0.35, true, bunker_wall, bunker_roof, true, false)
 	BuildingKit._build_wall_face(self, Vector3(0, 0, -14.2), Vector3(0, 0, -4.2), 12.0, 3.4, 0.35, true, bunker_wall, bunker_roof, false, true)
 	BuildingKit._build_wall_face(self, Vector3(0, 0, -14.2), Vector3(-6.0, 0, 0), 8.4, 3.4, 0.35, false, bunker_wall, bunker_roof, false, true)
 	BuildingKit._build_wall_face(self, Vector3(0, 0, -14.2), Vector3(6.0, 0, 0), 8.4, 3.4, 0.35, false, bunker_wall, bunker_roof, false, true)
-	# Walkable bunker roof deck at y=3.4 + exterior steel stairs up from east side
 	_box(Vector3(0, 3.45, -14.2), Vector3(12.6, 0.32, 9.0), bunker_roof, true)
 	BuildingKit.build_stairs(self, Vector3(7.1, 0.08, -10.2), Vector3(7.1, 3.55, -16.8), 1.7, Color(0.32, 0.34, 0.36))
 	_box(Vector3(7.1, 3.45, -17.6), Vector3(2.1, 0.28, 1.8), Color(0.32, 0.34, 0.36), true)
-	# Parapet cover + twin radar dishes + radio mast on bunker rooftop
 	_box(Vector3(0, 4.05, -9.9), Vector3(12.2, 1.0, 0.25), bunker_wall.darkened(0.08), true)
 	_box(Vector3(-6.1, 4.05, -14.2), Vector3(0.25, 1.0, 8.6), bunker_wall.darkened(0.08), true)
 	_radar_dish(Vector3(-4.0, 3.65, -14.2), -25.0)
 	_radar_dish(Vector3(4.0, 3.65, -14.2), 30.0)
 	_radio_mast(Vector3(0, 3.65, -16.8))
+	_watchtower_at(Vector3(-17, 0, -16))
+	_watchtower_at(Vector3(17, 0, -16))
+	BuildingKit.build_garage(self, Vector3(-15, 0, 4), 8.2, 8.6, 3.5, Color(0.42, 0.43, 0.40), Color(0.28, 0.29, 0.28), "E")
+	BuildingKit.build_multi_storey(self, Vector3(15, 0, 4), 8.2, 8.2, 3.2, Color(0.42, 0.43, 0.40), Color(0.28, 0.29, 0.28), "W", true, "W")
 
-	# Raised Concrete Helipad (center-south courtyard) with crisp "H" & corner lights
+
+func _hill_props() -> void:
 	_box(Vector3(0, 0.14, 4), Vector3(11.5, 0.28, 11.5), Color(0.30, 0.31, 0.32), true)
-	# Painted yellow H markings
 	var yellow := Color(0.92, 0.76, 0.18)
 	_box(Vector3(-1.8, 0.29, 4), Vector3(0.6, 0.04, 5.2), yellow, false)
 	_box(Vector3(1.8, 0.29, 4), Vector3(0.6, 0.04, 5.2), yellow, false)
@@ -474,44 +650,33 @@ func _build_hilltop_bunker() -> void:
 			var pad_light := ProcMesh.sphere_mesh(0.18, Color(1.0, 0.45, 0.15))
 			pad_light.material_override = ProcMesh.emissive(Color(1.0, 0.45, 0.15), 2.2)
 			ProcMesh.add_part(self, pad_light, Vector3(hx, 0.36, hz))
-
-	# Twin Overwatch Sniper Watchtowers (NW and NE corners)
-	_watchtower_at(Vector3(-17, 0, -16))
-	_watchtower_at(Vector3(17, 0, -16))
-
-	# Armored Motor-Pool Garage (west) & 2-Storey Comms Barrack (east)
-	BuildingKit.build_garage(self, Vector3(-15, 0, 4), 8.2, 8.6, 3.5, Color(0.42, 0.43, 0.40), Color(0.28, 0.29, 0.28), "E")
-	BuildingKit.build_multi_storey(self, Vector3(15, 0, 4), 8.2, 8.2, 3.2, Color(0.42, 0.43, 0.40), Color(0.28, 0.29, 0.28), "W", true, "W")
-
-	# Interlocking Sandbag Trench Emplacements + Barricades
 	_sandbag_wall(Vector3(-8, 0, 14), 4.0, 18.0)
 	_sandbag_wall(Vector3(8, 0, 14), 4.0, -18.0)
 	_sandbag_wall(Vector3(0, 0, 17.5), 4.2, 0.0)
 	_sandbag_wall(Vector3(-8, 0, -5), 3.6, 80.0)
 	_sandbag_wall(Vector3(8, 0, -5), 3.6, -80.0)
-
 	for spec in [
 		[Vector3(-4.5, 0, 27.5), 14.0], [Vector3(4.5, 0, 27.5), -14.0],
 		[Vector3(-27.5, 0, 3.0), 85.0], [Vector3(27.5, 0, 3.0), -85.0],
 	]:
 		_jersey_barrier(spec[0], spec[1])
-
-	# Armored Utility Trucks + Munitions Crates + Red Fuel Drums
 	_pickup_truck(Vector3(-14, 0, 17), 35.0, Color(0.26, 0.30, 0.24), true)
 	_pickup_truck(Vector3(14, 0, 16), -30.0, Color(0.28, 0.30, 0.28), true)
-	for spec in [
+	for spec2 in [
 		[Vector3(-5, 0, -6), 1.25, 4.0], [Vector3(5, 0, -6), 1.25, -8.0],
 		[Vector3(-9, 0, 10), 1.2, 12.0], [Vector3(9, 0, 10), 1.2, -12.0],
 	]:
-		_crate(spec[0], spec[1], spec[2])
+		_crate(spec2[0], spec2[1], spec2[2])
 	_barrel(Vector3(-10, 0, -9), true)
 	_barrel(Vector3(-9.2, 0, -8.5), true)
 	_barrel(Vector3(10, 0, -9), true)
 	_barrel(Vector3(10.8, 0, -8.5), false)
 
-	# Craggy mountain boulders & sparse alpine pines
-	for i in range(12):
-		var ang := float(i) * TAU / 12.0
+
+func _hill_foliage() -> void:
+	var n := 8 if lightweight_props else 12
+	for i in range(n):
+		var ang := float(i) * TAU / float(n)
 		var r := 31.0 + float(i % 3) * 3.0
 		_boulder(Vector3(cos(ang) * r, 0.65, sin(ang) * r), 1.35)
 		if i % 2 == 0:
@@ -817,6 +982,16 @@ func _watchtower_at(c: Vector3) -> void:
 
 
 func _jersey_barrier(pos: Vector3, rot_y_deg: float) -> void:
+	# Skip Kenney GLB on mobile web — procedural barrier keeps the silhouette
+	# without texture decode / extra imported materials.
+	if lightweight_props:
+		var body := Node3D.new()
+		body.position = pos
+		body.rotation_degrees.y = rot_y_deg
+		add_child(body)
+		ProcMesh.add_part(body, ProcMesh.box_mesh(Vector3(2.1, 1.05, 0.55), Color(0.55, 0.55, 0.52)), Vector3(0, 0.55, 0))
+		_add_box_collider(pos + Vector3(0, 0.55, 0), Vector3(2.2, 1.1, 0.65), rot_y_deg)
+		return
 	var inst := KENNEY_WALL_LOW.instantiate()
 	if inst is Node3D:
 		var n := inst as Node3D
@@ -834,6 +1009,13 @@ func _boulder(pos: Vector3, radius: float) -> void:
 
 
 func _scatter_grass(grass_spots: Array) -> void:
+	if lightweight_props:
+		var tuft_col := Color(0.22, 0.38, 0.16)
+		for i in range(grass_spots.size()):
+			var p: Vector3 = grass_spots[i]
+			ProcMesh.add_part(self, ProcMesh.box_mesh(Vector3(0.12, 0.42, 0.12), tuft_col), p + Vector3(0, 0.2, 0))
+			ProcMesh.add_part(self, ProcMesh.box_mesh(Vector3(0.1, 0.34, 0.1), tuft_col), p + Vector3(0.12, 0.16, 0.05))
+		return
 	for i in range(grass_spots.size()):
 		var scene := KENNEY_GRASS if i % 2 == 0 else KENNEY_GRASS_SMALL
 		var tuft := scene.instantiate()

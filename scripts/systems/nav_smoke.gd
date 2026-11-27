@@ -16,7 +16,9 @@ func _run() -> void:
 
 	for oid in ["compound_alpha", "ranch_redbarn", "lumber_mill", "river_dock", "hilltop_bunker"]:
 		gs.select_outpost(oid)
+		gs.begin_world_load()
 		change_scene_to_file("res://scenes/levels/outpost.tscn")
+		await gs.wait_world_ready()
 		await process_frame
 		await process_frame
 		await create_timer(0.45).timeout

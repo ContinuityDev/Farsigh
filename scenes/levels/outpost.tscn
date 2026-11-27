@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://outpost001"]
+[gd_scene load_steps=8 format=3 uid="uid://outpost001"]
 
 [ext_resource type="Script" path="res://scripts/systems/outpost_manager.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/levels/greybox_builder.gd" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/enemies/guard.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/levels/alarm_panel.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/ui/loading_overlay.tscn" id="7"]
 
 [node name="Outpost" type="Node3D"]
 script = ExtResource("1")
@@ -42,6 +43,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, 18)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 30)
 
 [node name="HUD" parent="." instance=ExtResource("6")]
+
+[node name="LoadingOverlay" parent="." instance=ExtResource("7")]
 
 [node name="PatrolRoutes" type="Node3D" parent="."]
 

@@ -52,6 +52,40 @@ var ads_sensitivity: float = 0.55  # multiplier applied while aiming (0.25–1.0
 var touch_aim_toggle: bool = false  # false = hold Aim button, true = tap to toggle
 var tap_to_fire: bool = false  # optional: short look-pad tap fires (off by default)
 
+## World load gate — AI / detection stay frozen until the staged outpost load
+## finishes and the post-spawn grace period elapses.
+var world_loading: bool = false
+var detection_grace_until_msec: int = 0
+const DETECTION_GRACE_MS := 1500
+
+
+func begin_world_load() -> void:
+	world_loading = true
+	detection_grace_until_msec = 0
+	last_detection = 0.0
+
+
+func finish_world_load(grace_ms: int = DETECTION_GRACE_MS) -> void:
+	world_loading = false
+	detection_grace_until_msec = Time.get_ticks_msec() + maxi(0, grace_ms)
+
+
+func is_detection_frozen() -> bool:
+	if world_loading:
+		return true
+	if detection_grace_until_msec <= 0:
+		return false
+	return Time.get_ticks_msec() < detection_grace_until_msec
+
+
+## Await staged outpost load (smokes / tools). Returns false on timeout.
+func wait_world_ready(timeout_sec: float = 45.0) -> bool:
+	var waited := 0.0
+	while world_loading and waited < timeout_sec:
+		await get_tree().create_timer(0.2).timeout
+		waited += 0.2
+	return not world_loading
+
 
 func _ready() -> void:
 	_ensure_defaults()
