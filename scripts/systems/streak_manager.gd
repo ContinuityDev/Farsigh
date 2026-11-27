@@ -53,7 +53,7 @@ func can_activate(slot: int) -> bool:
 	if slot < 0 or slot > 2:
 		return false
 	var sid := _slot_id(slot)
-	if sid == "":
+	if sid == "" or not GameState.owns_streak(sid):
 		return false
 	return GameState.get_streak_charges(sid) > 0
 

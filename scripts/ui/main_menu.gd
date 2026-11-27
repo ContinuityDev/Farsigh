@@ -65,7 +65,7 @@ func _ensure_confirm_panel() -> void:
 	box.add_theme_constant_override("separation", 12)
 	_confirm_panel.add_child(box)
 	var msg := Label.new()
-	msg.text = "Start a New Run?\nThis wipes currency, owned gear, and outpost progress."
+	msg.text = "Start a New Run?\nThis wipes currency, gear, support charges, and outpost progress."
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	msg.add_theme_font_size_override("font_size", 18)
@@ -98,7 +98,7 @@ func _refresh_status() -> void:
 		status.text = "Campaign — %d / %d beaten  ·  $%d Hope" % [lib, total, GameState.currency]
 		status.modulate = Color(0.95, 0.78, 0.42)
 	else:
-		status.text = "No active run — 5 Outposts await"
+		status.text = "No active run — 8 Outposts await"
 		status.modulate = Color(0.75, 0.75, 0.75)
 	continue_btn.disabled = not GameState.has_active_run
 	if _shop_btn:
@@ -112,7 +112,13 @@ func _on_continue_pressed() -> void:
 
 
 func _on_new_run_pressed() -> void:
-	if GameState.has_active_run and (GameState.currency > 0 or GameState.liberated_count() > 0 or not GameState.owned_items.is_empty()):
+	if GameState.has_active_run and (
+		GameState.currency > 0
+		or GameState.liberated_count() > 0
+		or not GameState.owned_items.is_empty()
+		or not GameState.owned_streaks.is_empty()
+		or not GameState.streak_charges.is_empty()
+	):
 		_confirm_panel.visible = true
 		return
 	_confirm_new_run()

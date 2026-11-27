@@ -544,10 +544,15 @@ func deserialize(data: Dictionary) -> void:
 	var es = data.get("equipped_streaks", ["", "", ""])
 	if es is Array:
 		equipped_streaks = (es as Array).duplicate()
-	# Never invent starter charges — empty slots stay empty until shop purchase
+	# Never invent free unlocks — charges without ownership are treated as prior purchases
+	for cid in streak_charges.keys():
+		var cid_s := String(cid)
+		if get_streak_charges(cid_s) > 0 and cid_s not in owned_streaks:
+			owned_streaks.append(cid_s)
+	# Strip equipped slots that were never purchased
 	for i in range(equipped_streaks.size()):
 		var sid := String(equipped_streaks[i])
-		if sid != "" and get_streak_charges(sid) <= 0 and sid not in owned_streaks:
+		if sid != "" and sid not in owned_streaks:
 			equipped_streaks[i] = ""
 	unlocked_mod_pack = bool(data.get("unlocked_mod_pack", false))
 	unlocked_skin_pack = bool(data.get("unlocked_skin_pack", false))
