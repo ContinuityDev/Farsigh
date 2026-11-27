@@ -5,13 +5,14 @@ class_name ThrowableOrdnance
 
 const ProcMesh = preload("res://scripts/mesh/proc_mesh.gd")
 
-var kind: String = "frag"  # "frag" | "molotov"
+var kind: String = "frag"  # "frag" | "molotov" | "c4" | "prox_mine"
 var damage: float = 150.0
 var blast_radius: float = 6.5
 var fuse_time: float = 1.65
 var _owner: Node = null
 var _detonated: bool = false
 var _timer: float = 0.0
+var _prox_armed: bool = false
 
 
 static func spawn_ordnance(parent: Node, origin: Vector3, dir: Vector3, ordnance_kind: String, dmg: float, radius: float, owner_node: Node) -> Node3D:
@@ -22,8 +23,11 @@ static func spawn_ordnance(parent: Node, origin: Vector3, dir: Vector3, ordnance
 	n._owner = owner_node
 	n.position = origin
 	parent.add_child(n)
-	n.linear_velocity = dir.normalized() * (17.5 if ordnance_kind == "frag" else 16.0) + Vector3.UP * 3.8
+	var speed := 17.5 if ordnance_kind in ["frag", "c4", "prox_mine"] else 16.0
+	n.linear_velocity = dir.normalized() * speed + Vector3.UP * (1.2 if ordnance_kind in ["c4", "prox_mine"] else 3.8)
 	n.angular_velocity = Vector3(6.0, 3.0, -4.0)
+	if ordnance_kind in ["c4", "prox_mine"]:
+		n.fuse_time = 0.35
 	return n
 
 
@@ -40,8 +44,9 @@ func _ready() -> void:
 	cs.shape = sph
 	add_child(cs)
 
-	if kind == "frag":
-		ProcMesh.add_part(self, ProcMesh.sphere_mesh(0.08, Color(0.24, 0.30, 0.20), 0.75, 0.2), Vector3.ZERO)
+	if kind in ["frag", "c4", "prox_mine"]:
+		var col := Color(0.24, 0.30, 0.20) if kind == "frag" else (Color(0.35, 0.28, 0.18) if kind == "c4" else Color(0.22, 0.35, 0.22))
+		ProcMesh.add_part(self, ProcMesh.sphere_mesh(0.08, col, 0.75, 0.2), Vector3.ZERO)
 		ProcMesh.add_part(self, ProcMesh.box_mesh(Vector3(0.04, 0.05, 0.04), Color(0.45, 0.45, 0.44)), Vector3(0, 0.09, 0))
 	else:
 		# Glass bottle with amber fuel + lit glowing rag wick
@@ -52,12 +57,30 @@ func _ready() -> void:
 		ProcMesh.add_part(self, flame, Vector3(0, 0.22, 0))
 
 
+func _arm_prox() -> void:
+	## Stay in world and trip when a guard approaches.
+	_prox_armed = true
+	freeze = true
+
+
 func _physics_process(delta: float) -> void:
 	if _detonated:
 		return
+	if _prox_armed:
+		for g in get_tree().get_nodes_in_group("guards"):
+			if not is_instance_valid(g) or not (g is Node3D):
+				continue
+			if g.has_method("is_alive") and not g.is_alive():
+				continue
+			if (g as Node3D).global_position.distance_to(global_position) <= 2.4:
+				_detonate_frag(global_position)
+				return
+		return
 	_timer += delta
-	if kind == "frag" and _timer >= fuse_time:
+	if kind in ["frag", "c4"] and _timer >= fuse_time:
 		_detonate_frag(global_position)
+	elif kind == "prox_mine" and _timer >= fuse_time:
+		_arm_prox()
 	elif kind == "molotov" and _timer >= 4.0:
 		_detonate_molotov(global_position)
 
@@ -67,6 +90,9 @@ func _on_impact(_body: Node) -> void:
 		return
 	if kind == "molotov":
 		_detonate_molotov(global_position)
+	elif kind in ["c4", "prox_mine"]:
+		linear_velocity = Vector3.ZERO
+		freeze = true
 
 
 func _detonate_frag(center: Vector3) -> void:

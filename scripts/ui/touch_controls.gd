@@ -24,6 +24,7 @@ const ACTION_BUTTONS := [
 	["InspectBtn", "inspect_weapon"],
 	["LeanLeftBtn", "lean_left"],
 	["LeanRightBtn", "lean_right"],
+	["BinoBtn", "binoculars"],
 ]
 
 @onready var root: Control = $Root

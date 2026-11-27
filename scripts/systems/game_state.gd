@@ -66,8 +66,9 @@ var currency: int = 0
 var owned_weapons: Array = []  # int WeaponId
 var owned_items: Array = []  # String shop ids
 var owned_abilities: Array = []  # String shop ids
-var owned_streaks: Array = []  # String streak ids
-var equipped_streaks: Array = ["", "", ""]  # up to 3 streak ids
+var owned_streaks: Array = []  # String streak ids unlocked via first purchase
+var streak_charges: Dictionary = {}  # streak_id -> int charges owned
+var equipped_streaks: Array = ["", "", ""]  # up to 3 streak ids (must be owned)
 var unlocked_mod_pack: bool = false
 var unlocked_skin_pack: bool = false
 var run_stats: RunStats = RunStats.new()
@@ -193,6 +194,7 @@ func start_new_run() -> void:
 	owned_items.clear()
 	owned_abilities.clear()
 	owned_streaks.clear()
+	streak_charges.clear()
 	equipped_streaks = ["", "", ""]
 	unlocked_mod_pack = false
 	unlocked_skin_pack = false
@@ -214,7 +216,31 @@ func owns_ability(id: String) -> bool:
 
 
 func owns_streak(id: String) -> bool:
-	return id in owned_streaks
+	## Unlocked once a charge has ever been bought (or still has charges).
+	return id in owned_streaks or get_streak_charges(id) > 0
+
+
+func get_streak_charges(id: String) -> int:
+	return int(streak_charges.get(id, 0))
+
+
+func add_streak_charge(id: String, amount: int = 1) -> void:
+	if id == "":
+		return
+	var cap := StreakCatalog.max_carry(id)
+	var next := mini(cap, get_streak_charges(id) + amount)
+	streak_charges[id] = next
+	if id not in owned_streaks:
+		owned_streaks.append(id)
+
+
+func consume_streak_charge(id: String) -> bool:
+	var n := get_streak_charges(id)
+	if n <= 0:
+		return false
+	streak_charges[id] = n - 1
+	SaveManager.save_game()
+	return true
 
 
 func add_currency(amount: int) -> void:
@@ -228,7 +254,7 @@ func try_purchase(entry_id: String) -> String:
 		return "Unknown item"
 	var price := int(e.get("price", 0))
 	var kind := String(e.get("kind", ""))
-	# Already owned checks
+	# Already owned checks (streaks are consumable — always rebuyable up to cap)
 	match kind:
 		"weapon":
 			if owns_weapon(e.get("weapon") as WeaponId):
@@ -240,8 +266,9 @@ func try_purchase(entry_id: String) -> String:
 			if owns_ability(entry_id):
 				return "Already owned"
 		"streak":
-			if owns_streak(String(e.get("streak", ""))):
-				return "Already owned"
+			var sid0 := String(e.get("streak", ""))
+			if get_streak_charges(sid0) >= StreakCatalog.max_carry(sid0):
+				return "Carry limit reached (%d)" % StreakCatalog.max_carry(sid0)
 		"mod":
 			if unlocked_mod_pack:
 				return "Already owned"
@@ -262,8 +289,8 @@ func try_purchase(entry_id: String) -> String:
 			owned_abilities.append(entry_id)
 		"streak":
 			var sid := String(e.get("streak", ""))
-			if sid != "" and not owns_streak(sid):
-				owned_streaks.append(sid)
+			if sid != "":
+				add_streak_charge(sid, 1)
 		"mod":
 			unlocked_mod_pack = true
 		"skin":
@@ -475,6 +502,7 @@ func serialize() -> Dictionary:
 		"owned_items": owned_items.duplicate(),
 		"owned_abilities": owned_abilities.duplicate(),
 		"owned_streaks": owned_streaks.duplicate(),
+		"streak_charges": streak_charges.duplicate(),
 		"equipped_streaks": equipped_streaks.duplicate(),
 		"unlocked_mod_pack": unlocked_mod_pack,
 		"unlocked_skin_pack": unlocked_skin_pack,
@@ -508,9 +536,19 @@ func deserialize(data: Dictionary) -> void:
 	var os = data.get("owned_streaks", [])
 	if os is Array:
 		owned_streaks = (os as Array).duplicate()
+	var sc = data.get("streak_charges", {})
+	if sc is Dictionary:
+		streak_charges = (sc as Dictionary).duplicate()
+	else:
+		streak_charges.clear()
 	var es = data.get("equipped_streaks", ["", "", ""])
 	if es is Array:
 		equipped_streaks = (es as Array).duplicate()
+	# Never invent starter charges — empty slots stay empty until shop purchase
+	for i in range(equipped_streaks.size()):
+		var sid := String(equipped_streaks[i])
+		if sid != "" and get_streak_charges(sid) <= 0 and sid not in owned_streaks:
+			equipped_streaks[i] = ""
 	unlocked_mod_pack = bool(data.get("unlocked_mod_pack", false))
 	unlocked_skin_pack = bool(data.get("unlocked_skin_pack", false))
 	_ensure_defaults()

@@ -181,8 +181,12 @@ func _fire_shot(w: WeaponData) -> void:
 			_spawn_projectile(KNIFE_SCENE, origin, aimed_dir, w)
 			if _mag() <= 0 and _reserve() > 0:
 				start_reload()
-		"frag", "molotov":
+		"frag", "molotov", "c4", "prox_mine":
 			ThrowableOrdnance.spawn_ordnance(get_tree().current_scene, origin + aimed_dir * 0.65, aimed_dir, w.projectile_kind, w.damage, w.explosion_radius, get_parent())
+			if _mag() <= 0 and _reserve() > 0:
+				start_reload()
+		"tranq":
+			_hitscan_tranq(origin, aimed_dir, w)
 			if _mag() <= 0 and _reserve() > 0:
 				start_reload()
 		"melee_swing":
@@ -220,6 +224,30 @@ func _hitscan(origin: Vector3, dir: Vector3, w: WeaponData) -> void:
 	if hit.is_empty():
 		return
 	_apply_weapon_hit(hit.collider, w.damage, hit.position)
+
+
+func _hitscan_tranq(origin: Vector3, dir: Vector3, w: WeaponData) -> void:
+	var space := get_viewport().get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * w.max_range)
+	query.collision_mask = 1 | 4 | 128
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	query.exclude = [_player_rid()]
+	var hit := space.intersect_ray(query)
+	_spawn_tracer(origin, hit.get("position", origin + dir * minf(w.max_range, 42.0)))
+	if hit.is_empty():
+		return
+	var node = hit.collider
+	while node:
+		if node.has_method("apply_tranq"):
+			node.apply_tranq(45.0, get_parent())
+			return
+		if node is GuardAI:
+			# Soft knockout: mark dead for clear count but wake later via timer on a decoy
+			if node.has_method("apply_damage"):
+				node.apply_damage(9999.0, hit.position, get_parent(), "HEAD")
+			return
+		node = node.get_parent()
 
 
 func _melee_swing(origin: Vector3, dir: Vector3, w: WeaponData) -> void:

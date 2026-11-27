@@ -51,6 +51,7 @@ var _carry_bob_t: float = 0.0
 var _head_target_y: float = 1.65
 var _breath_sway: Vector2 = Vector2.ZERO
 var _breath_t: float = 0.0
+var binoculars_slow: bool = false
 
 
 func _ready() -> void:
@@ -148,6 +149,8 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(weapons):
 			ads_move = weapons.get_active().ads_move_mult
 		speed *= lerpf(1.0, ads_move, aim_blend)
+	if bool(get("binoculars_slow")):
+		speed *= 0.42
 
 	if direction:
 		velocity.x = direction.x * speed
@@ -491,6 +494,9 @@ func _drop_body() -> void:
 		body.set_carried(false)
 	carried_body = null
 	carrying_changed.emit(false)
+	# Count as hidden when dropped while crouched (tall grass / ditch)
+	if is_crouching and GameState.run_stats:
+		GameState.run_stats.on_body_hidden()
 
 
 func get_visibility_profile() -> float:

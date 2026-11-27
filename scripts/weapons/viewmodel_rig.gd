@@ -161,17 +161,17 @@ func rebuild_weapon(id: GameState.WeaponId, mods: Dictionary) -> void:
 			_build_long_gun(slot, id, body_col, accent_col, mods, 0.20, 0.16, 0.14, true, false, false)
 		GameState.WeaponId.SHOTGUN:
 			_build_shotgun(slot, body_col, accent_col, mods)
-		GameState.WeaponId.SNIPER:
+		GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
 			_build_long_gun(slot, id, body_col, accent_col, mods, 0.30, 0.32, 0.42, false, true, false)
-		GameState.WeaponId.LMG:
+		GameState.WeaponId.LMG, GameState.WeaponId.FLAMETHROWER, GameState.WeaponId.GRENADE_LAUNCHER:
 			_build_long_gun(slot, id, body_col, accent_col, mods, 0.32, 0.30, 0.28, false, false, true)
-		GameState.WeaponId.BOW:
+		GameState.WeaponId.BOW, GameState.WeaponId.HUNTER_BOW:
 			_build_bow(slot, body_col, accent_col, mods)
 		GameState.WeaponId.CROSSBOW:
 			_build_crossbow(slot, body_col, accent_col, mods)
-		GameState.WeaponId.KNIFE:
+		GameState.WeaponId.KNIFE, GameState.WeaponId.THROWING_AXE:
 			_build_knife(slot, body_col)
-		GameState.WeaponId.FRAG:
+		GameState.WeaponId.FRAG, GameState.WeaponId.C4, GameState.WeaponId.PROX_MINE:
 			_build_frag(slot)
 		GameState.WeaponId.MOLOTOV:
 			_build_molotov(slot)
@@ -179,6 +179,8 @@ func rebuild_weapon(id: GameState.WeaponId, mods: Dictionary) -> void:
 			_build_machete(slot, body_col)
 		GameState.WeaponId.BAT:
 			_build_bat(slot, body_col, accent_col)
+		GameState.WeaponId.TRANQ_PISTOL:
+			_build_pistol(slot, body_col, accent_col, mods, false)
 
 
 # ============================================================================

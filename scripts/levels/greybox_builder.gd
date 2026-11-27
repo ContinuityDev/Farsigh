@@ -7,6 +7,7 @@ const KENNEY_GRASS: PackedScene = preload("res://assets/kenney/grass.glb")
 const KENNEY_GRASS_SMALL: PackedScene = preload("res://assets/kenney/grass-small.glb")
 const KENNEY_WALL_LOW: PackedScene = preload("res://assets/kenney/wall-low.glb")
 const BuildingKit = preload("res://scripts/levels/building_kit.gd")
+const OutpostCatalog = preload("res://scripts/levels/outpost_catalog.gd")
 
 var current_outpost_id: String = ""
 ## When true, skip Kenney GLB foliage / barriers (mobile web GPU relief).
@@ -35,8 +36,14 @@ func build_outpost(outpost_id: String) -> void:
 	_build_sync(outpost_id)
 
 
+func _layout_for(outpost_id: String) -> String:
+	## Hard compounds reuse a base layout id from the catalog.
+	var d: Dictionary = OutpostCatalog.get_outpost(outpost_id)
+	return String(d.get("layout", outpost_id))
+
+
 func _build_sync(outpost_id: String) -> void:
-	match outpost_id:
+	match _layout_for(outpost_id):
 		"ranch_redbarn":
 			_build_ranch()
 		"lumber_mill":
@@ -160,7 +167,7 @@ func _run_stage(fn: Callable, label: String) -> String:
 
 
 func _stage_plan(outpost_id: String) -> Array:
-	match outpost_id:
+	match _layout_for(outpost_id):
 		"ranch_redbarn":
 			return [
 				{"label": "Pasture & fences", "fn": Callable(self, "_ranch_terrain_fences")},

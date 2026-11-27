@@ -19,6 +19,7 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 - Roles: **heavies** (tougher body HP/armor; headshots still one-shot), **officers** (faster alarms + extra reinforcements), **dogs** (fast bite, keen hearing) with **handlers**, idle **chat pairs**, rooftop/tower **snipers**, and multi-storey **interior** patrols.
 - AI LOD / tick throttling for far guards keeps mobile browser performance OK.
 - Staged outpost loading screen (progress + tips) builds environment → geometry → props → navmesh → guards → weapons → HUD, then spawns the player last. Detection / alarms / hearing stay frozen until load finishes plus a ~1.5s grace. Mobile web uses lightweight props and chunked mesh uploads so GL Compatibility doesn’t starve.
+- **Hope Dollars** shop, compound clear countdown + results, replay payouts, consumable support charges, free binoculars tagging.
 - Liberation saves per outpost (`user://outpost_save.json`) and resets on **New Run**.
 
 ### Multi-Storey Buildings & Runtime NavMesh
@@ -115,3 +116,16 @@ godot --headless --path . --export-release "Web" build/web/index.html
 ## License
 
 Prototype code is free to use and extend for learning and game jams.
+
+## Garrison sizes (after ~25% cut)
+
+| Outpost | Hostiles |
+|---|---|
+| Hope County Compound | 9 |
+| Seed Family Ranch | 11 |
+| Baron Lumber Mill | 11 |
+| Whitetail Dock | 11 |
+| Jacob's Ridge Bunker | 13 |
+| Eden's Gate Fortress | 15 |
+| Labour Camp | 14 |
+| Joseph's Cathedral HQ | 14 |

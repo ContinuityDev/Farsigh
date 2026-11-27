@@ -48,10 +48,12 @@ func _build_cards() -> void:
 	for def in OutpostCatalog.get_all():
 		var oid: String = def["id"]
 		var is_lib := GameState.is_liberated(oid)
+		var unlocked := OutpostCatalog.is_unlocked(oid)
 		var g_count := OutpostCatalog.guard_count(def)
 		var s_count := OutpostCatalog.sniper_count(def)
 		var a_count := OutpostCatalog.alarm_count(def)
-		var badge := "BEATEN — Replay" if is_lib else "CONTESTED"
+		var diff_lbl := String(def.get("difficulty_label", "Standard"))
+		var badge := "BEATEN — Replay" if is_lib else ("LOCKED" if not unlocked else "CONTESTED")
 		var best: Dictionary = GameState.outposts.get(oid, {}).get("best", {})
 		var best_line := ""
 		if is_lib and not best.is_empty():
@@ -65,11 +67,13 @@ func _build_cards() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(0, 86)
 		btn.add_theme_font_size_override("font_size", 15)
-		btn.text = "%s  [%s]\n%s  •  %d Hostiles (%d Snipers)  •  %d Alarms%s" % [
-			def["name"], badge, def["theme"], g_count, s_count, a_count, best_line
+		btn.text = "%s  [%s · %s]\n%s  •  %d Hostiles (%d Snipers)  •  %d Alarms%s" % [
+			def["name"], badge, diff_lbl, def["theme"], g_count, s_count, a_count, best_line
 		]
 		if is_lib:
 			btn.modulate = Color(0.75, 1.0, 0.78)
+		elif not unlocked:
+			btn.modulate = Color(0.55, 0.55, 0.55)
 		btn.pressed.connect(_on_select.bind(oid))
 		outpost_list.add_child(btn)
 		_cards[oid] = btn
@@ -146,6 +150,10 @@ func _on_shop_pressed() -> void:
 
 
 func _on_deploy_pressed() -> void:
+	if not OutpostCatalog.is_unlocked(_selected_id):
+		detail_status.text = "LOCKED — beat the required outposts first"
+		detail_status.modulate = Color(0.95, 0.55, 0.4)
+		return
 	GameState.select_outpost(_selected_id)
 	GameState.begin_world_load()
 	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")

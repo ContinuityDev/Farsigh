@@ -247,8 +247,22 @@ func _stage_weapons() -> void:
 
 func _stage_player(def: Dictionary) -> void:
 	_position_player(def)
+	_ensure_support_systems()
 	_freeze_player(false)
 	await get_tree().process_frame
+
+
+func _ensure_support_systems() -> void:
+	if get_node_or_null("StreakManager") == null:
+		var sm := Node.new()
+		sm.set_script(load("res://scripts/systems/streak_manager.gd"))
+		sm.name = "StreakManager"
+		add_child(sm)
+	if get_node_or_null("Binoculars") == null:
+		var bino := Node.new()
+		bino.set_script(load("res://scripts/player/binoculars.gd"))
+		bino.name = "Binoculars"
+		add_child(bino)
 
 
 func _freeze_player(frozen: bool) -> void:

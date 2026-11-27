@@ -75,6 +75,10 @@ func _rebuild_list() -> void:
 		btn.add_theme_font_size_override("font_size", 15)
 		var price := int(e.get("price", 0))
 		var tag := "OWNED" if owned else "$%d" % price
+		if kind == "streak":
+			var sid := String(e.get("streak", ""))
+			var ch := GameState.get_streak_charges(sid)
+			tag = "x%d / %d" % [ch, StreakCatalog.max_carry(sid)] if ch > 0 else "$%d" % price
 		btn.text = "%s  [%s]\n%s" % [String(e.get("name", "")), tag, String(e.get("desc", ""))]
 		if owned:
 			btn.modulate = Color(0.72, 0.95, 0.75)
@@ -98,7 +102,9 @@ func _is_owned(e: Dictionary) -> bool:
 		"ability":
 			return GameState.owns_ability(eid)
 		"streak":
-			return GameState.owns_streak(String(e.get("streak", "")))
+			# Consumables: show charge count, never permanently "owned"
+			var sid := String(e.get("streak", ""))
+			return GameState.get_streak_charges(sid) >= StreakCatalog.max_carry(sid)
 		"mod":
 			return GameState.unlocked_mod_pack
 		"skin":
@@ -126,7 +132,16 @@ func _refresh_detail() -> void:
 	detail_desc.text = String(e.get("desc", ""))
 	var owned := _is_owned(e)
 	var price := int(e.get("price", 0))
-	if owned:
+	var kind := String(e.get("kind", ""))
+	if kind == "streak":
+		var sid := String(e.get("streak", ""))
+		var ch := GameState.get_streak_charges(sid)
+		var cap := StreakCatalog.max_carry(sid)
+		detail_price.text = "Charge $%d  ·  Owned %d / %d" % [price, ch, cap]
+		detail_price.modulate = Color(0.95, 0.82, 0.35)
+		buy_btn.disabled = GameState.currency < price or ch >= cap
+		buy_btn.text = "Buy Charge" if ch < cap else "At Carry Limit"
+	elif owned:
 		detail_price.text = "Already owned"
 		detail_price.modulate = Color(0.55, 0.9, 0.55)
 		buy_btn.disabled = true

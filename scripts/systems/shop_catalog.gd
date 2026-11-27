@@ -9,6 +9,9 @@ const BASE_REWARD := {
 	"lumber_mill": 210,
 	"river_dock": 200,
 	"hilltop_bunker": 240,
+	"eden_fortress": 420,
+	"labour_camp": 400,
+	"cult_cathedral": 520,
 }
 const BONUS_UNDETECTED := 100
 const BONUS_NO_ALARMS := 75
@@ -76,7 +79,7 @@ static func all_entries() -> Array:
 		{"id": "prox_mine", "kind": "weapon", "weapon": GameState.WeaponId.PROX_MINE, "name": "Proximity Mine", "desc": "Arms after place. Trips on hostiles.", "price": 300, "slot": "throwable"},
 		# Items / abilities
 		{"id": "lure", "kind": "item", "name": "Distraction Lure", "desc": "Throws a noisemaker that pulls patrols.", "price": 120},
-		{"id": "binoculars", "kind": "item", "name": "Tagging Binoculars", "desc": "ADS marks nearby hostiles for 20s.", "price": 180},
+		{"id": "binoculars_pro", "kind": "item", "name": "Pro Binoculars", "desc": "Upgrade: faster tagging (0.25s) and longer mark range.", "price": 180},
 		{"id": "medkit", "kind": "item", "name": "Field Medkit", "desc": "Restore 50 HP (one use per deploy).", "price": 100},
 		{"id": "alarm_jammer", "kind": "item", "name": "Alarm Jammer", "desc": "Disables nearest alarm on use.", "price": 220},
 		{"id": "ghillie", "kind": "ability", "name": "Ghillie Suit", "desc": "Harder to spot while crouched in grass.", "price": 260},
@@ -85,13 +88,13 @@ static func all_entries() -> Array:
 		# Gunsmith unlocks
 		{"id": "mod_pack", "kind": "mod", "name": "Advanced Mod Kit", "desc": "Unlocks compensator, holo, extended mag, laser for owned guns.", "price": 150},
 		{"id": "skin_pack", "kind": "skin", "name": "Finish Pack", "desc": "Unlocks olive, tan, crimson, arctic, gold skins.", "price": 120},
-		# Streak unlocks
-		{"id": "streak_recon", "kind": "streak", "streak": "recon_drone", "name": "Recon Drone", "desc": "Streak 3 — tags hostiles for 12s.", "price": 200},
-		{"id": "streak_mortar", "kind": "streak", "streak": "mortar", "name": "Mortar Mark", "desc": "Streak 5 — HE on look-point.", "price": 350},
-		{"id": "streak_fangs", "kind": "streak", "streak": "fangs", "name": "Fangs for Hire", "desc": "Streak 6 — attack dog companion.", "price": 400},
-		{"id": "streak_emp", "kind": "streak", "streak": "emp", "name": "EMP Pulse", "desc": "Streak 7 — fries every alarm.", "price": 300},
-		{"id": "streak_overwatch", "kind": "streak", "streak": "overwatch", "name": "Sniper Overwatch", "desc": "Streak 8 — ally drops distant hostiles.", "price": 450},
-		{"id": "streak_gunship", "kind": "streak", "streak": "gunship", "name": "Gunship", "desc": "Streak 10 — area suppression around you.", "price": 600},
+		# Consumable support charges (buyable; no free starters)
+		{"id": "streak_recon", "kind": "streak", "streak": "recon_drone", "name": "Recon Drone Charge", "desc": "Consumable — tags hostiles for 12s. Buy charges in shop.", "price": 120},
+		{"id": "streak_mortar", "kind": "streak", "streak": "mortar", "name": "Mortar Mark Charge", "desc": "Consumable — HE on look-point.", "price": 200},
+		{"id": "streak_fangs", "kind": "streak", "streak": "fangs", "name": "Fangs for Hire Charge", "desc": "Consumable — attack dog companion.", "price": 240},
+		{"id": "streak_emp", "kind": "streak", "streak": "emp", "name": "EMP Pulse Charge", "desc": "Consumable — fries every alarm.", "price": 180},
+		{"id": "streak_overwatch", "kind": "streak", "streak": "overwatch", "name": "Sniper Overwatch Charge", "desc": "Consumable — ally drops distant hostiles.", "price": 280},
+		{"id": "streak_gunship", "kind": "streak", "streak": "gunship", "name": "Gunship Charge", "desc": "Consumable — area suppression.", "price": 360},
 	]
 
 

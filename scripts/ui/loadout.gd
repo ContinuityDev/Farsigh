@@ -248,6 +248,8 @@ func _rebuild_weapon_list() -> void:
 	var cur := _current_weapon_id()
 	var ids: Array[GameState.WeaponId] = WeaponDataScript.slot_weapons(_active_slot)
 	for wid in ids:
+		if not GameState.owns_weapon(wid):
+			continue
 		var wd: WeaponData = WeaponDataScript.from_id(wid, GameState.get_weapon_mods(wid))
 		var btn := Button.new()
 		btn.toggle_mode = true
@@ -258,6 +260,41 @@ func _rebuild_weapon_list() -> void:
 		btn.text = "%s\nDMG %s  •  RNG %dm  •  NOISE %d" % [wd.display_name, dmg_txt, int(wd.max_range), int(wd.noise_loudness)]
 		btn.pressed.connect(_select_weapon_for_slot.bind(wid))
 		weapon_list.add_child(btn)
+	# Streak loadout (3 consumable slots)
+	var streak_hdr := Label.new()
+	streak_hdr.text = "SUPPORT CHARGES (buy in Shop — empty until purchased)"
+	streak_hdr.add_theme_font_size_override("font_size", 13)
+	streak_hdr.modulate = Color(0.88, 0.80, 0.54)
+	weapon_list.add_child(streak_hdr)
+	for slot_i in range(3):
+		var sid := ""
+		if slot_i < GameState.equipped_streaks.size():
+			sid = String(GameState.equipped_streaks[slot_i])
+		var row := HBoxContainer.new()
+		var lab := Label.new()
+		lab.custom_minimum_size = Vector2(70, 0)
+		lab.text = "Slot %d" % (slot_i + 1)
+		row.add_child(lab)
+		var opt := OptionButton.new()
+		opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		opt.add_item("— Buy in shop —", 0)
+		opt.set_item_metadata(0, "")
+		var sel_idx := 0
+		var idx := 1
+		for s in StreakCatalog.all_streaks():
+			var id := String(s["id"])
+			var ch := GameState.get_streak_charges(id)
+			if ch <= 0 and not GameState.owns_streak(id):
+				continue
+			opt.add_item("%s (x%d)" % [String(s["name"]), ch], idx)
+			opt.set_item_metadata(idx, id)
+			if id == sid:
+				sel_idx = idx
+			idx += 1
+		opt.select(sel_idx)
+		opt.item_selected.connect(_on_streak_slot.bind(slot_i, opt))
+		row.add_child(opt)
+		weapon_list.add_child(row)
 
 
 func _update_preview(wid: GameState.WeaponId, mods: Dictionary) -> void:
@@ -355,6 +392,11 @@ func _on_mod_picked(wid: GameState.WeaponId, mod_slot: String, mod_val: String) 
 	GameState.set_weapon_mod(wid, mod_slot, mod_val)
 	SaveManager.save_loadout()
 	_refresh_all()
+
+
+func _on_streak_slot(item_index: int, slot_i: int, opt: OptionButton) -> void:
+	var sid := String(opt.get_item_metadata(item_index))
+	GameState.set_equipped_streak(slot_i, sid)
 
 
 func _on_deploy() -> void:

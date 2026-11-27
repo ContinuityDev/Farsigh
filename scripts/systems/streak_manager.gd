@@ -38,33 +38,39 @@ func _poll_hotkeys() -> void:
 
 
 func streak_progress() -> int:
-	if GameState.run_stats:
-		return GameState.run_stats.undetected_streak
+	## Charges remaining on the active slot's ability (HUD display).
 	return 0
+
+
+func charges_for_slot(slot: int) -> int:
+	var sid := _slot_id(slot)
+	if sid == "":
+		return 0
+	return GameState.get_streak_charges(sid)
 
 
 func can_activate(slot: int) -> bool:
 	if slot < 0 or slot > 2:
 		return false
-	if _used[slot]:
-		return false
 	var sid := _slot_id(slot)
 	if sid == "":
 		return false
-	var need := StreakCatalog.need_for(sid)
-	return streak_progress() >= need
+	return GameState.get_streak_charges(sid) > 0
 
 
 func try_activate(slot: int) -> bool:
 	if not can_activate(slot):
 		return false
 	var sid := _slot_id(slot)
-	_used[slot] = true
+	if not GameState.consume_streak_charge(sid):
+		return false
 	_fire_streak(sid)
 	var hud := get_tree().get_first_node_in_group("hud")
 	if hud and hud.has_method("show_status"):
 		var info := StreakCatalog.by_id(sid)
-		hud.show_status("STREAK — %s" % String(info.get("name", sid)), 3.0)
+		hud.show_status("%s — %d left" % [String(info.get("name", sid)), GameState.get_streak_charges(sid)], 3.0)
+	if hud and hud.has_method("refresh_streak_buttons"):
+		hud.refresh_streak_buttons()
 	return true
 
 

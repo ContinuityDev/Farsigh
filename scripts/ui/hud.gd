@@ -434,13 +434,11 @@ func refresh_streak_buttons() -> void:
 			btn.disabled = true
 			continue
 		var info: Dictionary = StreakCatalog.by_id(sid)
-		var need := int(info.get("need", 99))
-		var ready := false
-		var progress := 0
-		if sm and sm.has_method("streak_progress"):
-			progress = int(sm.streak_progress())
+		var charges := GameState.get_streak_charges(sid)
+		var ready := charges > 0
+		if sm and sm.has_method("can_activate"):
 			ready = bool(sm.can_activate(i))
-		btn.text = "%s\n%d/%d" % [String(info.get("name", sid)), mini(progress, need), need]
+		btn.text = "%s\nx%d" % [String(info.get("name", sid)), charges]
 		btn.disabled = not ready
 		btn.modulate = Color(0.55, 0.95, 0.55) if ready else Color(0.85, 0.85, 0.85)
 
