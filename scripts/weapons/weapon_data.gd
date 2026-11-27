@@ -242,7 +242,7 @@ static func make_sniper() -> WeaponData:
 	w.recoil_pitch = 5.0
 	w.recoil_yaw = 0.6
 	w.spread_deg = 0.12
-	w.aim_fov = 24.0
+	w.aim_fov = 17.5  # 4x relative to hip 70°; Adjust Zoom steps to 6x/8x at runtime
 	w.scope_overlay = true
 	w.ads_time = 0.42
 	w.ads_spread_mult = 0.18
@@ -652,25 +652,36 @@ static func apply_mods(w: WeaponData, mods: Dictionary) -> void:
 			w.recoil_yaw *= 0.65
 			w.noise_loudness *= 1.08
 
-	# Optic attachment: red dot, holo, or magnified scope (also tweaks ADS zoom / aim-in)
+	# Optic attachment: FOV is relative to hip FOV 70° so zoom reads clearly in ADS.
+	# red_dot ≈ 1.5x, holo ≈ 2x, scope ≈ 4x (variable 4/6/8x handled at runtime).
+	const HIP_FOV := 70.0
 	if w.supports_optic:
 		var optic := String(mods.get("optic", "iron"))
+		# Snipers always use a magnified scope (default 4x) — never leave them on iron.
+		if w.id in [GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER] and optic in ["", "iron"]:
+			optic = "scope"
 		match optic:
 			"red_dot":
-				w.aim_fov = minf(w.aim_fov, 48.0)
+				w.aim_fov = HIP_FOV / 1.5  # ≈ 46.7°
+				w.scope_overlay = false
 				w.spread_deg *= 0.85
 				w.ads_time *= 0.92
 			"holo":
-				w.aim_fov = minf(w.aim_fov, 44.0)
+				w.aim_fov = HIP_FOV / 2.0  # 35°
+				w.scope_overlay = false
 				w.spread_deg *= 0.78
 				w.ads_time *= 0.95
 			"scope":
-				w.aim_fov = 22.0
+				w.aim_fov = HIP_FOV / 4.0  # 17.5° base 4x; player can step to 6x/8x
 				w.scope_overlay = true
 				w.spread_deg *= 0.55
 				w.max_range *= 1.15
 				w.ads_time *= 1.18
 				w.ads_move_mult *= 0.85
+			_:
+				# Iron sights — mild ADS zoom only
+				w.aim_fov = minf(w.aim_fov, HIP_FOV / 1.15)
+				w.scope_overlay = false
 
 	# Magazine attachment: extended mag increases capacity, slightly slower reload
 	if w.supports_mag:

@@ -34,7 +34,7 @@ const MOD_GROUPS := [
 			{"id": "iron", "label": "Iron Sights"},
 			{"id": "red_dot", "label": "Red Dot"},
 			{"id": "holo", "label": "Holo Sight"},
-			{"id": "scope", "label": "4x Scope (+Zoom)"},
+			{"id": "scope", "label": "4–8x Scope (Adjust Zoom)"},
 		],
 	},
 	{

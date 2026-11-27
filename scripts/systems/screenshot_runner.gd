@@ -159,12 +159,20 @@ func _ready() -> void:
 	await get_tree().create_timer(0.45).timeout
 	await _snap("08_touch_controls")
 
-	# 9. Proper ADS with holo sight centered + FOV drop + hidden crosshair
+	# 9. ADS — holo (2x)
 	TouchInput.force_touch_ui = false
 	if is_instance_valid(hud):
 		var tc = hud.get_node_or_null("TouchControls")
 		if is_instance_valid(tc):
 			tc.visible = false
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "optic", "holo")
+	GameState.set_full_loadout(
+		GameState.WeaponId.RIFLE,
+		GameState.WeaponId.PISTOL,
+		GameState.WeaponId.BOW,
+		GameState.WeaponId.MOLOTOV,
+		GameState.WeaponId.MACHETE
+	)
 	GameState.select_outpost("compound_alpha")
 	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
 	await get_tree().process_frame
@@ -176,11 +184,133 @@ func _ready() -> void:
 		player.look_at(Vector3(0.0, 1.6, -8.0), Vector3.UP)
 		var wm = player.get_node_or_null("WeaponManager")
 		if is_instance_valid(wm):
-			wm.select_slot(0)  # Holo-modded AR-C
+			wm.select_slot(0)
 		TouchInput.press("aim")
-		await get_tree().create_timer(0.55).timeout
+		await get_tree().create_timer(0.7).timeout
 	await _snap("09_ads_holo")
 	TouchInput.release("aim")
+
+	# 9b. ADS — red dot (1.5x)
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "optic", "red_dot")
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.9).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(2.0, 0.2, 18.0)
+		player.look_at(Vector3(0.0, 1.6, -8.0), Vector3.UP)
+		TouchInput.press("aim")
+		await get_tree().create_timer(0.7).timeout
+	await _snap("12_ads_red_dot")
+	TouchInput.release("aim")
+
+	# 9c. Sniper ADS 4x (default) then 8x
+	GameState.set_full_loadout(
+		GameState.WeaponId.SNIPER,
+		GameState.WeaponId.PISTOL,
+		GameState.WeaponId.BOW,
+		GameState.WeaponId.MOLOTOV,
+		GameState.WeaponId.MACHETE
+	)
+	GameState.set_weapon_mod(GameState.WeaponId.SNIPER, "optic", "scope")
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.9).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(2.0, 1.0, 22.0)
+		player.look_at(Vector3(0.0, 1.6, -12.0), Vector3.UP)
+		var wm_s = player.get_node_or_null("WeaponManager")
+		if is_instance_valid(wm_s):
+			wm_s.select_slot(0)
+			wm_s.scope_zoom_step = 0
+		TouchInput.press("aim")
+		await get_tree().create_timer(0.85).timeout
+	await _snap("13_sniper_4x")
+	if is_instance_valid(player):
+		var wm_s2 = player.get_node_or_null("WeaponManager")
+		if is_instance_valid(wm_s2):
+			wm_s2.scope_zoom_step = 2  # 8x
+		await get_tree().create_timer(0.55).timeout
+	await _snap("14_sniper_8x")
+	TouchInput.release("aim")
+
+	# 9d. Mobile HUD — decluttered (no takedown) vs takedown available
+	TouchInput.force_touch_ui = true
+	GameState.set_full_loadout(
+		GameState.WeaponId.RIFLE,
+		GameState.WeaponId.PISTOL,
+		GameState.WeaponId.BOW,
+		GameState.WeaponId.MOLOTOV,
+		GameState.WeaponId.MACHETE
+	)
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(60.0)
+	await get_tree().create_timer(0.6).timeout
+	# Dismiss any leftover loading overlay so HUD buttons read clearly
+	var outpost_root := get_tree().current_scene
+	if is_instance_valid(outpost_root):
+		var loader := outpost_root.get_node_or_null("LoadingOverlay")
+		if is_instance_valid(loader):
+			loader.visible = false
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	hud = get_tree().get_first_node_in_group("hud")
+	if is_instance_valid(hud):
+		var tc2 = hud.get_node_or_null("TouchControls")
+		if is_instance_valid(tc2):
+			tc2.visible = true
+			var root_c2 = tc2.get_node_or_null("Root")
+			if is_instance_valid(root_c2):
+				root_c2.visible = true
+	if is_instance_valid(player):
+		# Far from enemies — no takedown button; no rocks → no ROCK
+		player.global_position = Vector3(0.0, 0.2, 40.0)
+		player.rotation = Vector3(0, PI, 0)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation = Vector3.ZERO
+		player.set("rock_count", 0)
+		player.set("is_aiming", false)
+	await get_tree().create_timer(0.35).timeout
+	if is_instance_valid(hud):
+		var tc3 = hud.get_node_or_null("TouchControls")
+		if is_instance_valid(tc3) and tc3.has_method("_update_contextual_buttons"):
+			tc3._update_contextual_buttons()
+	await get_tree().process_frame
+	await _snap("15_mobile_hud_no_takedown")
+
+	# Place a nearby guard on the camera ray so can_takedown lights up TAKEDOWN
+	var guard := get_tree().get_first_node_in_group("guards") as Node3D
+	if is_instance_valid(player) and is_instance_valid(guard):
+		var cam: Camera3D = player.get_node_or_null("Head/Camera3D") as Camera3D
+		var forward := Vector3(0, 0, -1)
+		if is_instance_valid(cam):
+			forward = -cam.global_transform.basis.z
+		else:
+			forward = -player.global_transform.basis.z
+		guard.global_position = player.global_position + forward * 1.7
+		guard.global_position.y = player.global_position.y
+		# Face player body toward guard; keep head pitch level for the melee ray
+		var to_g := guard.global_position - player.global_position
+		player.rotation.y = atan2(-to_g.x, -to_g.z)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation.x = 0.0
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	await get_tree().create_timer(0.25).timeout
+	if is_instance_valid(hud):
+		var tc4 = hud.get_node_or_null("TouchControls")
+		if is_instance_valid(tc4) and tc4.has_method("_update_contextual_buttons"):
+			tc4._update_contextual_buttons()
+			# Ensure MeleeBtn is on-screen if can_takedown succeeded
+			var melee := tc4.get_node_or_null("Root/MeleeBtn") as Control
+			var wm_td = player.get_node_or_null("WeaponManager") if is_instance_valid(player) else null
+			if is_instance_valid(melee) and is_instance_valid(wm_td) and wm_td.has_method("can_takedown"):
+				print("AUTO_CAPTURE takedown_ready=", wm_td.can_takedown(player), " melee_vis=", melee.visible)
+	await _snap("16_mobile_hud_takedown")
+	TouchInput.force_touch_ui = false
 
 	# 10. Hard compound — Eden's Gate Fortress with layered defences
 	GameState.select_outpost("eden_fortress")

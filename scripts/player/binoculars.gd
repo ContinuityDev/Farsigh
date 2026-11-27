@@ -92,6 +92,10 @@ func toggle() -> void:
 	if not is_instance_valid(_cam):
 		_bind_camera()
 	var player := get_tree().get_first_node_in_group("player")
+	# Don't raise binoculars while ADS — optic owns the view.
+	if active and player and bool(player.get("is_aiming")):
+		active = false
+		return
 	if active:
 		_dwell.clear()
 		_pinch_dist = -1.0

@@ -96,11 +96,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 			get_viewport().set_input_as_handled()
 			return
+	# Sniper / variable scope: mouse wheel cycles 4x → 6x → 8x while ADS.
+	if is_aiming and is_instance_valid(weapons) and weapons.has_scope_overlay():
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_cycle_scope_zoom(1)
+				get_viewport().set_input_as_handled()
+				return
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_cycle_scope_zoom(-1)
+				get_viewport().set_input_as_handled()
+				return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var sens := MOUSE_SENS * _look_sensitivity_mult()
 		_apply_look(-event.relative.x * sens, -event.relative.y * sens)
 	if event.is_action_pressed("pause_menu"):
 		_toggle_pause()
+	if event.is_action_pressed("scope_zoom") and is_aiming and is_instance_valid(weapons) and weapons.has_scope_overlay():
+		_cycle_scope_zoom(1)
+		get_viewport().set_input_as_handled()
 
 
 func _physics_process(delta: float) -> void:
@@ -199,9 +213,20 @@ func _look_sensitivity_mult() -> float:
 	return lerpf(1.0, GameState.ads_sensitivity, aim_blend)
 
 
+func _cycle_scope_zoom(dir: int = 1) -> void:
+	if not is_instance_valid(weapons) or not weapons.has_scope_overlay():
+		return
+	var mult := weapons.cycle_scope_zoom(dir)
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("show_status"):
+		hud.show_status("Scope %dx" % int(mult), 0.9)
+
+
 func _update_aim_state(delta: float) -> void:
+	# Binoculars own the camera FOV — cancel ADS while raised.
+	var binos_up := bool(get("binoculars_slow"))
 	# Touch Aim can be Hold (default) or Toggle via pause-menu setting.
-	if carried_body != null:
+	if carried_body != null or binos_up:
 		_aim_toggled = false
 		is_aiming = false
 	elif GameState.touch_aim_toggle and TouchInput.is_touch_ui_desired():
@@ -212,6 +237,10 @@ func _update_aim_state(delta: float) -> void:
 	else:
 		_aim_toggled = false
 		is_aiming = TouchInput.is_action_pressed("aim")
+
+	# Touch Adjust Zoom while ADS with a variable optic
+	if is_aiming and TouchInput.is_action_just_pressed("scope_zoom"):
+		_cycle_scope_zoom(1)
 
 	var w: WeaponData = weapons.get_active() if is_instance_valid(weapons) else null
 	var ads_time := 0.28
@@ -227,15 +256,21 @@ func _update_aim_state(delta: float) -> void:
 	else:
 		aim_blend = move_toward(aim_blend, 1.0 if is_aiming else 0.0, delta / maxf(0.08, ads_time))
 
+	# Leave FOV alone while binoculars are raised.
+	if binos_up:
+		return
+
 	var hip_fov := 70.0
 	var target_fov := hip_fov
 	var scoped := false
 	if w != null and aim_blend > 0.01:
-		target_fov = lerpf(hip_fov, w.aim_fov, aim_blend)
+		# Use runtime aim FOV so red-dot/holo/sniper zoom (incl. 4/6/8x) actually apply.
+		var aim_fov := weapons.get_aim_fov() if is_instance_valid(weapons) else w.aim_fov
+		target_fov = lerpf(hip_fov, aim_fov, aim_blend)
 		scoped = w.scope_overlay and aim_blend > 0.72
-	# Breath-hold slightly tightens zoom further for sniper / scoped optics
+	# Breath-hold slightly tightens zoom further (relative — must not clamp away 8x)
 	if scoped and breath > 0.5:
-		target_fov = maxf(14.0, target_fov - 2.5)
+		target_fov = maxf(6.0, target_fov * 0.94)
 	camera.fov = lerpf(camera.fov, target_fov, clampf(delta * 14.0, 0.0, 1.0))
 
 	# Scope sway when ADS without breath-hold
@@ -253,6 +288,8 @@ func _update_aim_state(delta: float) -> void:
 			hud_scope.set_scope_overlay(scoped)
 		if hud_scope.has_method("set_ads_crosshair"):
 			hud_scope.set_ads_crosshair(aim_blend > 0.18)
+		if scoped and hud_scope.has_method("set_scope_zoom_label"):
+			hud_scope.set_scope_zoom_label(weapons.get_scope_zoom_mult() if is_instance_valid(weapons) else 4.0)
 	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
 		# Hide viewmodel under full scope overlay; keep it for iron/red-dot/holo ADS
 		weapons.viewmodel_rig.visible = not scoped

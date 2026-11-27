@@ -86,12 +86,68 @@ func get_active() -> WeaponData:
 	return slots[clampi(active_slot, 0, slots.size() - 1)]
 
 
+## Sniper/variable-scope magnification steps (4x → 6x → 8x → 4x).
+const SCOPE_ZOOM_MULTS := [4.0, 6.0, 8.0]
+const HIP_FOV := 70.0
+var scope_zoom_step: int = 0
+
+
 func get_aim_fov() -> float:
-	return get_active().aim_fov
+	var w := get_active()
+	if w.scope_overlay:
+		var mult: float = float(SCOPE_ZOOM_MULTS[clampi(scope_zoom_step, 0, SCOPE_ZOOM_MULTS.size() - 1)])
+		return HIP_FOV / mult
+	return w.aim_fov
+
+
+func get_scope_zoom_mult() -> float:
+	if not has_scope_overlay():
+		return 1.0
+	return float(SCOPE_ZOOM_MULTS[clampi(scope_zoom_step, 0, SCOPE_ZOOM_MULTS.size() - 1)])
+
+
+func cycle_scope_zoom(dir: int = 1) -> float:
+	if not has_scope_overlay():
+		return 1.0
+	scope_zoom_step = (scope_zoom_step + dir) % SCOPE_ZOOM_MULTS.size()
+	if scope_zoom_step < 0:
+		scope_zoom_step = SCOPE_ZOOM_MULTS.size() - 1
+	return get_scope_zoom_mult()
 
 
 func has_scope_overlay() -> bool:
 	return get_active().scope_overlay
+
+
+func can_takedown(player: Node3D) -> bool:
+	var cam := get_node_or_null(camera_path) as Camera3D
+	if cam == null:
+		return false
+	var space := get_viewport().get_world_3d().direct_space_state
+	var origin := cam.global_position
+	var dir := -cam.global_transform.basis.z
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * 2.4)
+	query.collision_mask = 4
+	query.exclude = [_player_rid()]
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return false
+	var guard = hit.collider
+	if guard == null:
+		return false
+	if guard.has_method("melee_takedown"):
+		return guard.has_method("is_alive") == false or guard.is_alive()
+	if guard.get_parent() and guard.get_parent().has_method("melee_takedown"):
+		var p = guard.get_parent()
+		return p.has_method("is_alive") == false or p.is_alive()
+	return false
+
+
+func needs_reload() -> bool:
+	var w := get_active()
+	if w.is_melee or w.magazine_size <= 0:
+		return false
+	return _mag() < w.magazine_size and _reserve() > 0
 
 
 func _mag() -> int:
@@ -331,6 +387,8 @@ func select_slot(slot_idx: int) -> void:
 	active_slot = clamped
 	active_is_primary = (active_slot == 0)
 	_reloading = false
+	# Fresh optic starts at base magnification (4x for scopes).
+	scope_zoom_step = 0
 	weapon_switched.emit(get_active().display_name)
 	_refresh_viewmodel()
 	_emit_ammo()

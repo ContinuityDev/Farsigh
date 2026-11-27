@@ -35,8 +35,9 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 
 ### Aim Down Sights (ADS)
 - Hold Aim (RMB / LT / touch Aim) to raise the viewmodel from hip to sights — iron sights by default, or red dot / holo / scope when fitted in the Gunsmith.
-- Per-weapon aim-in time, ADS FOV, tighter spread, lower recoil, slower movement, and reduced look sensitivity (adjustable in the pause menu).
-- Scope overlay + breath-hold sway dampening for sniper / 4x scopes. Crosshair hides in ADS. Bow draw-and-aim, throwable lob arc preview, and melee ready stance included.
+- True optic zoom vs hip FOV 70°: **red dot 1.5×** (~46.7°), **holo 2×** (35°), **scope 4×** (17.5°) with sniper Adjust Zoom cycling **4× → 6× → 8×** (mouse wheel / `N` on PC; touch **ZOOM** while ADS).
+- Scope overlay + breath-hold sway dampening for magnified scopes. Crosshair hides in ADS. Gunsmith optic choice persists into the field.
+- Mobile touch actions are contextual: Takedown / Reload / Use / Rock / ZOOM / Binos only show when usable (no dead buttons).
 
 ### 14-Weapon Arsenal & 5-Slot Gunsmith
 - **Primary**: AR-C Assault Rifle, MP-40 / Vector SMG, M133 Pump Shotgun (8 pellets), MBP .50 Sniper Rifle (scope overlay), M60 LMG.
@@ -65,6 +66,7 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 | Lean / Peek Left & Right | Z / V | — |
 | Fire / Throw / Swing | LMB | RT / RB |
 | Aim / ADS (iron, optic, or scope) | RMB hold | LT |
+| Adjust Zoom (sniper 4/6/8×) | Mouse wheel or N while ADS | — |
 | Breath-hold (steady scope) | Shift while ADS | L3 while ADS |
 | Reload | R | Y |
 | Weapon inspect | I or T | — |
@@ -81,7 +83,8 @@ Touch controls appear automatically on native mobile and on web builds when a to
 
 - **Left virtual stick** — move
 - **Right-side swipe** — look
-- **Buttons** — `PEEK L`, `PEEK R`, `JUMP/VLT`, `CROUCH`, `SPRINT`, `FIRE`, `AIM`, `TAKEDOWN`, `ROCK`, `USE`, `INSPECT`, `SWAP`, `RELOAD`
+- **Always-on** — move stick, look, `FIRE`, `AIM`, `JUMP/VLT`, `CROUCH`, `SPRINT`, `PEEK L/R`, `SWAP`
+- **Contextual** — `TAKEDOWN` (enemy in range), `RELOAD` (mag not full + reserve), `USE` (interactable/body), `ROCK` (rocks left), `ZOOM` (ADS + variable scope), `BINOS` (hidden while ADS), `INSPECT`
 - Pause menu: **ADS Sensitivity** (35–100%), **Touch Aim Hold/Toggle**, and **Tap-to-Fire** (off by default)
 - Look-swipes never fire — mouse-from-touch stays on so menus/gunsmith respond to taps, but fire/aim ignore mouse while the touch UI is up; only the on-screen **FIRE** button shoots (PC LMB unchanged)
 
@@ -100,7 +103,12 @@ Captured from a running Godot 4.3 session (`AUTO_CAPTURE=1`):
 | Jacob's Ridge Bunker (Helipad & Radar) | ![Jacob's Ridge Bunker](docs/screenshots/06_hilltop_bunker.png) |
 | Multi-Storey Interior Window & Weapon Inspect | ![Interior Inspect](docs/screenshots/07_interior_inspect.png) |
 | Mobile Touch Controls & Kukri Machete | ![Touch Controls](docs/screenshots/08_touch_controls.png) |
-| ADS Holo Sight (centered optic + FOV) | ![ADS Holo](docs/screenshots/09_ads_holo.png) |
+| ADS Holo Sight (2×) | ![ADS Holo](docs/screenshots/09_ads_holo.png) |
+| ADS Red Dot (1.5×) | ![ADS Red Dot](docs/screenshots/12_ads_red_dot.png) |
+| Sniper Scope 4× | ![Sniper 4x](docs/screenshots/13_sniper_4x.png) |
+| Sniper Scope 8× | ![Sniper 8x](docs/screenshots/14_sniper_8x.png) |
+| Mobile HUD (decluttered) | ![Mobile HUD](docs/screenshots/15_mobile_hud_no_takedown.png) |
+| Mobile HUD + Takedown | ![Mobile Takedown](docs/screenshots/16_mobile_hud_takedown.png) |
 
 ```bash
 # Automated screenshot capture (needs a display; use OpenGL if Vulkan is unavailable)

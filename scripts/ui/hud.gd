@@ -22,6 +22,7 @@ var _results_panel: Control
 var _streak_row: HBoxContainer
 var _streak_buttons: Array = []
 var _currency_label: Label
+var _scope_zoom_label: Label
 
 
 func _ready() -> void:
@@ -127,6 +128,19 @@ func _ensure_scope_overlay() -> void:
 	dot.offset_bottom = 2.0
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_scope_overlay.add_child(dot)
+	_scope_zoom_label = Label.new()
+	_scope_zoom_label.name = "ScopeZoomLabel"
+	_scope_zoom_label.text = "4x"
+	_scope_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_scope_zoom_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_scope_zoom_label.offset_left = -40
+	_scope_zoom_label.offset_right = 40
+	_scope_zoom_label.offset_top = -72
+	_scope_zoom_label.offset_bottom = -40
+	_scope_zoom_label.add_theme_font_size_override("font_size", 18)
+	_scope_zoom_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 0.85))
+	_scope_zoom_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scope_overlay.add_child(_scope_zoom_label)
 	$Root.add_child(_scope_overlay)
 	$Root.move_child(_scope_overlay, 0)
 
@@ -136,6 +150,11 @@ func set_scope_overlay(on: bool) -> void:
 		_scope_overlay.visible = on
 	if on and is_instance_valid(crosshair):
 		crosshair.visible = false
+
+
+func set_scope_zoom_label(mult: float) -> void:
+	if is_instance_valid(_scope_zoom_label):
+		_scope_zoom_label.text = "%dx" % int(round(mult))
 
 
 func set_ads_crosshair(hide: bool) -> void:
@@ -424,15 +443,19 @@ func refresh_streak_buttons() -> void:
 	if _streak_buttons.is_empty():
 		return
 	var sm := get_tree().get_first_node_in_group("streak_manager")
+	var any_visible := false
 	for i in range(3):
 		var sid := ""
 		if i < GameState.equipped_streaks.size():
 			sid = String(GameState.equipped_streaks[i])
 		var btn: Button = _streak_buttons[i]
-		if sid == "":
-			btn.text = "—"
+		# Only show when a streak is equipped and owned (hide empty slots).
+		if sid == "" or not GameState.owns_streak(sid):
+			btn.visible = false
 			btn.disabled = true
 			continue
+		btn.visible = true
+		any_visible = true
 		var info: Dictionary = StreakCatalog.by_id(sid)
 		var charges := GameState.get_streak_charges(sid)
 		var ready := charges > 0
@@ -441,6 +464,8 @@ func refresh_streak_buttons() -> void:
 		btn.text = "%s\nx%d" % [String(info.get("name", sid)), charges]
 		btn.disabled = not ready
 		btn.modulate = Color(0.55, 0.95, 0.55) if ready else Color(0.85, 0.85, 0.85)
+	if is_instance_valid(_streak_row):
+		_streak_row.visible = any_visible
 
 
 func _on_streak_pressed(slot: int) -> void:

@@ -154,7 +154,7 @@ func _ensure_defaults() -> void:
 func default_mods_for(id: WeaponId) -> Dictionary:
 	return {
 		"muzzle": "suppressor" if id == WeaponId.PISTOL else "none",
-		"optic": "scope" if id == WeaponId.SNIPER else ("red_dot" if id == WeaponId.RIFLE else "iron"),
+		"optic": "scope" if id in [WeaponId.SNIPER, WeaponId.SILENCED_SNIPER] else ("red_dot" if id == WeaponId.RIFLE else "iron"),
 		"mag": "standard",
 		"underbarrel": "none",
 		"arrow": "standard",
