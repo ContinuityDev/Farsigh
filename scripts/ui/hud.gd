@@ -214,6 +214,9 @@ func _refresh_settings_ui() -> void:
 	var aim_btn := pause_panel.get_node_or_null("PauseVBox/TouchAimBtn") as Button
 	if is_instance_valid(aim_btn):
 		aim_btn.text = "Touch Aim: %s" % ("Toggle" if GameState.touch_aim_toggle else "Hold")
+	var tap_btn := pause_panel.get_node_or_null("PauseVBox/TapToFireBtn") as Button
+	if is_instance_valid(tap_btn):
+		tap_btn.text = "Tap-to-Fire: %s" % ("On" if GameState.tap_to_fire else "Off")
 
 
 func _ensure_settings_buttons() -> void:
@@ -234,6 +237,13 @@ func _ensure_settings_buttons() -> void:
 		aim.pressed.connect(_on_touch_aim_pressed)
 		vbox.add_child(aim)
 		vbox.move_child(aim, mini(4, vbox.get_child_count() - 1))
+	if vbox.get_node_or_null("TapToFireBtn") == null:
+		var tap := Button.new()
+		tap.name = "TapToFireBtn"
+		tap.custom_minimum_size = Vector2(0, 40)
+		tap.pressed.connect(_on_tap_to_fire_pressed)
+		vbox.add_child(tap)
+		vbox.move_child(tap, mini(5, vbox.get_child_count() - 1))
 	_refresh_settings_ui()
 
 
@@ -254,6 +264,12 @@ func _on_touch_aim_pressed() -> void:
 	GameState.set_touch_aim_toggle(not GameState.touch_aim_toggle)
 	_refresh_settings_ui()
 	show_status("Touch Aim set to %s" % ("Toggle" if GameState.touch_aim_toggle else "Hold"), 1.6)
+
+
+func _on_tap_to_fire_pressed() -> void:
+	GameState.set_tap_to_fire(not GameState.tap_to_fire)
+	_refresh_settings_ui()
+	show_status("Tap-to-Fire %s (look-pad tap)" % ("enabled" if GameState.tap_to_fire else "disabled"), 1.8)
 
 
 func _on_resume_pressed() -> void:

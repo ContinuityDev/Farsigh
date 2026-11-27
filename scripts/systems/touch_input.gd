@@ -1,8 +1,17 @@
 extends Node
 ## Bridges on-screen touch controls into InputMap actions and look deltas.
 ## Visible on native mobile, and on web builds when a touchscreen is available.
+##
+## Mobile web safety: never let look-swipes fire. Godot's default
+## emulate_mouse_from_touch turns every ScreenTouch into LMB, and `fire` is
+## bound to Mouse Button 1 — so we force that emulation off and ignore mouse
+## bindings for fire/aim while the virtual controls are active.
 
 signal look_delta(relative: Vector2)
+
+## Actions that must only come from on-screen buttons (or non-mouse hardware)
+## while the touch UI is up — never from emulated / real mouse clicks.
+const TOUCH_UI_MOUSE_BLOCKED := ["fire", "aim"]
 
 var move_vector: Vector2 = Vector2.ZERO
 var look_relative: Vector2 = Vector2.ZERO
@@ -12,6 +21,13 @@ var force_touch_ui: bool = false
 var _pressed: Dictionary = {}
 var _just_pressed: Dictionary = {}
 var _just_released: Dictionary = {}
+
+
+func _ready() -> void:
+	# Belt-and-suspenders with project.godot: look/stick touches must never
+	# synthesize MouseButton events that would trip the `fire` action.
+	Input.emulate_mouse_from_touch = false
+	Input.emulate_touch_from_mouse = false
 
 
 func is_touch_ui_desired() -> bool:
@@ -59,18 +75,82 @@ func release(action: String) -> void:
 	_pressed[action] = false
 
 
+func pulse(action: String) -> void:
+	## One-frame tap (used by optional tap-to-fire).
+	_just_pressed[action] = true
+	_pressed[action] = true
+	# Release next frame via deferred so just_pressed is visible this frame.
+	call_deferred("_deferred_pulse_release", action)
+
+
+func _deferred_pulse_release(action: String) -> void:
+	release(action)
+
+
 func is_action_pressed(action: String) -> bool:
-	return _pressed.get(action, false) or Input.is_action_pressed(action)
+	if bool(_pressed.get(action, false)):
+		return true
+	if not Input.is_action_pressed(action):
+		return false
+	if _should_ignore_mouse_binding(action):
+		return _is_non_mouse_action_pressed(action)
+	return true
 
 
 func is_action_just_pressed(action: String) -> bool:
-	var touch: bool = bool(_just_pressed.get(action, false))
-	return touch or Input.is_action_just_pressed(action)
+	if bool(_just_pressed.get(action, false)):
+		return true
+	if not Input.is_action_just_pressed(action):
+		return false
+	if _should_ignore_mouse_binding(action):
+		return _is_non_mouse_action_just_pressed(action)
+	return true
 
 
 func is_action_just_released(action: String) -> bool:
-	var touch: bool = bool(_just_released.get(action, false))
-	return touch or Input.is_action_just_released(action)
+	if bool(_just_released.get(action, false)):
+		return true
+	if not Input.is_action_just_released(action):
+		return false
+	if _should_ignore_mouse_binding(action):
+		# Don't report mouse-button releases as aim/fire releases on touch UI
+		return false
+	return true
+
+
+func _should_ignore_mouse_binding(action: String) -> bool:
+	## While virtual controls are showing, never treat mouse clicks as fire/aim.
+	## PC mouse play keeps touch UI off, so LMB still fires there.
+	return is_touch_ui_desired() and action in TOUCH_UI_MOUSE_BLOCKED
+
+
+func _is_non_mouse_action_pressed(action: String) -> bool:
+	for ev in InputMap.action_get_events(action):
+		if ev is InputEventMouseButton:
+			continue
+		if ev is InputEventJoypadButton:
+			var jb := ev as InputEventJoypadButton
+			for pad in Input.get_connected_joypads():
+				if Input.is_joy_button_pressed(pad, jb.button_index):
+					return true
+		elif ev is InputEventJoypadMotion:
+			var jm := ev as InputEventJoypadMotion
+			for pad in Input.get_connected_joypads():
+				var axis_v := Input.get_joy_axis(pad, jm.axis)
+				if absf(axis_v) >= 0.5 and signf(axis_v) == signf(jm.axis_value):
+					return true
+		elif ev is InputEventKey:
+			var key := ev as InputEventKey
+			if key.keycode != KEY_NONE and Input.is_key_pressed(key.keycode):
+				return true
+			if key.physical_keycode != KEY_NONE and Input.is_physical_key_pressed(key.physical_keycode):
+				return true
+	return false
+
+
+func _is_non_mouse_action_just_pressed(action: String) -> bool:
+	## Approximate: pressed now via non-mouse and soft just_pressed already checked.
+	return _is_non_mouse_action_pressed(action) and Input.is_action_just_pressed(action)
 
 
 func _process(_delta: float) -> void:

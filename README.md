@@ -75,7 +75,8 @@ Touch controls appear automatically on native mobile and on web builds when a to
 - **Left virtual stick** — move
 - **Right-side swipe** — look
 - **Buttons** — `PEEK L`, `PEEK R`, `JUMP/VLT`, `CROUCH`, `SPRINT`, `FIRE`, `AIM`, `TAKEDOWN`, `ROCK`, `USE`, `INSPECT`, `SWAP`, `RELOAD`
-- Pause menu: **ADS Sensitivity** (35–100%) and **Touch Aim Hold/Toggle**
+- Pause menu: **ADS Sensitivity** (35–100%), **Touch Aim Hold/Toggle**, and **Tap-to-Fire** (off by default)
+- Look-swipes never fire — only the on-screen **FIRE** button shoots on touch (mouse LMB still works on PC)
 
 ## Screenshots
 

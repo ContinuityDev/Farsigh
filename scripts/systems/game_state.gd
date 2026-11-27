@@ -50,6 +50,7 @@ var is_paused: bool = false
 # Persistent player settings (saved with loadout prefs)
 var ads_sensitivity: float = 0.55  # multiplier applied while aiming (0.25–1.0)
 var touch_aim_toggle: bool = false  # false = hold Aim button, true = tap to toggle
+var tap_to_fire: bool = false  # optional: short look-pad tap fires (off by default)
 
 
 func _ready() -> void:
@@ -229,6 +230,7 @@ func serialize_loadout() -> Dictionary:
 		"weapon_mods": weapon_mods.duplicate(true),
 		"ads_sensitivity": ads_sensitivity,
 		"touch_aim_toggle": touch_aim_toggle,
+		"tap_to_fire": tap_to_fire,
 	}
 
 
@@ -243,6 +245,7 @@ func deserialize_loadout(data: Dictionary) -> void:
 		weapon_mods = (loaded_mods as Dictionary).duplicate(true)
 	ads_sensitivity = clampf(float(data.get("ads_sensitivity", ads_sensitivity)), 0.25, 1.0)
 	touch_aim_toggle = bool(data.get("touch_aim_toggle", touch_aim_toggle))
+	tap_to_fire = bool(data.get("tap_to_fire", tap_to_fire))
 	_ensure_defaults()
 
 
@@ -253,6 +256,11 @@ func set_ads_sensitivity(value: float) -> void:
 
 func set_touch_aim_toggle(enabled: bool) -> void:
 	touch_aim_toggle = enabled
+	SaveManager.save_loadout()
+
+
+func set_tap_to_fire(enabled: bool) -> void:
+	tap_to_fire = enabled
 	SaveManager.save_loadout()
 
 

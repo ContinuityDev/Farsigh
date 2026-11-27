@@ -208,6 +208,14 @@ gdscript/warnings/unsafe_property_access=1
 gdscript/warnings/unsafe_cast=1
 gdscript/warnings/return_value_discarded=0
 
+[input_devices]
+
+# Critical for mobile web: touches must NOT become left-clicks, or look-swipes
+# fire the gun (fire is bound to Mouse Button 1). Virtual FireBtn + real mouse
+# on desktop still work; BaseButton receives ScreenTouch natively.
+pointing/emulate_mouse_from_touch=false
+pointing/emulate_touch_from_mouse=false
+
 [navigation]
 
 3d/merge_rasterizer_cell_scale=0.001

@@ -77,7 +77,8 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if GameState.is_paused or is_down:
 		return
-	# Desktop browser: click/tap canvas to capture mouse for look without firing
+	# Desktop browser: click canvas to capture mouse for look without firing.
+	# Mobile/touch UI never uses pointer lock — look is the on-screen LookPad.
 	if OS.has_feature("web") and not TouchInput.is_touch_ui_desired():
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
@@ -88,6 +89,11 @@ func _unhandled_input(event: InputEvent) -> void:
 					hud.set_click_to_capture_hint(false)
 				get_viewport().set_input_as_handled()
 				return
+	# On touch UI, ignore any leftover mouse-button "fire" events entirely.
+	if TouchInput.is_touch_ui_desired() and event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var sens := MOUSE_SENS * _look_sensitivity_mult()
 		_apply_look(-event.relative.x * sens, -event.relative.y * sens)
