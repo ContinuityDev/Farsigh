@@ -86,7 +86,8 @@ jobs:
           set -euo pipefail
           mkdir -p docs
           # Replace only top-level docs web files; keep docs/screenshots/
-          find docs -maxdepth 1 -type f -delete
+          # Keep hand-written docs (CUSTOM_ASSETS.md). Only the exported web files are replaced.
+          find docs -maxdepth 1 -type f ! -name '*.md' -delete
           cp -a build/web/. docs/
           rm -f docs/*.import
           test -f docs/index.html
