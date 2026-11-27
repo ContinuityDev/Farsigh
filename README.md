@@ -78,7 +78,8 @@ Touch controls appear automatically on native mobile and on web builds when a to
 - **Right-side swipe** — look
 - **Buttons** — `PEEK L`, `PEEK R`, `JUMP/VLT`, `CROUCH`, `SPRINT`, `FIRE`, `AIM`, `TAKEDOWN`, `ROCK`, `USE`, `INSPECT`, `SWAP`, `RELOAD`
 - Pause menu: **ADS Sensitivity** (35–100%), **Touch Aim Hold/Toggle**, and **Tap-to-Fire** (off by default)
-- Look-swipes never fire — only the on-screen **FIRE** button shoots on touch (mouse LMB still works on PC)
+- Look-swipes never fire — mouse-from-touch stays on so menus/gunsmith respond to taps, but fire/aim ignore mouse while the touch UI is up; only the on-screen **FIRE** button shoots (PC LMB unchanged)
+
 
 ## Screenshots
 

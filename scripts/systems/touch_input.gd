@@ -2,10 +2,10 @@ extends Node
 ## Bridges on-screen touch controls into InputMap actions and look deltas.
 ## Visible on native mobile, and on web builds when a touchscreen is available.
 ##
-## Mobile web safety: never let look-swipes fire. Godot's default
-## emulate_mouse_from_touch turns every ScreenTouch into LMB, and `fire` is
-## bound to Mouse Button 1 — so we force that emulation off and ignore mouse
-## bindings for fire/aim while the virtual controls are active.
+## Mobile web safety: keep emulate_mouse_from_touch ON so Buttons / sliders /
+## OptionButtons / ScrollContainers receive taps. `fire` / `aim` are still bound
+## to mouse buttons, so while the virtual controls are up we ignore mouse (and
+## emulated-mouse) bindings for those actions — look-swipes never shoot.
 
 signal look_delta(relative: Vector2)
 
@@ -24,9 +24,8 @@ var _just_released: Dictionary = {}
 
 
 func _ready() -> void:
-	# Belt-and-suspenders with project.godot: look/stick touches must never
-	# synthesize MouseButton events that would trip the `fire` action.
-	Input.emulate_mouse_from_touch = false
+	# Menus need mouse-from-touch. Fire/aim safety is handled in is_action_*.
+	Input.emulate_mouse_from_touch = true
 	Input.emulate_touch_from_mouse = false
 
 
@@ -120,8 +119,13 @@ func is_action_just_released(action: String) -> bool:
 
 func _should_ignore_mouse_binding(action: String) -> bool:
 	## While virtual controls are showing, never treat mouse clicks as fire/aim.
+	## Covers DEVICE_ID_EMULATION and any browser that synthesizes real LMB from touch.
 	## PC mouse play keeps touch UI off, so LMB still fires there.
 	return is_touch_ui_desired() and action in TOUCH_UI_MOUSE_BLOCKED
+
+
+func is_emulated_mouse_event(event: InputEvent) -> bool:
+	return event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION
 
 
 func _is_non_mouse_action_pressed(action: String) -> bool:

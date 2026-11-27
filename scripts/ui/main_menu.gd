@@ -9,6 +9,7 @@ extends Control
 
 
 func _ready() -> void:
+	add_to_group("main_menu")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = false
 	GameState.is_paused = false

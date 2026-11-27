@@ -3,6 +3,10 @@ extends Control
 ## Look-swipes and the move stick never fire the gun — only FireBtn (and optional
 ## tap-to-fire) call TouchInput.press("fire"). Multi-touch: stick + look + fire
 ## can all be active at once via separate touch indices.
+##
+## Root stays MOUSE_FILTER_IGNORE so pause / menu Controls above or below still
+## receive taps (mouse-from-touch stays enabled for GUI). Only stick, look pad,
+## and action buttons stop the pointer.
 
 @onready var root: Control = $Root
 @onready var stick_base: Control = $Root/LeftStick
@@ -21,12 +25,15 @@ var _look_dragged: bool = false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	visible = TouchInput.is_touch_ui_desired()
-	root.visible = visible
-	# STOP so look/stick owns the pointer; buttons still receive their own events.
-	mouse_filter = Control.MOUSE_FILTER_IGNORE if not visible else Control.MOUSE_FILTER_STOP
+	# Never blanket-stop the full screen — that steals pause/menu button taps.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if is_instance_valid(root):
+		root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_refresh_visibility()
 	if is_instance_valid(look_pad):
 		look_pad.mouse_filter = Control.MOUSE_FILTER_STOP
+		# Consume emulated LMB on the look pad so it cannot fall through as fire.
+		look_pad.gui_input.connect(_on_look_pad_gui_input)
 	if is_instance_valid(stick_base):
 		stick_base.mouse_filter = Control.MOUSE_FILTER_STOP
 	await get_tree().process_frame
@@ -52,15 +59,35 @@ func _ready() -> void:
 			_wire_button(alt, b[1])
 
 
+func _process(_delta: float) -> void:
+	_refresh_visibility()
+
+
+func _refresh_visibility() -> void:
+	var want := TouchInput.is_touch_ui_desired() and not GameState.is_paused
+	if visible != want:
+		visible = want
+	if is_instance_valid(root) and root.visible != want:
+		root.visible = want
+
+
 func _wire_button(btn: BaseButton, action: String) -> void:
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.button_down.connect(func(): TouchInput.press(action))
 	btn.button_up.connect(func(): TouchInput.release(action))
-	# Swallow the button's events so they never fall through as look/fire mouse synth.
+	# Swallow the button's pointer events so they never fall through as look.
 	btn.gui_input.connect(func(event: InputEvent):
 		if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouseButton:
 			accept_event()
 	)
+
+
+func _on_look_pad_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		# Emulated LMB from a look-pad touch — eat it; look comes from ScreenTouch.
+		accept_event()
+	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		accept_event()
 
 
 func _input(event: InputEvent) -> void:

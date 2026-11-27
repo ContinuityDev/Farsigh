@@ -89,7 +89,8 @@ func _unhandled_input(event: InputEvent) -> void:
 					hud.set_click_to_capture_hint(false)
 				get_viewport().set_input_as_handled()
 				return
-	# On touch UI, ignore any leftover mouse-button "fire" events entirely.
+	# Touch UI: swallow mouse LMB/RMB (incl. DEVICE_ID_EMULATION from look-swipes)
+	# so emulated clicks never become fire/aim. Menus still get them via Controls.
 	if TouchInput.is_touch_ui_desired() and event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 			get_viewport().set_input_as_handled()

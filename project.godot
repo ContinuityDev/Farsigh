@@ -210,10 +210,11 @@ gdscript/warnings/return_value_discarded=0
 
 [input_devices]
 
-# Critical for mobile web: touches must NOT become left-clicks, or look-swipes
-# fire the gun (fire is bound to Mouse Button 1). Virtual FireBtn + real mouse
-# on desktop still work; BaseButton receives ScreenTouch natively.
-pointing/emulate_mouse_from_touch=false
+# Mouse-from-touch stays ON so every GUI Control (menus, gunsmith, sliders)
+# responds to taps on mobile web/native. Gameplay fire/aim ignore mouse /
+# emulated-mouse while the touch UI is active (see TouchInput), so look-swipes
+# never shoot — only the on-screen Fire button does.
+pointing/emulate_mouse_from_touch=true
 pointing/emulate_touch_from_mouse=false
 
 [navigation]
