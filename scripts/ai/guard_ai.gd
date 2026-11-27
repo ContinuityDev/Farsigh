@@ -42,6 +42,10 @@ var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var label: Label3D = $StateLabel
 @onready var visual: GuardVisual = $Visual
 @onready var hit_zones: Node3D = $HitZones
+@onready var nav_agent: NavigationAgent3D = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
+
+var _nav_last_target: Vector3 = Vector3(1e9, 1e9, 1e9)
+var _door_check_cd: float = 0.0
 
 var _body_scene: PackedScene = preload("res://scenes/items/body.tscn")
 var _last_hit_zone: String = ""
@@ -51,6 +55,8 @@ func _ready() -> void:
 	add_to_group("guards")
 	collision_layer = 4
 	collision_mask = 1 | 2
+	floor_max_angle = deg_to_rad(52.0)
+	floor_snap_length = 0.35
 	NoiseBus.noise_emitted.connect(_on_noise)
 	if is_instance_valid(visual):
 		visual.set_placeholder_color(Color(0.55, 0.25, 0.2))
@@ -422,7 +428,26 @@ func _fire_at(player: Node3D) -> void:
 
 
 func _move_toward(target: Vector3, speed: float) -> void:
-	var flat := Vector3(target.x, global_position.y, target.z)
+	var steer := target
+	if is_instance_valid(nav_agent) and is_inside_tree():
+		var nav_map := nav_agent.get_navigation_map()
+		if nav_map.is_valid() and NavigationServer3D.map_get_iteration_id(nav_map) > 0:
+			if _nav_last_target.distance_to(target) > 0.45:
+				nav_agent.target_position = target
+				_nav_last_target = target
+			if not nav_agent.is_navigation_finished():
+				var next_pt := nav_agent.get_next_path_position()
+				if next_pt.distance_to(global_position) > 0.08:
+					steer = next_pt
+	# Auto-open nearby hinged doors so guards traverse rooms & interiors smoothly
+	_door_check_cd -= get_physics_process_delta_time()
+	if _door_check_cd <= 0.0:
+		_door_check_cd = 0.25
+		for d in get_tree().get_nodes_in_group("doors"):
+			if d is Node3D and (d as Node3D).global_position.distance_to(global_position) < 2.2:
+				if d.has_method("open_for_guard"):
+					d.open_for_guard()
+	var flat := Vector3(steer.x, global_position.y, steer.z)
 	var dir := flat - global_position
 	if dir.length() < 0.1:
 		velocity.x = 0

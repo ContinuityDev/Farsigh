@@ -50,6 +50,8 @@ func _ready() -> void:
 		# Duplicate so changing crouch height never mutates a shared sub-resource.
 		_capsule = (collision_shape.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
 		collision_shape.shape = _capsule
+	floor_max_angle = deg_to_rad(52.0)
+	floor_snap_length = 0.35
 	add_to_group("player")
 	if is_instance_valid(weapons) and is_instance_valid(camera):
 		weapons.camera_path = weapons.get_path_to(camera)
@@ -208,13 +210,16 @@ func _handle_interact_input() -> void:
 	if not interact_ray.is_colliding():
 		return
 	var col := interact_ray.get_collider()
-	if col == null:
+	if not (col is Node):
 		return
-	var target: Node = col
-	if target.has_method("interact"):
-		target.interact(self)
-	elif target.get_parent() and target.get_parent().has_method("interact"):
-		target.get_parent().interact(self)
+	var cur: Node = col as Node
+	for _depth in range(4):
+		if cur == null:
+			break
+		if cur.has_method("interact"):
+			cur.interact(self)
+			return
+		cur = cur.get_parent()
 
 
 func _throw_rock() -> void:

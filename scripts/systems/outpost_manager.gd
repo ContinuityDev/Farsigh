@@ -29,9 +29,47 @@ func _ready() -> void:
 	_position_player(def)
 	liberated = GameState.is_liberated(outpost_id)
 	_rebuild_outpost_entities(def)
+	call_deferred("_bake_navmesh")
 	call_deferred("_bind_guards")
 	if liberated:
 		call_deferred("_show_already_liberated")
+
+
+func _bake_navmesh() -> void:
+	var greybox := get_node_or_null("Greybox") as Node3D
+	if not is_instance_valid(greybox):
+		return
+	# Temporarily let navmesh bake through closed doors so rooms stay connected
+	var doors := get_tree().get_nodes_in_group("doors")
+	for d in doors:
+		if d.has_method("set_nav_bake_passable"):
+			d.set_nav_bake_passable(true)
+
+	var nav_region := get_node_or_null("OutpostNavRegion") as NavigationRegion3D
+	if nav_region == null:
+		nav_region = NavigationRegion3D.new()
+		nav_region.name = "OutpostNavRegion"
+		add_child(nav_region)
+
+	var nav_mesh := NavigationMesh.new()
+	nav_mesh.agent_radius = 0.45
+	nav_mesh.agent_height = 1.85
+	nav_mesh.agent_max_climb = 0.55
+	nav_mesh.agent_max_slope = 50.0
+	nav_mesh.cell_size = 0.35
+	nav_mesh.cell_height = 0.25
+	nav_mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
+	nav_mesh.geometry_collision_mask = 1
+	nav_mesh.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_ROOT_NODE_CHILDREN
+
+	var src := NavigationMeshSourceGeometryData3D.new()
+	NavigationServer3D.parse_source_geometry_data(nav_mesh, src, greybox)
+	NavigationServer3D.bake_from_source_geometry_data(nav_mesh, src)
+	nav_region.navigation_mesh = nav_mesh
+
+	for d in doors:
+		if d.has_method("set_nav_bake_passable"):
+			d.set_nav_bake_passable(false)
 
 
 func _setup_environment(def: Dictionary) -> void:

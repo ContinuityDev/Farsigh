@@ -6,6 +6,7 @@ extends Node3D
 const KENNEY_GRASS: PackedScene = preload("res://assets/kenney/grass.glb")
 const KENNEY_GRASS_SMALL: PackedScene = preload("res://assets/kenney/grass-small.glb")
 const KENNEY_WALL_LOW: PackedScene = preload("res://assets/kenney/wall-low.glb")
+const BuildingKit = preload("res://scripts/levels/building_kit.gd")
 
 var current_outpost_id: String = ""
 
@@ -101,12 +102,13 @@ func _fence_segment(base_center: Vector3, size: Vector3, wall_col: Color, post_c
 func _buildings() -> void:
 	_hollow_building(Vector3(-11, 0, -4), Vector3(9, 3.6, 7), Color(0.44, 0.42, 0.38), Color(0.30, 0.25, 0.20), "S")
 	_hollow_building(Vector3(12, 0, -6), Vector3(7, 3.4, 9), Color(0.42, 0.39, 0.35), Color(0.28, 0.30, 0.28), "W")
-	_hollow_building(Vector3(1, 0, -14), Vector3(11, 3.8, 7), Color(0.38, 0.41, 0.43), Color(0.26, 0.24, 0.22), "S")
-	_radio_mast(Vector3(4.5, 3.9, -14.5))
-	_hollow_building(Vector3(10, 0, 12), Vector3(8, 2.9, 5), Color(0.40, 0.38, 0.34), Color(0.32, 0.22, 0.18), "N")
+	# 2-storey Multi-Room HQ + Reachable Rooftop with Radio Mast
+	BuildingKit.build_multi_storey(self, Vector3(1, 0, -14), 11.0, 7.6, 3.3, Color(0.38, 0.41, 0.43), Color(0.26, 0.24, 0.22), "S", true, "E")
+	_radio_mast(Vector3(4.2, 6.75, -14.5))
+	# Drive-in Garage in southeast yard
+	BuildingKit.build_garage(self, Vector3(10, 0, 12), 8.6, 6.0, 3.3, Color(0.40, 0.38, 0.34), Color(0.32, 0.22, 0.18), "N")
 	_crate(Vector3(-11, 0, -4), 1.15, 0.0)
 	_crate(Vector3(12, 0, -6), 1.15, 90.0)
-	_box(Vector3(1, 0.55, -14), Vector3(3.0, 1.1, 0.7), Color(0.35, 0.27, 0.19))
 
 
 func _courtyard_cover() -> void:
@@ -203,16 +205,12 @@ func _build_ranch() -> void:
 	_ranch_fence(Vector3(-10, 0, -24), Vector3(24, 1.35, 0.3), rail_col)
 	_ranch_fence(Vector3(14, 0, -24), Vector3(14, 1.35, 0.3), rail_col)
 
-	# Iconic Big Red Barn (center-north) with gabled roof + white X barn trim
+	# Iconic 2-Storey Big Red Barn (center-north) with hayloft, interior stairs, and reachable roof overlook
 	var barn_red := Color(0.58, 0.15, 0.12)
 	var barn_roof := Color(0.24, 0.25, 0.27)
-	_hollow_building(Vector3(-2, 0, -6), Vector3(13, 5.4, 10), barn_red, barn_roof, "S")
-	# White trim stripes & loft window on south face of barn
-	_box(Vector3(-2, 4.4, -0.85), Vector3(2.2, 1.5, 0.15), Color(0.14, 0.12, 0.10), false)
-	_box(Vector3(-2, 5.2, -0.82), Vector3(2.5, 0.16, 0.18), Color(0.9, 0.88, 0.84), false)
-	_box(Vector3(-2, 3.6, -0.82), Vector3(2.5, 0.16, 0.18), Color(0.9, 0.88, 0.84), false)
-	# Barn roof peak
-	_box(Vector3(-2, 6.2, -6), Vector3(13.4, 1.2, 5.2), barn_roof.darkened(0.08), false)
+	BuildingKit.build_multi_storey(self, Vector3(-2, 0, -7), 12.6, 9.6, 3.4, barn_red, barn_roof, "S", true, "W")
+	# White barn X-trim accent above front doorway
+	_box(Vector3(-2, 6.95, -2.0), Vector3(2.8, 0.18, 0.18), Color(0.92, 0.90, 0.85), false)
 
 	# Twin Silver Galvanized Grain Silos (east of barn) + sniper catwalk perch
 	_grain_silo(Vector3(14, 0, -12), 2.5, 8.8)
@@ -220,15 +218,14 @@ func _build_ranch() -> void:
 	# Steel catwalk platform wrapping the silos at y=5.5 (sniper stands at 14, 5.6, -12)
 	_box(Vector3(14, 5.4, -12), Vector3(6.2, 0.28, 6.2), Color(0.32, 0.34, 0.36), true)
 	_box(Vector3(14, 5.4, -8.5), Vector3(2.2, 0.25, 5.0), Color(0.32, 0.34, 0.36), true)
-	# Ladder up silo west face
-	for i in range(9):
-		_box(Vector3(11.1, 0.5 + i * 0.58, -12), Vector3(0.14, 0.10, 0.72), Color(0.24, 0.25, 0.27), true)
+	# Walkable stairs up to the silo platform
+	BuildingKit.build_stairs(self, Vector3(9.4, 0.08, -12), Vector3(11.1, 5.45, -12), 1.4, Color(0.30, 0.32, 0.34))
 
-	# White Clapboard Ranch Farmhouse (west) + porch
-	_hollow_building(Vector3(-15, 0, 4), Vector3(8.5, 3.8, 9), Color(0.82, 0.80, 0.74), Color(0.28, 0.24, 0.22), "E")
+	# 2-Storey White Clapboard Ranch Farmhouse (west) + porch
+	BuildingKit.build_multi_storey(self, Vector3(-15, 0, 4), 8.8, 8.8, 3.2, Color(0.82, 0.80, 0.74), Color(0.28, 0.24, 0.22), "E", true, "E")
 	_box(Vector3(-9.8, 0.15, 4), Vector3(2.0, 0.3, 8.5), Color(0.44, 0.34, 0.24))
-	# Equipment Tool Shed (southeast)
-	_hollow_building(Vector3(14, 0, 12), Vector3(8, 3.2, 6), Color(0.46, 0.38, 0.29), Color(0.30, 0.28, 0.26), "W")
+	# Drive-in Farm Equipment Garage (southeast)
+	BuildingKit.build_garage(self, Vector3(14, 0, 12), 8.6, 6.4, 3.4, Color(0.46, 0.38, 0.29), Color(0.30, 0.28, 0.26), "W")
 
 	# Ranch Windmill tower (northeast)
 	_windmill(Vector3(-16, 0, -16))
@@ -286,17 +283,17 @@ func _build_lumber_mill() -> void:
 	_fence_segment(Vector3(25, 0, 15), Vector3(0.4, 2.8, 16), wall_col, post_col)
 	_fence_segment(Vector3(0, 0, -25), Vector3(38, 2.8, 0.4), wall_col, post_col)
 
-	# Main Saw Shed (open timber sides with steel circular saw + log conveyor)
-	_hollow_building(Vector3(0, 0, -10), Vector3(16, 4.8, 9), Color(0.44, 0.33, 0.22), Color(0.25, 0.28, 0.30), "S")
-	# Circular saw table & shining steel blade inside/front of saw shed
-	_box(Vector3(0, 0.6, -10), Vector3(8.0, 1.2, 1.4), Color(0.28, 0.29, 0.31))
-	ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.85, 0.08, Color(0.76, 0.78, 0.80), 0.25, 0.85, 14), Vector3(0, 1.45, -10), Vector3(90, 0, 0))
-	# Steel smokestack on saw shed
-	ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.42, 6.5, Color(0.22, 0.23, 0.24), 0.6, 0.5, 10), Vector3(6.5, 7.2, -12.5))
+	# Main 2-Storey Saw Mill Hall (multi-room ground saw floor + 2nd floor catwalk overlook + rooftop)
+	BuildingKit.build_multi_storey(self, Vector3(0, 0, -10), 14.5, 8.6, 3.4, Color(0.44, 0.33, 0.22), Color(0.25, 0.28, 0.30), "S", true, "E")
+	# Circular saw table & shining steel blade inside saw hall
+	_box(Vector3(-2.5, 0.6, -10), Vector3(5.2, 1.1, 1.3), Color(0.28, 0.29, 0.31))
+	ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.75, 0.08, Color(0.76, 0.78, 0.80), 0.25, 0.85, 14), Vector3(-2.5, 1.4, -10), Vector3(90, 0, 0))
+	# Steel smokestack on saw hall roof
+	ProcMesh.add_part(self, ProcMesh.cylinder_mesh(0.42, 6.5, Color(0.22, 0.23, 0.24), 0.6, 0.5, 10), Vector3(5.5, 9.8, -12.5))
 
-	# Lumber Drying Kiln (west) & Foreman Office (east)
+	# Lumber Drying Kiln (west) & Drive-in Logging Garage (east)
 	_hollow_building(Vector3(-16, 0, -2), Vector3(8, 3.8, 11), Color(0.40, 0.37, 0.33), Color(0.26, 0.24, 0.22), "E")
-	_hollow_building(Vector3(16, 0, -2), Vector3(8, 3.6, 8), Color(0.48, 0.39, 0.28), Color(0.29, 0.25, 0.21), "W")
+	BuildingKit.build_garage(self, Vector3(16, 0, -2), 8.2, 8.0, 3.5, Color(0.48, 0.39, 0.28), Color(0.29, 0.25, 0.21), "W")
 
 	# Elevated Catwalk / Sniper Watchtower on NE corner (-16, 0, 14) & (16, 0, -14)
 	_watchtower_at(Vector3(16, 0, -14))
@@ -377,14 +374,8 @@ func _build_river_dock() -> void:
 	neon.material_override = ProcMesh.emissive(Color(1.0, 0.42, 0.18), 2.0)
 	ProcMesh.add_part(self, neon, Vector3(11, 3.25, 10.95))
 
-	# 2-Storey Boathouse (west shore) with sniper roof/balcony perch at (-12, 3.6, 0)
-	_hollow_building(Vector3(-12, 0, 0), Vector3(9.5, 3.6, 10.5), Color(0.48, 0.40, 0.31), Color(0.26, 0.28, 0.30), "E")
-	# Walkable flat deck roof railing on boathouse + ladder on south wall
-	_box(Vector3(-12, 3.65, 0), Vector3(10.0, 0.25, 11.0), Color(0.36, 0.30, 0.23), true)
-	_box(Vector3(-7.1, 4.25, 0), Vector3(0.2, 1.0, 10.6), plank)
-	_box(Vector3(-12, 4.25, -5.3), Vector3(9.8, 1.0, 0.2), plank)
-	for i in range(6):
-		_box(Vector3(-12, 0.45 + i * 0.55, 5.55), Vector3(0.75, 0.10, 0.15), Color(0.22, 0.23, 0.25), true)
+	# 2-Storey Boathouse (west shore) with multi-room interior, stairs, and reachable rooftop sniper deck
+	BuildingKit.build_multi_storey(self, Vector3(-12, 0, 1.5), 9.6, 9.4, 3.3, Color(0.48, 0.40, 0.31), Color(0.26, 0.28, 0.30), "E", true, "E")
 
 	# Fuel Pump Canopy & Dockside Cover
 	_box(Vector3(0, 3.3, 6), Vector3(6.8, 0.26, 4.2), Color(0.55, 0.20, 0.16))
@@ -428,9 +419,13 @@ func _build_river_dock() -> void:
 # 5. JACOB'S RIDGE BUNKER (Concrete bunker, radar dishes, helipad, trenches)
 # ============================================================================
 func _build_hilltop_bunker() -> void:
-	# Rocky highland ridge gravel
-	_box(Vector3(0, -0.5, 0), Vector3(140, 1.0, 140), Color(0.32, 0.31, 0.27), true)
-	_box(Vector3(0, 0.015, 0), Vector3(54, 0.03, 54), Color(0.37, 0.36, 0.34), false)
+	# Rocky highland ridge gravel — split around underground bunker basement [x:-5.6..5.6, z:-18.2..-10.2]
+	var ridge := Color(0.32, 0.31, 0.27)
+	_box(Vector3(0, -0.5, 29.9), Vector3(140, 1.0, 80.2), ridge, true)
+	_box(Vector3(0, -0.5, -44.1), Vector3(140, 1.0, 51.8), ridge, true)
+	_box(Vector3(-37.8, -0.5, -14.2), Vector3(64.4, 1.0, 8.0), ridge, true)
+	_box(Vector3(37.8, -0.5, -14.2), Vector3(64.4, 1.0, 8.0), ridge, true)
+	_box(Vector3(0, 0.015, 8), Vector3(54, 0.03, 36), Color(0.37, 0.36, 0.34), false)
 	_box(Vector3(0, 0.025, 22), Vector3(6.2, 0.03, 30), Color(0.30, 0.30, 0.29), false)
 
 	# Heavy reinforced concrete perimeter walls with 3 tactical breaches
@@ -446,13 +441,26 @@ func _build_hilltop_bunker() -> void:
 	_fence_segment(Vector3(-8, 0, -25), Vector3(26, 3.2, 0.6), conc, steel)
 	_fence_segment(Vector3(16, 0, -25), Vector3(14, 3.2, 0.6), conc, steel)
 
-	# Central Reinforced Concrete Militia Bunker (north-center) + Radar Dishes
-	_hollow_building(Vector3(0, 0, -14), Vector3(14, 4.0, 9), Color(0.45, 0.46, 0.44), Color(0.32, 0.33, 0.32), "S")
-	# Concrete blast hood over bunker roof + twin radar dishes + radio mast
-	_box(Vector3(0, 4.4, -14), Vector3(12.5, 0.8, 7.5), Color(0.38, 0.39, 0.38), true)
-	_radar_dish(Vector3(-4.0, 4.8, -14.0), -25.0)
-	_radar_dish(Vector3(4.0, 4.8, -14.0), 30.0)
-	_radio_mast(Vector3(0, 4.8, -16.5))
+	# Underground Walk-Down Concrete Basement Cellar beneath the Bunker!
+	BuildingKit.build_basement(self, Vector3(0, 0, -14.2), 11.2, 8.0, 2.8)
+	# 2-Storey Reinforced Concrete Command Bunker rising above the cellar + Reachable Radar Rooftop
+	# (Ground floor open around cellar stairs, upper level & radar roof reachable via exterior stairs)
+	var bunker_wall := Color(0.45, 0.46, 0.44)
+	var bunker_roof := Color(0.32, 0.33, 0.32)
+	BuildingKit._build_wall_face(self, Vector3(0, 0, -14.2), Vector3(0, 0, 4.2), 12.0, 3.4, 0.35, true, bunker_wall, bunker_roof, true, false)
+	BuildingKit._build_wall_face(self, Vector3(0, 0, -14.2), Vector3(0, 0, -4.2), 12.0, 3.4, 0.35, true, bunker_wall, bunker_roof, false, true)
+	BuildingKit._build_wall_face(self, Vector3(0, 0, -14.2), Vector3(-6.0, 0, 0), 8.4, 3.4, 0.35, false, bunker_wall, bunker_roof, false, true)
+	BuildingKit._build_wall_face(self, Vector3(0, 0, -14.2), Vector3(6.0, 0, 0), 8.4, 3.4, 0.35, false, bunker_wall, bunker_roof, false, true)
+	# Walkable bunker roof deck at y=3.4 + exterior steel stairs up from east side
+	_box(Vector3(0, 3.45, -14.2), Vector3(12.6, 0.32, 9.0), bunker_roof, true)
+	BuildingKit.build_stairs(self, Vector3(7.1, 0.08, -10.2), Vector3(7.1, 3.55, -16.8), 1.7, Color(0.32, 0.34, 0.36))
+	_box(Vector3(7.1, 3.45, -17.6), Vector3(2.1, 0.28, 1.8), Color(0.32, 0.34, 0.36), true)
+	# Parapet cover + twin radar dishes + radio mast on bunker rooftop
+	_box(Vector3(0, 4.05, -9.9), Vector3(12.2, 1.0, 0.25), bunker_wall.darkened(0.08), true)
+	_box(Vector3(-6.1, 4.05, -14.2), Vector3(0.25, 1.0, 8.6), bunker_wall.darkened(0.08), true)
+	_radar_dish(Vector3(-4.0, 3.65, -14.2), -25.0)
+	_radar_dish(Vector3(4.0, 3.65, -14.2), 30.0)
+	_radio_mast(Vector3(0, 3.65, -16.8))
 
 	# Raised Concrete Helipad (center-south courtyard) with crisp "H" & corner lights
 	_box(Vector3(0, 0.14, 4), Vector3(11.5, 0.28, 11.5), Color(0.30, 0.31, 0.32), true)
@@ -471,9 +479,9 @@ func _build_hilltop_bunker() -> void:
 	_watchtower_at(Vector3(-17, 0, -16))
 	_watchtower_at(Vector3(17, 0, -16))
 
-	# Side Munitions Depot (west) & Comms Barrack (east)
-	_hollow_building(Vector3(-15, 0, 4), Vector3(7.5, 3.4, 8), Color(0.42, 0.43, 0.40), Color(0.28, 0.29, 0.28), "E")
-	_hollow_building(Vector3(15, 0, 4), Vector3(7.5, 3.4, 8), Color(0.42, 0.43, 0.40), Color(0.28, 0.29, 0.28), "W")
+	# Armored Motor-Pool Garage (west) & 2-Storey Comms Barrack (east)
+	BuildingKit.build_garage(self, Vector3(-15, 0, 4), 8.2, 8.6, 3.5, Color(0.42, 0.43, 0.40), Color(0.28, 0.29, 0.28), "E")
+	BuildingKit.build_multi_storey(self, Vector3(15, 0, 4), 8.2, 8.2, 3.2, Color(0.42, 0.43, 0.40), Color(0.28, 0.29, 0.28), "W", true, "W")
 
 	# Interlocking Sandbag Trench Emplacements + Barricades
 	_sandbag_wall(Vector3(-8, 0, 14), 4.0, 18.0)
@@ -619,23 +627,18 @@ func _patrol_boat(base_pos: Vector3, rot_y_deg: float) -> void:
 
 
 func _hollow_building(pos: Vector3, size: Vector3, wall_col: Color, roof_col: Color, door: String) -> void:
-	var wall_t := 0.35
+	var wall_t := 0.34
 	var hx := size.x * 0.5
 	var hz := size.z * 0.5
 	var h := size.y
 	_box(pos + Vector3(0, 0.06, 0), Vector3(size.x + 0.3, 0.12, size.z + 0.3), Color(0.30, 0.31, 0.30))
 	_box(pos + Vector3(0, h + 0.08, 0), Vector3(size.x + 0.7, 0.24, size.z + 0.7), roof_col)
 	_box(pos + Vector3(0, h + 0.28, 0), Vector3(size.x + 0.2, 0.22, size.z * 0.45), roof_col.darkened(0.1), false)
-	_wall_with_door(pos, Vector3(0, 0, -hz), Vector3(size.x, h, wall_t), door == "N", wall_col)
-	_wall_with_door(pos, Vector3(0, 0, hz), Vector3(size.x, h, wall_t), door == "S", wall_col)
-	_wall_with_door(pos, Vector3(-hx, 0, 0), Vector3(wall_t, h, size.z), door == "W", wall_col)
-	_wall_with_door(pos, Vector3(hx, 0, 0), Vector3(wall_t, h, size.z), door == "E", wall_col)
-	var win_col := Color(0.12, 0.16, 0.19)
-	var frame_col := Color(0.24, 0.20, 0.16)
-	if door != "S":
-		_window_accent(pos + Vector3(0, 2.0, hz + 0.19), Vector3(1.6, 0.9, 0.08), win_col, frame_col)
-	if door != "N":
-		_window_accent(pos + Vector3(0, 2.0, -hz - 0.19), Vector3(1.6, 0.9, 0.08), win_col, frame_col)
+	BuildingKit._build_wall_face(self, pos, Vector3(0, 0, -hz), size.x, h, wall_t, true, wall_col, roof_col, door == "N", door != "N")
+	BuildingKit._build_wall_face(self, pos, Vector3(0, 0, hz), size.x, h, wall_t, true, wall_col, roof_col, door == "S", door != "S")
+	BuildingKit._build_wall_face(self, pos, Vector3(-hx, 0, 0), size.z, h, wall_t, false, wall_col, roof_col, door == "W", door != "W")
+	BuildingKit._build_wall_face(self, pos, Vector3(hx, 0, 0), size.z, h, wall_t, false, wall_col, roof_col, door == "E", door != "E")
+	BuildingKit._ceiling_lamp(self, pos + Vector3(0, h - 0.16, 0))
 
 
 func _window_accent(pos: Vector3, size: Vector3, glass_col: Color, frame_col: Color) -> void:

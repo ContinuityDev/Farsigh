@@ -20,7 +20,7 @@ static func all_outposts() -> Array[Dictionary]:
 			"guards": [
 				{"pos": Vector3(-10.5, 0.1, 6.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-10.5, 0.1, 8.0), Vector3(-10.5, 0.1, -9.0), Vector3(-4.0, 0.1, -1.0)]},
 				{"pos": Vector3(11.5, 0.1, 2.0), "rot": 180.0, "sniper": false, "patrol": [Vector3(11.5, 0.1, 8.0), Vector3(11.5, 0.1, -8.5), Vector3(5.0, 0.1, 0.0)]},
-				{"pos": Vector3(1.0, 0.1, -9.0), "rot": 90.0, "sniper": false, "patrol": [Vector3(-5.0, 0.1, -9.5), Vector3(7.0, 0.1, -9.5), Vector3(1.0, 0.1, -6.5)]},
+				{"pos": Vector3(1.0, 0.1, -9.0), "rot": 90.0, "sniper": false, "patrol": [Vector3(1.0, 0.1, -9.5), Vector3(1.0, 0.2, -13.5), Vector3(1.0, 3.5, -14.0), Vector3(-2.5, 3.5, -14.0)]},
 				{"pos": Vector3(0.0, 0.1, 12.5), "rot": 0.0, "sniper": false, "patrol": [Vector3(0.0, 0.1, 14.5), Vector3(-7.0, 0.1, 11.0), Vector3(5.5, 0.1, 12.0)]},
 				{"pos": Vector3(-15.25, 3.6, -15.25), "rot": -135.0, "sniper": true, "patrol": [Vector3(-15.25, 3.6, -15.25)]},
 			],
@@ -86,7 +86,7 @@ static func all_outposts() -> Array[Dictionary]:
 				{"pos": Vector3(9.0, 0.1, 3.0), "rot": -90.0, "sniper": false, "patrol": [Vector3(11.0, 0.1, 9.0), Vector3(9.0, 0.1, -5.0)]},
 				{"pos": Vector3(0.0, 0.35, -10.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(0.0, 0.35, -7.5), Vector3(0.0, 0.35, -18.0)]},
 				{"pos": Vector3(4.5, 0.35, -18.5), "rot": 180.0, "sniper": false, "patrol": [Vector3(-5.0, 0.35, -18.5), Vector3(5.5, 0.35, -18.5)]},
-				{"pos": Vector3(-11.5, 3.9, 0.0), "rot": -135.0, "sniper": true, "patrol": [Vector3(-11.5, 3.9, 0.0)]},
+				{"pos": Vector3(-12.0, 6.75, 1.5), "rot": -135.0, "sniper": true, "patrol": [Vector3(-12.0, 6.75, 1.5)]},
 			],
 		},
 		{
@@ -105,7 +105,7 @@ static func all_outposts() -> Array[Dictionary]:
 				{"pos": Vector3(0.0, 0.1, 15.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-7.0, 0.1, 15.0), Vector3(7.0, 0.1, 15.0), Vector3(0.0, 0.1, 9.0)]},
 				{"pos": Vector3(-11.0, 0.1, 4.0), "rot": 90.0, "sniper": false, "patrol": [Vector3(-13.0, 0.1, 9.0), Vector3(-13.0, 0.1, -8.0), Vector3(-6.0, 0.1, 0.0)]},
 				{"pos": Vector3(11.0, 0.1, 4.0), "rot": -90.0, "sniper": false, "patrol": [Vector3(13.0, 0.1, 10.0), Vector3(13.0, 0.1, -8.0), Vector3(6.0, 0.1, 1.0)]},
-				{"pos": Vector3(-3.0, 0.1, -7.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-7.0, 0.1, -6.5), Vector3(7.0, 0.1, -6.5)]},
+				{"pos": Vector3(0.0, -2.6, -14.5), "rot": 0.0, "sniper": false, "patrol": [Vector3(-2.5, -2.6, -14.5), Vector3(2.5, -2.6, -14.5), Vector3(0.0, 0.1, -9.0)]},
 				{"pos": Vector3(8.0, 0.1, -14.0), "rot": 180.0, "sniper": false, "patrol": [Vector3(4.0, 0.1, -15.0), Vector3(14.0, 0.1, -15.0)]},
 				{"pos": Vector3(-2.0, 0.1, 2.0), "rot": 0.0, "sniper": false, "patrol": [Vector3(-5.0, 0.1, 3.0), Vector3(5.0, 0.1, 3.0), Vector3(0.0, 0.1, -3.0)]},
 				{"pos": Vector3(-17.0, 3.6, -16.0), "rot": -140.0, "sniper": true, "patrol": [Vector3(-17.0, 3.6, -16.0)]},
