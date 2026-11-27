@@ -679,8 +679,8 @@ static func apply_mods(w: WeaponData, mods: Dictionary) -> void:
 				w.ads_time *= 1.18
 				w.ads_move_mult *= 0.85
 			_:
-				# Iron sights — mild ADS zoom only
-				w.aim_fov = minf(w.aim_fov, HIP_FOV / 1.15)
+				# Iron sights — ~1.2× ADS zoom (Hayden: 1.1–1.25×)
+				w.aim_fov = HIP_FOV / 1.2  # ≈ 58.3°
 				w.scope_overlay = false
 
 	# Magazine attachment: extended mag increases capacity, slightly slower reload

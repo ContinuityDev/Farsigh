@@ -71,6 +71,9 @@ var look_sensitivity: float = 1.0  # legacy alias → mouse_look_sensitivity
 var touch_aim_toggle: bool = false  # false = hold Aim button, true = tap to toggle
 var tap_to_fire: bool = false  # optional: short look-pad tap fires (off by default)
 var graphics_quality: int = 2  # 0 Low / 1 Medium / 2 High (GraphicsQuality)
+## Day/night: starting hour (0–24) and game-hours advanced per real second.
+var day_start_hour: float = 14.0
+var day_cycle_hours_per_second: float = 24.0 / 480.0  # ~8 real minutes per day
 ## PC keybind overrides: action -> {keycode, mouse}
 var keybind_overrides: Dictionary = {}
 var touch_btn_scale: float = 1.0
@@ -701,6 +704,8 @@ func serialize_loadout() -> Dictionary:
 		"touch_aim_toggle": touch_aim_toggle,
 		"tap_to_fire": tap_to_fire,
 		"graphics_quality": graphics_quality,
+		"day_start_hour": day_start_hour,
+		"day_cycle_hours_per_second": day_cycle_hours_per_second,
 		"keybind_overrides": keybind_overrides.duplicate(true),
 		"touch_btn_scale": touch_btn_scale,
 		"touch_btn_opacity": touch_btn_opacity,
@@ -729,6 +734,8 @@ func deserialize_loadout(data: Dictionary) -> void:
 	touch_aim_toggle = bool(data.get("touch_aim_toggle", touch_aim_toggle))
 	tap_to_fire = bool(data.get("tap_to_fire", tap_to_fire))
 	graphics_quality = clampi(int(data.get("graphics_quality", graphics_quality)), 0, 2)
+	day_start_hour = clampf(float(data.get("day_start_hour", day_start_hour)), 0.0, 23.99)
+	day_cycle_hours_per_second = clampf(float(data.get("day_cycle_hours_per_second", day_cycle_hours_per_second)), 0.0, 2.0)
 	var kb = data.get("keybind_overrides", {})
 	if kb is Dictionary:
 		keybind_overrides = (kb as Dictionary).duplicate(true)
@@ -843,6 +850,36 @@ func set_graphics_quality(value: int) -> void:
 	SaveManager.save_loadout()
 	if GraphicsQuality and GraphicsQuality.level != graphics_quality:
 		GraphicsQuality.set_level(graphics_quality)
+
+
+func set_day_start_hour(value: float) -> void:
+	day_start_hour = clampf(value, 0.0, 23.99)
+	if DayNightCycle:
+		DayNightCycle.start_hour = day_start_hour
+		DayNightCycle.set_hour(day_start_hour)
+	SaveManager.save_loadout()
+
+
+func set_day_cycle_hours_per_second(value: float) -> void:
+	day_cycle_hours_per_second = clampf(value, 0.0, 2.0)
+	if DayNightCycle:
+		DayNightCycle.cycle_hours_per_second = day_cycle_hours_per_second
+	SaveManager.save_loadout()
+
+
+func cycle_day_start_preset() -> float:
+	## Cycles common start times: dawn / noon / dusk / night.
+	var presets := [6.0, 12.0, 18.5, 22.0]
+	var best_i := 0
+	var best_d := 99.0
+	for i in range(presets.size()):
+		var d := absf(presets[i] - day_start_hour)
+		if d < best_d:
+			best_d = d
+			best_i = i
+	var next: float = presets[(best_i + 1) % presets.size()]
+	set_day_start_hour(next)
+	return next
 
 
 func serialize() -> Dictionary:

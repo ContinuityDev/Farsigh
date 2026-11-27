@@ -76,6 +76,7 @@ var _body_armor: float = 1.0  # multiplies non-head damage taken (heavies < 1)
 
 var _body_scene: PackedScene = preload("res://scenes/items/body.tscn")
 var _last_hit_zone: String = ""
+var _death_kind: String = "body"  # body | head | back | explode
 var tagged: bool = false
 var _tag_icon: Label3D = null
 var _alert_icon: Label3D = null
@@ -470,8 +471,11 @@ func _update_vision(delta: float) -> void:
 	var to_player := target_pos - eye_pos
 	var dist := to_player.length()
 	var seen := false
-	var v_range := VISION_RANGE * _vision_mult
-	var v_angle := VISION_ANGLE * (0.75 if is_dog else 1.0)
+	var day_vis := 1.0
+	if DayNightCycle:
+		day_vis = DayNightCycle.vision_mult()
+	var v_range := VISION_RANGE * _vision_mult * day_vis
+	var v_angle := VISION_ANGLE * (0.75 if is_dog else 1.0) * lerpf(0.85, 1.0, day_vis)
 	if dist > 0.001 and dist < v_range:
 		var forward := -global_transform.basis.z
 		var angle := rad_to_deg(forward.angle_to(to_player / dist))
@@ -932,6 +936,15 @@ func apply_damage(amount: float, hit_pos: Vector3 = Vector3.ZERO, source: Node =
 		zone_name = _infer_zone_from_point(hit_pos)
 		amount = _damage_for_inferred_zone(amount, zone_name)
 	_last_hit_zone = zone_name
+	# Explosion / blast flag from AoE or explicit zone
+	if zone_name in ["EXPLODE", "EXPLOSION", "BLAST"] or (amount >= 160.0 and zone_name != "HEAD"):
+		_death_kind = "explode"
+	elif zone_name == "HEAD":
+		_death_kind = "head"
+	elif source is Node3D and is_behind_guard(source as Node3D):
+		_death_kind = "back"
+	else:
+		_death_kind = "body"
 	# Heavies shrug off body shots; headshots stay one-shot via HitZone.HEAD → 9999
 	if is_heavy and zone_name != "HEAD" and amount < 9000.0:
 		amount *= _body_armor
@@ -1044,13 +1057,23 @@ func _die(silent: bool) -> void:
 				(hz as Area3D).monitorable = false
 	if is_instance_valid(label):
 		label.visible = false
+	if is_instance_valid(visual) and visual.has_method("play_death"):
+		visual.play_death(_death_kind)
 	set_physics_process(false)
 	var tree := get_tree()
 	if tree == null:
 		queue_free()
 		return
-	# Let the humanoid collapse death animation play before swapping to lootable body
-	await tree.create_timer(0.72).timeout
+	# Longer hold for explosion ragdoll; headshots settle quicker
+	var hold := 0.78
+	match _death_kind:
+		"head":
+			hold = 0.68
+		"back":
+			hold = 0.75
+		"explode":
+			hold = 0.95
+	await tree.create_timer(hold).timeout
 	if not is_instance_valid(self):
 		return
 	var scene := tree.current_scene

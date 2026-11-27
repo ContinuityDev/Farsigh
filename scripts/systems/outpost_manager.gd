@@ -382,6 +382,12 @@ func _setup_environment(def: Dictionary) -> void:
 	we.environment = env
 	if GraphicsQuality:
 		GraphicsQuality.apply()
+	# Day/night cycle binds sun/sky/compound lights after env is ready
+	if DayNightCycle:
+		DayNightCycle.cycle_hours_per_second = GameState.day_cycle_hours_per_second
+		DayNightCycle.start_hour = GameState.day_start_hour
+		DayNightCycle.reset_for_run(GameState.day_start_hour)
+		DayNightCycle.call_deferred("bind_to_scene")
 
 
 func _position_player(def: Dictionary) -> void:

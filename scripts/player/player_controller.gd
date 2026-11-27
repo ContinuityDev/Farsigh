@@ -30,6 +30,8 @@ var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var is_crouching: bool = false
 var is_aiming: bool = false
 var aim_blend: float = 0.0
+## Screenshot / debug: keep ADS locked without holding aim input.
+var force_ads: bool = false
 var _footstep_timer: float = 0.0
 var carried_body: Node3D = null
 var rock_count: int = 5
@@ -86,9 +88,27 @@ func _ready() -> void:
 		weapons.camera_path = weapons.get_path_to(camera)
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	_init_vitals_and_gadgets()
+	_ensure_flashlight()
 	var hud := get_tree().get_first_node_in_group("hud")
 	if is_instance_valid(hud) and hud.has_method("set_click_to_capture_hint"):
 		hud.set_click_to_capture_hint(TouchInput.is_web_desktop())
+
+
+func _ensure_flashlight() -> void:
+	if not is_instance_valid(camera):
+		return
+	if camera.get_node_or_null("Flashlight") != null:
+		return
+	var fl := SpotLight3D.new()
+	fl.name = "Flashlight"
+	fl.light_color = Color(0.95, 0.92, 0.82)
+	fl.light_energy = 1.6
+	fl.spot_range = 22.0
+	fl.spot_angle = 28.0
+	fl.shadow_enabled = false
+	fl.visible = false
+	fl.add_to_group("compound_lights")  # DayNightCycle toggles with night
+	camera.add_child(fl)
 
 
 func _init_vitals_and_gadgets() -> void:
@@ -230,6 +250,7 @@ func _physics_process(delta: float) -> void:
 			velocity.y = JUMP_VELOCITY
 
 	move_and_slide()
+	_enforce_soft_map_bound()
 	var horiz_speed := Vector2(velocity.x, velocity.z).length()
 	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
 		weapons.viewmodel_rig.set_move_factor(horiz_speed / WALK_SPEED if is_on_floor() else 0.0)
@@ -292,7 +313,9 @@ func _update_aim_state(delta: float) -> void:
 	# Binoculars own the camera FOV — cancel ADS while raised.
 	var binos_up := bool(get("binoculars_slow"))
 	# Touch Aim can be Hold (default) or Toggle via pause-menu setting.
-	if carried_body != null or binos_up:
+	if force_ads and carried_body == null and not binos_up:
+		is_aiming = true
+	elif carried_body != null or binos_up:
 		_aim_toggled = false
 		is_aiming = false
 	elif GameState.touch_aim_toggle and TouchInput.is_touch_ui_desired():
@@ -779,6 +802,25 @@ func _refresh_foliage_state() -> void:
 		hud.set_hidden_indicator(is_hidden_in_foliage, in_foliage)
 
 
+const MAP_SOFT_RADIUS := 78.0  # beyond dense treeline — soft push-back
+
+func _enforce_soft_map_bound() -> void:
+	## Invisible soft boundary past the forest treeline (no hard walls).
+	var flat := Vector2(global_position.x, global_position.z)
+	var r := flat.length()
+	if r <= MAP_SOFT_RADIUS:
+		return
+	var over := r - MAP_SOFT_RADIUS
+	var n := flat / maxf(r, 0.001)
+	# Gentle push back + kill outward velocity
+	global_position.x -= n.x * minf(over, 0.65)
+	global_position.z -= n.y * minf(over, 0.65)
+	var outward := Vector3(n.x, 0.0, n.y)
+	var outward_spd := velocity.dot(outward)
+	if outward_spd > 0.0:
+		velocity -= outward * outward_spd
+
+
 func get_visibility_profile() -> float:
 	var profile := 1.0
 	if is_crouching:
@@ -793,6 +835,13 @@ func get_visibility_profile() -> float:
 			if is_instance_valid(z) and z.has_method("visibility_mult"):
 				best = minf(best, float(z.visibility_mult(is_crouching)))
 		profile *= best
+	# Night shadows: darker ambient lets the player melt into cover
+	if DayNightCycle:
+		var shadow_bonus: float = DayNightCycle.hide_shadow_bonus()
+		if shadow_bonus > 0.0:
+			profile *= lerpf(1.0, 0.55, shadow_bonus)
+			if is_crouching:
+				profile *= lerpf(1.0, 0.72, shadow_bonus)
 	return profile
 
 
@@ -832,12 +881,55 @@ func _on_player_down() -> void:
 	collision_layer = 0
 	var hud := get_tree().get_first_node_in_group("hud")
 	if is_instance_valid(hud) and hud.has_method("show_status"):
-		hud.show_status("You were dropped — returning to menu…", 2.5)
-	await get_tree().create_timer(2.0).timeout
+		hud.show_status("You were dropped…", 3.0)
+	# Death camera: tip over + fade to black before results / menu
+	await _play_death_camera()
 	if not is_inside_tree():
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+
+func _play_death_camera() -> void:
+	var cam: Camera3D = null
+	if "camera" in self and get("camera") is Camera3D:
+		cam = get("camera") as Camera3D
+	elif "head" in self and get("head") is Node3D:
+		var head_n: Node3D = get("head") as Node3D
+		cam = head_n.get_node_or_null("Camera3D") as Camera3D
+	if cam == null:
+		cam = get_viewport().get_camera_3d()
+	# Fade overlay
+	var layer := CanvasLayer.new()
+	layer.layer = 80
+	var fade := ColorRect.new()
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fade.color = Color(0.02, 0.02, 0.03, 0.0)
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(fade)
+	get_tree().root.add_child(layer)
+	var start_pitch := 0.0
+	var start_roll := 0.0
+	if is_instance_valid(cam):
+		start_pitch = cam.rotation.x
+		start_roll = cam.rotation.z
+	var t := 0.0
+	var dur := 1.65
+	while t < dur and is_inside_tree():
+		var dt := get_process_delta_time()
+		t += dt
+		var u := clampf(t / dur, 0.0, 1.0)
+		var ease_u := u * u * (3.0 - 2.0 * u)
+		if is_instance_valid(cam):
+			cam.rotation.x = lerpf(start_pitch, start_pitch + deg_to_rad(58.0), ease_u)
+			cam.rotation.z = lerpf(start_roll, deg_to_rad(22.0), ease_u)
+			# Soft drop
+			cam.position.y = lerpf(cam.position.y, cam.position.y - 0.004, 0.35)
+		fade.color.a = lerpf(0.0, 1.0, ease_u)
+		await get_tree().process_frame
+	await get_tree().create_timer(0.45).timeout
+	if is_instance_valid(layer):
+		layer.queue_free()
 
 
 func _toggle_pause() -> void:

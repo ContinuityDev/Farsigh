@@ -644,16 +644,23 @@ func _attach_optic(root: Node3D, pos: Vector3, optic: String, compact: bool) -> 
 			ProcMesh.add_part(root, _glass_disc(0.015), sight + Vector3(0, 0, 0.11), Vector3(90, 0, 0), "ScopeLensFront")
 			ProcMesh.add_part(root, _glass_disc(0.012), sight + Vector3(0, 0, -0.11), Vector3(90, 0, 0), "ScopeLensRear")
 		_:
-			# Iron sights: rear notch + glowing front post
+			# Iron sights: rear notch + glowing front post — same tip height so ADS lines up.
 			var s := 0.78 if compact else 1.0
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.028 * s, 0.014 * s, 0.014 * s), housing), pos + Vector3(0, 0.008 * s, 0.04 * s))
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.006 * s, 0.016 * s, 0.010 * s), housing), pos + Vector3(-0.010 * s, 0.016 * s, 0.04 * s))
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.006 * s, 0.016 * s, 0.010 * s), housing), pos + Vector3(0.010 * s, 0.016 * s, 0.04 * s))
-			var fs := ProcMesh.box_mesh(Vector3(0.005 * s, 0.016 * s, 0.010 * s), Color(0.2, 0.95, 0.45))
+			var tip_y := 0.022 * s  # shared tip height for rear posts + front blade
+			var rear_z := 0.045 * s
+			var front_z := -0.085 if not compact else -0.055
+			# Rear base + twin posts (notch aperture centered on tip_y)
+			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.030 * s, 0.012 * s, 0.014 * s), housing), pos + Vector3(0, tip_y * 0.35, rear_z))
+			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.0055 * s, tip_y * 0.95, 0.010 * s), housing), pos + Vector3(-0.011 * s, tip_y * 0.55, rear_z))
+			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.0055 * s, tip_y * 0.95, 0.010 * s), housing), pos + Vector3(0.011 * s, tip_y * 0.55, rear_z))
+			# Front post — tip matches rear notch tip
+			var fs := ProcMesh.box_mesh(Vector3(0.0045 * s, tip_y * 0.95, 0.009 * s), Color(0.2, 0.95, 0.45))
 			fs.material_override = ProcMesh.emissive(Color(0.25, 1.0, 0.45), 1.6)
 			fs.set_meta("optic_reticle", true)
-			sight = pos + Vector3(0, 0.016 * s, -0.08 if not compact else -0.05)
-			ProcMesh.add_part(root, fs, sight, Vector3.ZERO, "IronFront")
+			var front_pos := pos + Vector3(0, tip_y * 0.55, front_z)
+			ProcMesh.add_part(root, fs, front_pos, Vector3.ZERO, "IronFront")
+			# ADS sight point: midpoint between rear notch and front tip (same Y)
+			sight = pos + Vector3(0.0, tip_y, (rear_z + front_z) * 0.5)
 	var marker := Marker3D.new()
 	marker.name = "SightPoint"
 	marker.position = sight
@@ -974,37 +981,53 @@ func _ads_pose_for(wid: GameState.WeaponId, _base_p: Vector3, _base_r: Vector3) 
 	## camera centre (0,0) looking down -Z. Melee/throwables get ready poses.
 	match wid:
 		GameState.WeaponId.MACHETE, GameState.WeaponId.BAT:
-			# Guard / ready stance — blade up and centered
 			return {
 				"pos": Vector3(0.10, -0.12, -0.38),
 				"rot": Vector3(-28.0, 8.0, -18.0),
 			}
 		GameState.WeaponId.FRAG, GameState.WeaponId.MOLOTOV:
-			# Overhand throw cock — grenade/molotov raised for the lob arc
 			return {
 				"pos": Vector3(0.14, -0.02, -0.42),
 				"rot": Vector3(-42.0, 12.0, 18.0),
 			}
 		GameState.WeaponId.KNIFE:
-			# Aimed throw hold
 			return {
 				"pos": Vector3(0.06, -0.08, -0.40),
 				"rot": Vector3(-18.0, 6.0, -6.0),
 			}
 		GameState.WeaponId.BOW:
-			# Drawn bow pin centered on the screen
 			var bow_sight: Vector3 = _sight_local.get(wid, Vector3(-0.042, 0.068, -0.024))
 			return {
-				"pos": Vector3(-bow_sight.x, -bow_sight.y + 0.01, -0.48 - bow_sight.z),
+				"pos": Vector3(-bow_sight.x, -bow_sight.y + 0.008, -0.50 - bow_sight.z),
 				"rot": Vector3(0.0, 0.0, 0.0),
 			}
 		_:
 			var sight: Vector3 = _sight_local.get(wid, Vector3(0.0, 0.06, 0.02))
-			# Hold distance puts the optic ~0.42–0.52m in front of the camera eye
-			var hold_z := 0.48 if wid != GameState.WeaponId.SNIPER else 0.42
+			# Per-weapon hold distance — far enough to avoid clipping hands/receiver
+			var hold_z := 0.52
+			match wid:
+				GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL, GameState.WeaponId.TRANQ_PISTOL:
+					hold_z = 0.46
+				GameState.WeaponId.SMG:
+					hold_z = 0.50
+				GameState.WeaponId.SHOTGUN, GameState.WeaponId.LMG:
+					hold_z = 0.54
+				GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
+					hold_z = 0.44
+				GameState.WeaponId.CROSSBOW:
+					hold_z = 0.50
+				_:
+					hold_z = 0.52
+			# Zero yaw/pitch so rear+front sit on screen centre; tiny pitch trim per family
+			var pitch_trim := 0.0
+			match wid:
+				GameState.WeaponId.SHOTGUN:
+					pitch_trim = -0.4
+				GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL:
+					pitch_trim = 0.3
 			return {
 				"pos": Vector3(-sight.x, -sight.y, -hold_z - sight.z),
-				"rot": Vector3(0.0, 0.0, 0.0),
+				"rot": Vector3(pitch_trim, 0.0, 0.0),
 			}
 
 

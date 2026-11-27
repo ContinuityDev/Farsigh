@@ -13,6 +13,10 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_controls_and_bushes()
 		return
+	if OS.get_environment("HAYDEN_SNAP2") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_batch2()
+		return
 	if OS.get_environment("AUTO_CAPTURE") != "1":
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -476,7 +480,169 @@ func _snap_controls_and_bushes() -> void:
 	get_tree().quit()
 
 
+func _snap_batch2() -> void:
+	## Natural sets, overlook, iron sights, death frames, day/night, treeline.
+	await get_tree().process_frame
+	await get_tree().create_timer(0.35).timeout
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.add_currency(800)
+	GameState.set_full_loadout(
+		GameState.WeaponId.RIFLE,
+		GameState.WeaponId.PISTOL,
+		GameState.WeaponId.SMG,
+		GameState.WeaponId.FRAG,
+		GameState.WeaponId.MACHETE
+	)
+	# Force iron sights on firearms for ADS verification
+	for wid in [GameState.WeaponId.RIFLE, GameState.WeaponId.PISTOL, GameState.WeaponId.SMG, GameState.WeaponId.SHOTGUN, GameState.WeaponId.LMG]:
+		GameState.set_weapon_mod(wid, "optic", "iron")
+	GameState.day_start_hour = 14.0
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.8).timeout
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+
+	# 32 Natural lived-in courtyard
+	if is_instance_valid(player):
+		player.global_position = Vector3(2.0, 1.0, 18.0)
+		player.look_at(Vector3(-4.0, 1.2, 4.0), Vector3.UP)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation.x = deg_to_rad(-8.0)
+	await get_tree().create_timer(0.4).timeout
+	await _snap("32_natural_set_courtyard")
+
+	# 33 Overlook house rooftop vantage
+	if is_instance_valid(player):
+		player.global_position = Vector3(1.0, 7.4, -12.0)
+		player.look_at(Vector3(0.0, 1.0, 20.0), Vector3.UP)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation.x = deg_to_rad(-18.0)
+	await get_tree().create_timer(0.4).timeout
+	await _snap("33_overlook_house_view")
+
+	# Iron sights ADS per weapon — force full ADS pose + FOV
+	var iron_weapons := [
+		[GameState.WeaponId.RIFLE, "34_iron_rifle"],
+		[GameState.WeaponId.PISTOL, "35_iron_pistol"],
+		[GameState.WeaponId.SMG, "36_iron_smg"],
+		[GameState.WeaponId.SHOTGUN, "37_iron_shotgun"],
+	]
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 1.0, 30.0)
+		player.look_at(Vector3(0.0, 1.2, 0.0), Vector3.UP)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation.x = 0.0
+		player.set("force_ads", true)
+		player.set("is_aiming", true)
+	var wm = player.get_node_or_null("WeaponManager") if is_instance_valid(player) else null
+	for pair in iron_weapons:
+		var wid = pair[0]
+		var snap_name: String = pair[1]
+		GameState.set_weapon_mod(wid, "optic", "iron")
+		# Put weapon into primary slot so FOV / HUD match
+		GameState.selected_primary = wid
+		if is_instance_valid(wm):
+			if wm.has_method("refresh_slot_from_loadout"):
+				wm.refresh_slot_from_loadout(0)
+			wm.select_slot(0)
+			if is_instance_valid(wm.viewmodel_rig):
+				var vr = wm.viewmodel_rig
+				vr.rebuild_weapon(wid, GameState.get_weapon_mods(wid))
+				await get_tree().process_frame
+				vr.show_weapon(wid, false)
+				vr.set_aiming(true, 0.01)
+				vr._aim_blend = 1.0
+				vr._aim_target = 1.0
+		player.set("force_ads", true)
+		player.set("is_aiming", true)
+		# Let several frames settle ADS pose + FOV
+		for _i in range(8):
+			await get_tree().process_frame
+			if is_instance_valid(wm) and is_instance_valid(wm.viewmodel_rig):
+				wm.viewmodel_rig._aim_blend = 1.0
+				wm.viewmodel_rig._aim_target = 1.0
+		await get_tree().create_timer(0.25).timeout
+		await _snap(snap_name)
+	if is_instance_valid(player):
+		player.set("force_ads", false)
+
+	# Death animation frames — kill a nearby guard with head / body
+	if is_instance_valid(player):
+		player.set("is_aiming", false)
+		player.set("aim_blend", 0.0)
+		player.global_position = Vector3(0.0, 1.0, 16.0)
+	var guards := get_tree().get_nodes_in_group("guards")
+	var g0: Node = null
+	for g in guards:
+		if is_instance_valid(g) and g.has_method("apply_damage"):
+			g0 = g
+			break
+	if is_instance_valid(g0):
+		var gp0: Vector3 = (g0 as Node3D).global_position
+		if is_instance_valid(player):
+			player.global_position = gp0 + Vector3(1.6, 1.35, 2.2)
+			player.look_at(gp0 + Vector3.UP * 1.0, Vector3.UP)
+			if player.get("head") is Node3D:
+				(player.get("head") as Node3D).rotation.x = deg_to_rad(-12.0)
+		g0.apply_damage(9999.0, gp0 + Vector3.UP * 1.7, player, "HEAD")
+		await get_tree().create_timer(0.38).timeout
+		await _snap("38_death_headshot_frame")
+	# Second guard — explosion death
+	var g1: Node = null
+	for g in get_tree().get_nodes_in_group("guards"):
+		if is_instance_valid(g) and g != g0 and g.has_method("is_alive") and g.is_alive():
+			g1 = g
+			break
+	if is_instance_valid(g1):
+		var gp1: Vector3 = (g1 as Node3D).global_position
+		if is_instance_valid(player):
+			player.global_position = gp1 + Vector3(2.2, 1.4, 1.8)
+			player.look_at(gp1 + Vector3.UP * 0.6, Vector3.UP)
+			if player.get("head") is Node3D:
+				(player.get("head") as Node3D).rotation.x = deg_to_rad(-8.0)
+		g1.apply_damage(220.0, gp1, player, "BLAST")
+		await get_tree().create_timer(0.42).timeout
+		await _snap("39_death_explosion_frame")
+
+	# Day vs night
+	if DayNightCycle:
+		DayNightCycle.set_hour(14.0)
+	await get_tree().create_timer(0.3).timeout
+	if is_instance_valid(player):
+		player.global_position = Vector3(-8.0, 1.5, 28.0)
+		player.look_at(Vector3(2.0, 2.0, 0.0), Vector3.UP)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation.x = deg_to_rad(-10.0)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("40_day_compound")
+	if DayNightCycle:
+		DayNightCycle.set_hour(22.5)
+		DayNightCycle.bind_to_scene()
+	await get_tree().create_timer(0.45).timeout
+	await _snap("41_night_compound")
+
+	# Treeline border — look north into the dense pine ring
+	if DayNightCycle:
+		DayNightCycle.set_hour(14.0)
+		DayNightCycle.bind_to_scene()
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 2.2, 42.0)
+		player.look_at(Vector3(8.0, 6.0, 72.0), Vector3.UP)
+		if player.get("head") is Node3D:
+			(player.get("head") as Node3D).rotation.x = deg_to_rad(-6.0)
+	await get_tree().create_timer(0.5).timeout
+	await _snap("42_treeline_border")
+
+	print("HAYDEN_SNAP2 complete")
+	await get_tree().create_timer(0.15).timeout
+	get_tree().quit()
+
+
 func _snap_wheels_only() -> void:
+
 	await get_tree().process_frame
 	await get_tree().create_timer(0.4).timeout
 	SaveManager.clear_save()

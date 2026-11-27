@@ -15,6 +15,9 @@ const ANIM_RUN := &"run"
 const ANIM_SHOOT := &"shoot"
 const ANIM_HIT := &"hit"
 const ANIM_DEATH := &"death"
+const ANIM_DEATH_HEAD := &"death_head"
+const ANIM_DEATH_BACK := &"death_back"
+const ANIM_DEATH_EXPLODE := &"death_explode"
 const ANIM_INVESTIGATE := &"investigate"
 const ANIM_LOOK_AROUND := &"look_around"
 const ANIM_RADIO := &"radio"
@@ -280,18 +283,49 @@ func _build_animations() -> void:
 		_add_rot_track(a, "Rig/Pelvis/Torso/Head", [[0.0, Vector3.ZERO], [0.07, Vector3(22, 12, 0)], [0.24, Vector3.ZERO]])
 		lib.add_animation(ANIM_HIT, a)
 
-	# 6. DEATH (collapse backward to ground)
+	# 6. DEATH variants — body fall, headshot snap, back shot, explosion ragdoll
 	if not lib.has_animation(ANIM_DEATH):
 		var a := Animation.new()
-		a.length = 0.7
+		a.length = 0.75
 		a.loop_mode = Animation.LOOP_NONE
-		_add_pos_track(a, "Rig/Pelvis", [[0.0, Vector3(0, 0.88, 0)], [0.35, Vector3(0, 0.45, 0.15)], [0.7, Vector3(0, 0.18, 0.35)]])
-		_add_rot_track(a, "Rig/Pelvis", [[0.0, Vector3.ZERO], [0.35, Vector3(52, 0, 8)], [0.7, Vector3(86, 0, 12)]])
-		_add_rot_track(a, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.7, Vector3(-18, 0, -45)]])
-		_add_rot_track(a, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.7, Vector3(-14, 0, 40)]])
-		_add_rot_track(a, "Rig/Pelvis/LeftLeg", [[0.0, Vector3.ZERO], [0.7, Vector3(-12, 0, 14)]])
-		_add_rot_track(a, "Rig/Pelvis/RightLeg", [[0.0, Vector3.ZERO], [0.7, Vector3(10, 0, -12)]])
+		_add_pos_track(a, "Rig/Pelvis", [[0.0, Vector3(0, 0.88, 0)], [0.35, Vector3(0, 0.45, 0.15)], [0.75, Vector3(0, 0.18, 0.35)]])
+		_add_rot_track(a, "Rig/Pelvis", [[0.0, Vector3.ZERO], [0.35, Vector3(52, 0, 8)], [0.75, Vector3(86, 0, 12)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.75, Vector3(-18, 0, -45)]])
+		_add_rot_track(a, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.75, Vector3(-14, 0, 40)]])
+		_add_rot_track(a, "Rig/Pelvis/LeftLeg", [[0.0, Vector3.ZERO], [0.75, Vector3(-12, 0, 14)]])
+		_add_rot_track(a, "Rig/Pelvis/RightLeg", [[0.0, Vector3.ZERO], [0.75, Vector3(10, 0, -12)]])
 		lib.add_animation(ANIM_DEATH, a)
+	if not lib.has_animation(ANIM_DEATH_HEAD):
+		var ah := Animation.new()
+		ah.length = 0.62
+		ah.loop_mode = Animation.LOOP_NONE
+		_add_pos_track(ah, "Rig/Pelvis", [[0.0, Vector3(0, 0.88, 0)], [0.18, Vector3(0, 0.72, 0.22)], [0.42, Vector3(0, 0.32, 0.48)], [0.62, Vector3(0, 0.14, 0.58)]])
+		_add_rot_track(ah, "Rig/Pelvis", [[0.0, Vector3.ZERO], [0.18, Vector3(28, -8, 6)], [0.42, Vector3(78, -6, 10)], [0.62, Vector3(92, -4, 12)]])
+		_add_rot_track(ah, "Rig/Pelvis/Torso/Head", [[0.0, Vector3.ZERO], [0.08, Vector3(-55, 28, -18)], [0.28, Vector3(22, -10, 8)], [0.62, Vector3(8, 0, 0)]])
+		_add_rot_track(ah, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.2, Vector3(40, -20, -55)], [0.62, Vector3(-22, 0, -50)]])
+		_add_rot_track(ah, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.2, Vector3(36, 24, 58)], [0.62, Vector3(-18, 0, 48)]])
+		lib.add_animation(ANIM_DEATH_HEAD, ah)
+	if not lib.has_animation(ANIM_DEATH_BACK):
+		var ab := Animation.new()
+		ab.length = 0.7
+		ab.loop_mode = Animation.LOOP_NONE
+		_add_pos_track(ab, "Rig/Pelvis", [[0.0, Vector3(0, 0.88, 0)], [0.22, Vector3(0, 0.7, -0.18)], [0.48, Vector3(0, 0.28, -0.42)], [0.7, Vector3(0, 0.14, -0.55)]])
+		_add_rot_track(ab, "Rig/Pelvis", [[0.0, Vector3.ZERO], [0.22, Vector3(-32, 6, -8)], [0.48, Vector3(-72, 10, -12)], [0.7, Vector3(-90, 12, -14)]])
+		_add_rot_track(ab, "Rig/Pelvis/Torso/Head", [[0.0, Vector3.ZERO], [0.18, Vector3(28, 0, 0)], [0.7, Vector3(-12, 0, 0)]])
+		_add_rot_track(ab, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.25, Vector3(55, 0, -30)], [0.7, Vector3(10, 0, -42)]])
+		_add_rot_track(ab, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.25, Vector3(50, 0, 35)], [0.7, Vector3(12, 0, 40)]])
+		lib.add_animation(ANIM_DEATH_BACK, ab)
+	if not lib.has_animation(ANIM_DEATH_EXPLODE):
+		var ae := Animation.new()
+		ae.length = 0.85
+		ae.loop_mode = Animation.LOOP_NONE
+		_add_pos_track(ae, "Rig/Pelvis", [[0.0, Vector3(0, 0.88, 0)], [0.12, Vector3(0.4, 1.35, 0.3)], [0.4, Vector3(0.9, 0.55, 0.8)], [0.85, Vector3(1.1, 0.12, 1.15)]])
+		_add_rot_track(ae, "Rig/Pelvis", [[0.0, Vector3.ZERO], [0.12, Vector3(-40, 35, 50)], [0.4, Vector3(70, -40, 90)], [0.85, Vector3(110, -20, 120)]])
+		_add_rot_track(ae, "Rig/Pelvis/Torso/RightArm", [[0.0, Vector3.ZERO], [0.15, Vector3(-80, 0, -70)], [0.85, Vector3(-40, 0, -90)]])
+		_add_rot_track(ae, "Rig/Pelvis/Torso/LeftArm", [[0.0, Vector3.ZERO], [0.15, Vector3(-70, 0, 80)], [0.85, Vector3(-35, 0, 95)]])
+		_add_rot_track(ae, "Rig/Pelvis/LeftLeg", [[0.0, Vector3.ZERO], [0.2, Vector3(60, 0, 30)], [0.85, Vector3(20, 0, 40)]])
+		_add_rot_track(ae, "Rig/Pelvis/RightLeg", [[0.0, Vector3.ZERO], [0.2, Vector3(-50, 0, -35)], [0.85, Vector3(-15, 0, -45)]])
+		lib.add_animation(ANIM_DEATH_EXPLODE, ae)
 
 	# 7. INVESTIGATE (cautious crouched forward-leaning patrol stride, head scanning)
 	if not lib.has_animation(ANIM_INVESTIGATE):
@@ -371,7 +405,8 @@ func _build_animations() -> void:
 func play(anim_name: StringName, custom_blend: float = 0.18) -> void:
 	if not is_instance_valid(anim_player):
 		return
-	if _is_dead and anim_name != ANIM_DEATH and anim_name != ANIM_TAKEDOWN_BACK and anim_name != ANIM_TAKEDOWN_FRONT:
+	var death_anims := [ANIM_DEATH, ANIM_DEATH_HEAD, ANIM_DEATH_BACK, ANIM_DEATH_EXPLODE, ANIM_TAKEDOWN_BACK, ANIM_TAKEDOWN_FRONT]
+	if _is_dead and not death_anims.has(anim_name):
 		return
 	if not _has_anim(anim_name):
 		return
@@ -400,6 +435,20 @@ func play_state(state_name: String) -> void:
 			play(ANIM_DEATH, 0.08)
 		_:
 			play(ANIM_IDLE, 0.22)
+
+
+func play_death(kind: String = "body") -> void:
+	_is_dead = true
+	_oneshot_timer = 1.0
+	match kind:
+		"head", "HEAD":
+			play(ANIM_DEATH_HEAD, 0.04)
+		"back", "BACK":
+			play(ANIM_DEATH_BACK, 0.05)
+		"explode", "explosion", "EXPLODE":
+			play(ANIM_DEATH_EXPLODE, 0.03)
+		_:
+			play(ANIM_DEATH, 0.08)
 
 
 func set_locomotion(moving: bool, running: bool, suspicious: bool = false) -> void:

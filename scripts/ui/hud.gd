@@ -586,6 +586,27 @@ func _refresh_settings_ui() -> void:
 	if is_instance_valid(fs_btn):
 		var on := WebDisplay.is_fullscreen() if WebDisplay else false
 		fs_btn.text = "Fullscreen: %s" % ("On" if on else "Off")
+	var day_btn := pause_panel.get_node_or_null("PauseVBox/DayStartBtn") as Button
+	if is_instance_valid(day_btn):
+		var h := GameState.day_start_hour
+		var label := "Afternoon"
+		if h < 8.0:
+			label = "Dawn"
+		elif h < 15.0:
+			label = "Noon"
+		elif h < 20.0:
+			label = "Dusk"
+		else:
+			label = "Night"
+		day_btn.text = "Start Time: %s (%.0f:00)" % [label, h]
+	var cyc_btn := pause_panel.get_node_or_null("PauseVBox/DayCycleBtn") as Button
+	if is_instance_valid(cyc_btn):
+		var cps := GameState.day_cycle_hours_per_second
+		var mins := 999 if cps <= 0.0001 else int(round(24.0 / cps / 60.0))
+		if cps <= 0.0001:
+			cyc_btn.text = "Day Cycle: Frozen"
+		else:
+			cyc_btn.text = "Day Cycle: ~%d min" % mins
 
 
 func _sync_slider_row(row_name: String, value: float, min_v: float, max_v: float) -> void:
@@ -724,6 +745,39 @@ func _ensure_settings_buttons() -> void:
 		ctrl.pressed.connect(_on_controls_pressed)
 		vbox.add_child(ctrl)
 		vbox.move_child(ctrl, _settings_insert_index(vbox))
+	if vbox.get_node_or_null("DayStartBtn") == null:
+		var dayb := Button.new()
+		dayb.name = "DayStartBtn"
+		dayb.custom_minimum_size = Vector2(0, 36)
+		dayb.pressed.connect(_on_day_start_pressed)
+		vbox.add_child(dayb)
+		vbox.move_child(dayb, _settings_insert_index(vbox))
+	if vbox.get_node_or_null("DayCycleBtn") == null:
+		var cyc := Button.new()
+		cyc.name = "DayCycleBtn"
+		cyc.custom_minimum_size = Vector2(0, 36)
+		cyc.pressed.connect(_on_day_cycle_pressed)
+		vbox.add_child(cyc)
+		vbox.move_child(cyc, _settings_insert_index(vbox))
+	_refresh_settings_ui()
+
+
+func _on_day_start_pressed() -> void:
+	GameState.cycle_day_start_preset()
+	_refresh_settings_ui()
+
+
+func _on_day_cycle_pressed() -> void:
+	## Cycle length presets: frozen / slow (16min) / default (8min) / fast (3min)
+	var presets := [0.0, 24.0 / 960.0, 24.0 / 480.0, 24.0 / 180.0]
+	var best_i := 0
+	var best_d := 99.0
+	for i in range(presets.size()):
+		var d := absf(presets[i] - GameState.day_cycle_hours_per_second)
+		if d < best_d:
+			best_d = d
+			best_i = i
+	GameState.set_day_cycle_hours_per_second(presets[(best_i + 1) % presets.size()])
 	_refresh_settings_ui()
 
 

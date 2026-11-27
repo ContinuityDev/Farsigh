@@ -95,6 +95,12 @@ Touch controls appear automatically on native mobile and on web builds when a to
 - **Settings** (main menu + pause): separate **Mouse Look** / **Touch Look** sliders with live %, **ADS/Scope** multiplier, optional **4×/6×/8×** scope mults, **Invert Y**, graphics quality, Touch Aim Hold/Toggle, Tap-to-Fire, Fullscreen. Saved to `user://loadout_prefs.json` and applied live.
 - **Controls** (Settings → Controls…): full PC rebind list (movement, peek, fire/aim, reload, swap, Tab wheel, Q/T gadget, G lethal, binos, zoom, ally command, use/revive, inspect, takedown…), click-then-press with conflict warnings + Reset Defaults; Mobile/Touch help for contextual buttons; touch button size/opacity + sensitivity sliders. Overrides save to the profile.
 - **Foliage**: natural bush clusters (3–8) of crossed alpha-cut leaf cards with grass bases + matching hide zones along fences, building edges, and approach routes (cheap on mobile).
+- **Natural sets**: uneven mounds, dirt paths, scattered crates/sandbags/barrels/logs/rocks/debris along routes and yards for stealth cover and firefights.
+- **Overlook houses**: every compound has an accessible upper floor/rooftop vantage (stairs) with sandbag nest for scouting/sniping.
+- **Day/night cycle**: dynamic sun/moon + sky; configurable cycle length & start time in pause settings. Night cuts guard vision, turns on compound floodlights + player flashlight, and deepens hide shadows.
+- **Map border**: dense forest treeline + shrubbery (no edge walls); soft invisible push-back past the trees.
+- **Death**: hit-location guard deaths (head / back / explosion / body) + player camera tip-over fade before menu (one-shot `is_down` kept).
+- **Iron sights**: rear/front aligned to screen centre at ADS with ~1.2× zoom.
 
 - Look-swipes never fire — mouse-from-touch stays on so menus/gunsmith respond to taps, but fire/aim ignore mouse while the touch UI is up; only the on-screen **FIRE** button shoots (PC LMB unchanged)
 - **BINOS** stays tappable while raised (toggle down); pinch or overlay **±** zoom; PC **B** + wheel still work
@@ -134,10 +140,23 @@ Captured from a running Godot 4.3 session (`AUTO_CAPTURE=1`):
 | Bush clusters (after) | ![Bush After](docs/screenshots/29_bush_clusters_after.png) |
 | Ranch bush clusters | ![Ranch Bushes](docs/screenshots/30_ranch_bush_clusters.png) |
 | Scaled compound + role guards | ![Scaled Compound](docs/screenshots/31_scaled_compound_guards.png) |
+| Natural lived-in courtyard | ![Natural Set](docs/screenshots/32_natural_set_courtyard.png) |
+| Overlook rooftop view | ![Overlook](docs/screenshots/33_overlook_house_view.png) |
+| Iron sights — Rifle | ![Iron Rifle](docs/screenshots/34_iron_rifle.png) |
+| Iron sights — Pistol | ![Iron Pistol](docs/screenshots/35_iron_pistol.png) |
+| Iron sights — SMG | ![Iron SMG](docs/screenshots/36_iron_smg.png) |
+| Iron sights — Shotgun | ![Iron Shotgun](docs/screenshots/37_iron_shotgun.png) |
+| Guard death — headshot | ![Death Head](docs/screenshots/38_death_headshot_frame.png) |
+| Guard death — explosion | ![Death Blast](docs/screenshots/39_death_explosion_frame.png) |
+| Day compound | ![Day](docs/screenshots/40_day_compound.png) |
+| Night compound + lights | ![Night](docs/screenshots/41_night_compound.png) |
+| Forest treeline border | ![Treeline](docs/screenshots/42_treeline_border.png) |
 
 ```bash
 # Automated screenshot capture (needs a display; use OpenGL if Vulkan is unavailable)
 AUTO_CAPTURE=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
+# Batch 2 (natural / overlook / iron / death / day-night / treeline)
+HAYDEN_SNAP2=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
 ```
 
 ## Exporting & GitHub Pages

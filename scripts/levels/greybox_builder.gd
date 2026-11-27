@@ -56,6 +56,10 @@ func _build_sync(outpost_id: String) -> void:
 			_build_hilltop_bunker()
 		_:
 			_build_compound_alpha()
+	_stage_natural_cover()
+	_stage_overlook()
+	_stage_compound_lights()
+	_stage_treeline_border()
 
 
 func build_outpost_async(outpost_id: String, on_stage: Callable = Callable()) -> PackedStringArray:
@@ -173,6 +177,12 @@ func _run_stage(fn: Callable, label: String) -> String:
 
 
 func _stage_plan(outpost_id: String) -> Array:
+	var finish := [
+		{"label": "Natural cover & props", "fn": Callable(self, "_stage_natural_cover")},
+		{"label": "Overlook vantage", "fn": Callable(self, "_stage_overlook")},
+		{"label": "Compound lights", "fn": Callable(self, "_stage_compound_lights")},
+		{"label": "Forest border", "fn": Callable(self, "_stage_treeline_border")},
+	]
 	match _layout_for(outpost_id):
 		"ranch_redbarn":
 			return [
@@ -180,28 +190,28 @@ func _stage_plan(outpost_id: String) -> Array:
 				{"label": "Barn & farmhouse", "fn": Callable(self, "_ranch_buildings")},
 				{"label": "Hay & vehicles", "fn": Callable(self, "_ranch_props_vehicles")},
 				{"label": "Trees & foliage", "fn": Callable(self, "_ranch_foliage")},
-			]
+			] + finish
 		"lumber_mill":
 			return [
 				{"label": "Mill yard", "fn": Callable(self, "_lumber_terrain")},
 				{"label": "Mill buildings", "fn": Callable(self, "_lumber_buildings")},
 				{"label": "Logs & cover", "fn": Callable(self, "_lumber_props")},
 				{"label": "Trees & foliage", "fn": Callable(self, "_lumber_foliage")},
-			]
+			] + finish
 		"river_dock":
 			return [
 				{"label": "River & docks", "fn": Callable(self, "_river_terrain")},
 				{"label": "Warehouse & office", "fn": Callable(self, "_river_buildings")},
 				{"label": "Boats & cover", "fn": Callable(self, "_river_props")},
 				{"label": "Trees & foliage", "fn": Callable(self, "_river_foliage")},
-			]
+			] + finish
 		"hilltop_bunker":
 			return [
 				{"label": "Hill terrain", "fn": Callable(self, "_hill_terrain")},
 				{"label": "Bunker structure", "fn": Callable(self, "_hill_buildings")},
 				{"label": "Emplacements", "fn": Callable(self, "_hill_props")},
 				{"label": "Trees & foliage", "fn": Callable(self, "_hill_foliage")},
-			]
+			] + finish
 		_:
 			return [
 				{"label": "Terrain & roads", "fn": Callable(self, "_terrain_and_roads")},
@@ -212,7 +222,7 @@ func _stage_plan(outpost_id: String) -> Array:
 				{"label": "Watchtower", "fn": Callable(self, "_stage_watchtower_alpha")},
 				{"label": "Approach cover", "fn": Callable(self, "_approach_cover")},
 				{"label": "Trees & foliage", "fn": Callable(self, "_trees_and_foliage")},
-			]
+			] + finish
 
 
 func _stage_watchtower_alpha() -> void:
@@ -234,16 +244,28 @@ func _build_compound_alpha() -> void:
 
 
 func _terrain_and_roads() -> void:
-	# Larger compound footprint (~60×60 yard inside ~160 terrain)
+	# Larger compound footprint (~60×60 yard inside ~160 terrain) — uneven mounds + dirt lanes
 	_box(Vector3(0, -0.5, 0), Vector3(160, 1.0, 160), Color(0.24, 0.31, 0.20), true)
 	_box(Vector3(0, 0.015, 0), Vector3(58, 0.03, 58), Color(0.37, 0.35, 0.30), false)
 	_box(Vector3(0, 0.025, 20), Vector3(6.0, 0.03, 48), Color(0.42, 0.36, 0.27), false)
 	_box(Vector3(-14, 0.025, 2), Vector3(36, 0.03, 4.4), Color(0.42, 0.36, 0.27), false)
 	_box(Vector3(18, 0.025, 0), Vector3(4.4, 0.03, 36), Color(0.42, 0.36, 0.27), false)  # East approach lane
+	# Worn dirt paths (slightly darker / offset)
+	_box(Vector3(-6, 0.028, 12), Vector3(3.2, 0.02, 22), Color(0.46, 0.38, 0.26), false)
+	_box(Vector3(8, 0.028, -8), Vector3(18, 0.02, 2.8), Color(0.45, 0.37, 0.25), false)
 	_box(Vector3(-8, 0.38, 38), Vector3(14, 0.76, 6), Color(0.26, 0.33, 0.22))
 	_box(Vector3(9, 0.38, 38), Vector3(14, 0.76, 6), Color(0.26, 0.33, 0.22))
 	_box(Vector3(-34, 0.35, 0), Vector3(6, 0.7, 16), Color(0.26, 0.33, 0.22))
 	_box(Vector3(8, 0.3, -36), Vector3(12, 0.6, 5), Color(0.26, 0.33, 0.22))
+	# Uneven terrain mounds outside the yard
+	for m in [
+		[Vector3(-22, 0.22, 22), Vector3(5.5, 0.55, 4.2)],
+		[Vector3(24, 0.18, 18), Vector3(4.8, 0.45, 5.0)],
+		[Vector3(-20, 0.2, -22), Vector3(6.0, 0.5, 4.5)],
+		[Vector3(16, 0.16, -20), Vector3(5.2, 0.4, 3.8)],
+		[Vector3(0, 0.14, 42), Vector3(8.0, 0.35, 3.5)],
+	]:
+		_box(m[0], m[1], Color(0.27, 0.33, 0.21), true)
 
 
 func _perimeter() -> void:
@@ -1369,3 +1391,170 @@ func _box(pos: Vector3, size: Vector3, color: Color, collide: bool = true) -> vo
 	add_child(mi)
 	if collide:
 		_add_box_collider(pos, size, 0.0)
+
+
+# ============================================================================
+# SHARED FINISH PASSES — natural cover, overlook, lights, forest border
+# ============================================================================
+func _stage_natural_cover() -> void:
+	## Lived-in scatter: crates, sandbags, barrels, rocks, logs, debris along routes.
+	var layout := _layout_for(current_outpost_id)
+	var cover_points: Array = [
+		[Vector3(-10, 0, 8), 1.15, 12.0], [Vector3(-8.5, 0, 8.4), 0.95, -8.0],
+		[Vector3(9, 0, 4), 1.2, -15.0], [Vector3(10.4, 0, 4.3), 1.05, 20.0],
+		[Vector3(-4, 0, -10), 1.25, 5.0], [Vector3(3, 0, 16), 1.1, -22.0],
+		[Vector3(14, 0, -2), 1.15, 8.0], [Vector3(-14, 0, 2), 1.2, -6.0],
+	]
+	if lightweight_props:
+		cover_points = cover_points.slice(0, 5)
+	for spec in cover_points:
+		_crate(spec[0], spec[1], spec[2])
+	for sb in [
+		[Vector3(-12, 0, 14), 3.2, 25.0], [Vector3(11, 0, 12), 3.0, -30.0],
+		[Vector3(0, 0, -18), 3.6, 5.0], [Vector3(-16, 0, -8), 2.8, 70.0],
+	]:
+		_sandbag_wall(sb[0], sb[1], sb[2])
+	for b in [
+		[Vector3(6.5, 0, -14), true], [Vector3(7.2, 0, -13.5), false],
+		[Vector3(-7, 0, 12), true], [Vector3(-6.2, 0, 12.5), true],
+		[Vector3(2, 0, 8), false],
+	]:
+		_barrel(b[0], b[1])
+	for r in [
+		Vector3(-15, 0.45, 20), Vector3(17, 0.5, 16), Vector3(-18, 0.4, -14),
+		Vector3(12, 0.55, -22), Vector3(0, 0.4, 28), Vector3(22, 0.45, 0),
+	]:
+		_boulder(r, 0.7 + float(int(absf(r.x)) % 3) * 0.15)
+	# Debris planks / fence scraps
+	for i in range(4 if lightweight_props else 7):
+		var ang := float(i) * 0.9
+		var p := Vector3(cos(ang) * (14.0 + float(i)), 0.08, sin(ang) * (11.0 + float(i % 3)))
+		_box(p, Vector3(1.6, 0.08, 0.28), Color(0.38, 0.28, 0.18), false)
+	if layout == "lumber_mill" or layout == "ranch_redbarn":
+		_log_pile(Vector3(-8, 0, 6), 15.0)
+		if not lightweight_props:
+			_log_pile(Vector3(10, 0, -12), -25.0)
+	# Extra bush hide along interior firefight lanes
+	for cl in [
+		{"c": Vector3(-5, 0, 5), "n": 4}, {"c": Vector3(6, 0, -4), "n": 3},
+		{"c": Vector3(-10, 0, -12), "n": 4}, {"c": Vector3(12, 0, 8), "n": 3},
+	]:
+		_bush_cluster(cl["c"], int(cl["n"]), 1.8)
+
+
+func _stage_overlook() -> void:
+	## Ensure every compound has an accessible upper vantage with sandbag nest.
+	var layout := _layout_for(current_outpost_id)
+	match layout:
+		"ranch_redbarn":
+			# Barn rooftop already multi-storey — add sniper nest + roof bags
+			_sandbag_wall(Vector3(-2, 6.9, -4.5), 3.2, 0.0)
+			_crate(Vector3(0.5, 6.9, -5.5), 0.85, 10.0)
+			_compound_floodlight(Vector3(-2, 7.4, -3.0))
+		"lumber_mill":
+			_sandbag_wall(Vector3(2, 6.9, -8), 3.4, 0.0)
+			_crate(Vector3(-1, 6.9, -7), 0.9, -8.0)
+			_compound_floodlight(Vector3(0, 7.5, -10))
+		"river_dock":
+			_sandbag_wall(Vector3(-13, 6.7, 0), 3.0, 90.0)
+			_crate(Vector3(-11.5, 6.7, 2), 0.9, 5.0)
+			_compound_floodlight(Vector3(-13, 7.3, 2))
+		"hilltop_bunker":
+			# Bunker roof + east multi-storey — nest on bunker parapet
+			_sandbag_wall(Vector3(-2, 3.7, -10.2), 3.4, 0.0)
+			_sandbag_wall(Vector3(2, 3.7, -10.2), 3.4, 0.0)
+			_crate(Vector3(0, 3.7, -12), 0.95, 0.0)
+			_compound_floodlight(Vector3(0, 4.4, -11))
+		_:
+			# Compound HQ rooftop nest (multi-storey at 1,-14)
+			_sandbag_wall(Vector3(1, 6.7, -11), 3.6, 0.0)
+			_sandbag_wall(Vector3(-2, 6.7, -14), 2.8, 90.0)
+			_crate(Vector3(3, 6.7, -12.5), 0.9, 12.0)
+			_barrel(Vector3(-1.5, 6.7, -12), false)
+			_compound_floodlight(Vector3(1, 7.4, -14))
+			# Ladder-accessible lean-to lookout if watchtower is far — roof already has stairs
+
+
+func _stage_compound_lights() -> void:
+	## Yard floodlights + porch lamps in compound_lights (on at night via DayNightCycle).
+	var poles: Array = [
+		Vector3(-18, 0, 18), Vector3(18, 0, 18), Vector3(-18, 0, -18), Vector3(18, 0, -18),
+		Vector3(0, 0, 22), Vector3(-12, 0, 0), Vector3(12, 0, -8),
+	]
+	if lightweight_props:
+		poles = poles.slice(0, 4)
+	for p in poles:
+		_yard_light_pole(p)
+	# Porch / doorway floods
+	for door_l in [
+		Vector3(1, 3.0, -10.2), Vector3(-11, 2.8, -0.5), Vector3(12, 2.6, -1.5),
+	]:
+		_compound_floodlight(door_l)
+
+
+func _yard_light_pole(base: Vector3) -> void:
+	var steel := Color(0.22, 0.23, 0.24)
+	_box(base + Vector3(0, 2.4, 0), Vector3(0.14, 4.8, 0.14), steel, true)
+	_box(base + Vector3(0, 4.85, 0.35), Vector3(0.55, 0.12, 0.55), steel, false)
+	_compound_floodlight(base + Vector3(0, 4.7, 0.15))
+
+
+func _compound_floodlight(pos: Vector3) -> void:
+	var housing := ProcMesh.box_mesh(Vector3(0.42, 0.22, 0.28), Color(0.85, 0.82, 0.7))
+	housing.material_override = ProcMesh.emissive(Color(1.0, 0.92, 0.7), 1.2)
+	ProcMesh.add_part(self, housing, pos)
+	var light := OmniLight3D.new()
+	light.name = "CompoundLight"
+	light.position = pos + Vector3(0, -0.15, 0)
+	light.light_color = Color(1.0, 0.88, 0.65)
+	light.light_energy = 1.4
+	light.omni_range = 14.0
+	light.shadow_enabled = false
+	light.visible = false  # DayNightCycle turns on at night
+	light.add_to_group("compound_lights")
+	add_child(light)
+	# Spot cone downward for a bit of direction
+	var spot := SpotLight3D.new()
+	spot.position = pos
+	spot.rotation_degrees = Vector3(-75, 0, 0)
+	spot.light_color = Color(1.0, 0.9, 0.7)
+	spot.light_energy = 1.8
+	spot.spot_range = 18.0
+	spot.spot_angle = 48.0
+	spot.shadow_enabled = false
+	spot.visible = false
+	spot.add_to_group("compound_lights")
+	add_child(spot)
+
+
+func _stage_treeline_border() -> void:
+	## Dense forest ring replaces any sense of map-edge walls. Soft bound is on the player.
+	## Keep compound fences; this is the OUTER play-area border.
+	# Extend ground under the forest so the horizon isn't a hard cliff into void
+	_box(Vector3(0, -0.55, 0), Vector3(200, 0.9, 200), Color(0.18, 0.26, 0.15), true)
+	var tree_n := 24 if lightweight_props else 48
+	var shrub_n := 14 if lightweight_props else 28
+	for i in range(tree_n):
+		var ang := float(i) * TAU / float(tree_n) + float(i % 5) * 0.035
+		var r := 64.0 + float(i % 5) * 2.8 + float((i * 7) % 5) * 0.55
+		var scale_h := 0.95 + float(i % 5) * 0.2
+		_pine_tree(Vector3(cos(ang) * r, 0, sin(ang) * r), scale_h)
+		# Second ring for density (always — even on lightweight, every other tree)
+		if i % 2 == 0 or not lightweight_props:
+			var r2 := 58.0 + float(i % 4) * 2.2
+			_pine_tree(Vector3(cos(ang + 0.11) * r2, 0, sin(ang + 0.11) * r2), scale_h * 0.88)
+		# Outer thicket beyond soft-bound visual
+		if not lightweight_props and i % 3 == 0:
+			var r3 := 74.0 + float(i % 3) * 2.0
+			_pine_tree(Vector3(cos(ang - 0.08) * r3, 0, sin(ang - 0.08) * r3), scale_h * 1.05)
+	for i in range(shrub_n):
+		var ang2 := float(i) * TAU / float(shrub_n) + 0.3
+		var rs := 54.0 + float(i % 4) * 2.6
+		_bush_cluster(Vector3(cos(ang2) * rs, 0, sin(ang2) * rs), 5 if lightweight_props else 7, 2.6)
+	# Thick hideable shrubbery just inside the treeline (concealment belt)
+	for i in range(8 if lightweight_props else 14):
+		var ang3 := float(i) * TAU / 14.0 + 0.7
+		var r4 := 50.0 + float(i % 3)
+		_bush_cluster(Vector3(cos(ang3) * r4, 0, sin(ang3) * r4), 4, 2.2)
+		if i % 3 == 0:
+			_boulder(Vector3(cos(ang3) * (r4 - 2.0), 0.5, sin(ang3) * (r4 - 2.0)), 1.1)
