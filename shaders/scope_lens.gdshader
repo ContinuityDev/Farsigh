@@ -10,9 +10,12 @@ uniform float roughness : hint_range(0.0, 1.0) = 0.08;
 void fragment() {
 	float ndotv = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
 	float rim = pow(1.0 - ndotv, rim_power);
-	ALBEDO = mix(glass_color.rgb, rim_color.rgb, rim * 0.65);
+	vec2 p = UV * 2.0 - 1.0;
+	float vignette = smoothstep(0.35, 1.05, length(p));
+	vec3 glass = mix(glass_color.rgb, glass_color.rgb * 0.45, vignette * 0.65);
+	ALBEDO = mix(glass, rim_color.rgb, rim * 0.7);
 	ALPHA = mix(glass_color.a, rim_color.a, rim);
 	ROUGHNESS = roughness;
-	METALLIC = 0.05;
-	EMISSION = rim_color.rgb * rim * 0.2;
+	METALLIC = 0.08;
+	EMISSION = rim_color.rgb * rim * 0.25;
 }

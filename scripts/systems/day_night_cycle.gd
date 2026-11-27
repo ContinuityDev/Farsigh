@@ -109,23 +109,25 @@ func _apply_visuals(force: bool) -> void:
 		var yaw := azim * 60.0
 		_sun.rotation_degrees = Vector3(pitch, yaw, 0.0)
 		if elev > 0.05:
-			_sun.light_energy = lerpf(0.35, 1.25, clampf(elev, 0.0, 1.0))
-			_sun.light_color = Color(1.0, 0.96, 0.88).lerp(Color(1.0, 0.72, 0.45), 1.0 - elev)
+			_sun.light_energy = lerpf(0.22, 0.85, clampf(elev, 0.0, 1.0))
+			_sun.light_color = Color(1.0, 0.96, 0.88).lerp(Color(1.0, 0.55, 0.28), clampf(1.0 - elev * 1.6, 0.0, 1.0))
 			_sun.visible = true
 		else:
 			# Moon-ish cool dim light
-			_sun.light_energy = lerpf(0.08, 0.22, clampf(-elev, 0.0, 1.0))
+			_sun.light_energy = lerpf(0.06, 0.16, clampf(-elev, 0.0, 1.0))
 			_sun.light_color = Color(0.55, 0.65, 0.95)
 			_sun.visible = true
-		# Shadows on Med/High only
-		if GraphicsQuality and GraphicsQuality.level >= GraphicsQuality.LEVEL_MED:
+		# Shadows on Med/High only, shorter distance on Med
+		if GraphicsQuality and GraphicsQuality.wants_shadows():
 			_sun.shadow_enabled = true
+			_sun.directional_shadow_max_distance = GraphicsQuality.shadow_distance()
+			_sun.directional_shadow_blend_splits = GraphicsQuality.level >= GraphicsQuality.LEVEL_HIGH
 		else:
 			_sun.shadow_enabled = false
 
 	if is_instance_valid(_fill):
-		_fill.light_energy = 0.45 if not is_night() else 0.12
-		_fill.light_color = Color(0.85, 0.9, 1.0) if not is_night() else Color(0.35, 0.42, 0.7)
+		_fill.light_energy = 0.22 if not is_night() else 0.08
+		_fill.light_color = Color(0.75, 0.82, 0.95) if not is_night() else Color(0.35, 0.42, 0.7)
 
 	if is_instance_valid(_sky_mat):
 		if is_night():
@@ -144,21 +146,26 @@ func _apply_visuals(force: bool) -> void:
 
 	if is_instance_valid(_env):
 		if is_night():
-			_env.ambient_light_energy = 0.28
-			_env.ambient_light_color = Color(0.25, 0.30, 0.45)
-			_env.fog_light_color = Color(0.12, 0.14, 0.22)
-			_env.fog_density = 0.0065 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
-			_env.tonemap_exposure = 1.15
+			_env.ambient_light_energy = 0.22
+			_env.ambient_light_color = Color(0.22, 0.28, 0.42)
+			_env.fog_light_color = Color(0.08, 0.10, 0.16)
+			_env.fog_density = 0.0048 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
+			_env.tonemap_exposure = 0.92
 		elif is_dusk_or_dawn():
-			_env.ambient_light_energy = 0.48
-			_env.ambient_light_color = Color(0.7, 0.55, 0.45)
-			_env.fog_density = 0.005 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
-			_env.tonemap_exposure = 1.05
+			_env.ambient_light_energy = 0.32
+			_env.ambient_light_color = Color(0.72, 0.48, 0.32)
+			_env.fog_light_color = Color(0.62, 0.32, 0.18)
+			_env.fog_density = 0.0036 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
+			_env.tonemap_exposure = 0.9
 		else:
-			_env.ambient_light_energy = 0.68
-			_env.ambient_light_color = Color(0.62, 0.64, 0.56)
-			_env.fog_density = 0.0042 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
-			_env.tonemap_exposure = 1.0
+			_env.ambient_light_energy = 0.38
+			_env.ambient_light_color = Color(0.55, 0.58, 0.52)
+			_env.fog_light_color = Color(0.50, 0.56, 0.50)
+			_env.fog_density = 0.0024 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
+			_env.tonemap_exposure = 0.86
+
+	if GraphicsQuality and is_instance_valid(_env):
+		GraphicsQuality.apply_sky(_env, hour, elev)
 
 	# Compound / flashlight lights — on at night
 	var want_lights := is_night() or is_dusk_or_dawn()

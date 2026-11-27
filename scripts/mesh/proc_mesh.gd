@@ -8,9 +8,13 @@ static var _mesh_cache: Dictionary = {}
 
 
 static func mat(color: Color, roughness: float = 0.82, metallic: float = 0.05) -> Material:
-	var webish := OS.has_feature("web") or OS.has_feature("mobile")
-	# Unshaded on web/mobile Compatibility — fewer shader variants, reliable draw
-	var key := "%s_%.2f_%.2f_%s" % [color.to_html(true), roughness, metallic, "u" if webish else "l"]
+	# Low (mobile) stays unshaded. Med/High use lit materials even on web Compatibility.
+	var flat := true
+	if GraphicsQuality:
+		flat = GraphicsQuality.level <= GraphicsQuality.LEVEL_LOW
+	elif OS.has_feature("mobile"):
+		flat = true
+	var key := "%s_%.2f_%.2f_%s" % [color.to_html(true), roughness, metallic, "u" if flat else "l"]
 	if _mat_cache.has(key):
 		return _mat_cache[key]
 	var m := StandardMaterial3D.new()
@@ -18,7 +22,7 @@ static func mat(color: Color, roughness: float = 0.82, metallic: float = 0.05) -
 	m.roughness = roughness
 	m.metallic = metallic
 	m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
-	if webish:
+	if flat:
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	if color.a < 0.99:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -82,10 +86,49 @@ static func box_mesh(size: Vector3, color: Color, roughness: float = 0.82, metal
 
 
 static func _prepare_instance(mi: MeshInstance3D) -> void:
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var shadows := GraphicsQuality != null and GraphicsQuality.wants_shadows()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	if OS.has_feature("web") or OS.has_feature("mobile"):
 		mi.extra_cull_margin = 2.0
+
+
+static func pine_card_mesh(color: Color) -> MeshInstance3D:
+	## Two stacked triangles — impostor silhouette without a discard shader.
+	var key := "pinecard"
+	var mesh: ArrayMesh
+	if _mesh_cache.has(key):
+		mesh = _mesh_cache[key]
+	else:
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var front := Vector3(0, 0, 1)
+		var back := Vector3(0, 0, -1)
+		var tris := [
+			[Vector3(-1.55, 0.0, 0), Vector3(1.55, 0.0, 0), Vector3(0.0, 3.15, 0)],
+			[Vector3(-1.0, 2.35, 0), Vector3(1.0, 2.35, 0), Vector3(0.0, 5.35, 0)],
+		]
+		for n in [front, back]:
+			for tri in tris:
+				var pts: Array = tri
+				if n == back:
+					pts = [tri[0], tri[2], tri[1]]
+				st.set_normal(n)
+				st.set_uv(Vector2(0.0, 0.0))
+				st.add_vertex(pts[0])
+				st.set_normal(n)
+				st.set_uv(Vector2(1.0, 0.0))
+				st.add_vertex(pts[1])
+				st.set_normal(n)
+				st.set_uv(Vector2(0.5, 1.0))
+				st.add_vertex(pts[2])
+		mesh = st.commit()
+		_mesh_cache[key] = mesh
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat(color, 0.9, 0.0)
+	_prepare_instance(mi)
+	return mi
 
 
 static func capsule_mesh(radius: float, height: float, color: Color, roughness: float = 0.82, metallic: float = 0.05) -> MeshInstance3D:

@@ -17,6 +17,10 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_batch2()
 		return
+	if OS.get_environment("GFX_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_graphics_and_ai()
+		return
 	if OS.get_environment("AUTO_CAPTURE") != "1":
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -638,6 +642,122 @@ func _snap_batch2() -> void:
 
 	print("HAYDEN_SNAP2 complete")
 	await get_tree().create_timer(0.15).timeout
+	get_tree().quit()
+
+
+func _note_fps(tag: String) -> void:
+	var fps := Performance.get_monitor(Performance.TIME_FPS)
+	var frame_ms := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	print("FPS_NOTE %s fps=%.1f process_ms=%.2f quality=%s" % [tag, fps, frame_ms, GraphicsQuality.level_name() if GraphicsQuality else "?"])
+
+
+func _snap_graphics_and_ai() -> void:
+	await get_tree().process_frame
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(2)
+	GameState.day_start_hour = 14.0
+	GameState.set_full_loadout(GameState.WeaponId.RIFLE, GameState.WeaponId.PISTOL, GameState.WeaponId.SHOTGUN, GameState.WeaponId.FRAG, GameState.WeaponId.MACHETE)
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "optic", "iron")
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.8).timeout
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(2.0, 1.4, 20.0)
+		player.look_at(Vector3(0.0, 1.5, 0.0), Vector3.UP)
+	await get_tree().create_timer(0.45).timeout
+	_note_fps("day_high")
+	await _snap("43_gfx_day")
+	if DayNightCycle:
+		DayNightCycle.set_hour(17.55)
+		DayNightCycle.bind_to_scene()
+	if is_instance_valid(player):
+		player.look_at(Vector3(0.0, 6.5, -4.0), Vector3.UP)
+	await get_tree().create_timer(0.4).timeout
+	_note_fps("sunset_high")
+	await _snap("44_gfx_sunset")
+	if DayNightCycle:
+		DayNightCycle.set_hour(22.5)
+	if is_instance_valid(player):
+		player.global_position = Vector3(2.0, 1.4, 20.0)
+		player.look_at(Vector3(0.0, 2.2, 0.0), Vector3.UP)
+	await get_tree().create_timer(0.4).timeout
+	_note_fps("night_high")
+	await _snap("45_gfx_night")
+	if DayNightCycle:
+		DayNightCycle.set_hour(14.0)
+	if is_instance_valid(player):
+		player.global_position = Vector3(-4.0, 1.7, 36.0)
+		player.look_at(Vector3(10.0, 4.0, 68.0), Vector3.UP)
+	await get_tree().create_timer(0.35).timeout
+	_note_fps("forest_high")
+	await _snap("46_gfx_forest")
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 1.2, 26.0)
+		player.look_at(Vector3(0.0, 1.4, 0.0), Vector3.UP)
+		player.set("force_ads", true)
+	var wm = player.get_node_or_null("WeaponManager") if is_instance_valid(player) else null
+	if is_instance_valid(wm) and is_instance_valid(wm.viewmodel_rig):
+		wm.viewmodel_rig.rebuild_weapon(GameState.WeaponId.RIFLE, GameState.get_weapon_mods(GameState.WeaponId.RIFLE))
+		wm.viewmodel_rig.show_weapon(GameState.WeaponId.RIFLE, false)
+		wm.viewmodel_rig.set_aiming(true, 0.01)
+		wm.viewmodel_rig._aim_blend = 1.0
+		wm.viewmodel_rig._aim_target = 1.0
+	for _i in range(6):
+		await get_tree().process_frame
+	_note_fps("guns_high")
+	await _snap("47_gfx_guns")
+	if is_instance_valid(player):
+		player.set("force_ads", false)
+	# Provoke the guard already nearest a cover marker, then hide so they hold that spot
+	var g0: Node = null
+	var g0_cover_d := 9999.0
+	for g in get_tree().get_nodes_in_group("guards"):
+		if not is_instance_valid(g) or not g.has_method("apply_damage"):
+			continue
+		if bool(g.get("is_sniper")) or bool(g.get("is_dog")) or bool(g.get("is_officer")):
+			continue
+		var gn := g as Node3D
+		var nearest := 9999.0
+		for c in get_tree().get_nodes_in_group("cover_points"):
+			if c is Node3D:
+				nearest = minf(nearest, gn.global_position.distance_to((c as Node3D).global_position))
+		if nearest < g0_cover_d:
+			g0_cover_d = nearest
+			g0 = g
+	if is_instance_valid(g0) and is_instance_valid(player):
+		var gp: Vector3 = (g0 as Node3D).global_position
+		player.global_position = gp + Vector3(0, 1.2, 6.5)
+		player.look_at(gp + Vector3.UP, Vector3.UP)
+		g0.apply_damage(12.0, gp + Vector3.UP, player, "TORSO")
+		# Break line of sight immediately so they hold the ghost, not the live body
+		player.global_position = Vector3(48.0, 1.2, -40.0)
+		await get_tree().create_timer(2.1).timeout
+		var focus := g0 as Node3D
+		var fp := focus.global_position
+		print("COVER_NOTE state=", focus.get("state"), " role=", focus.get("_combat_role"), " start_cover_d=", g0_cover_d, " pos=", fp)
+		player.global_position = fp + Vector3(4.8, 1.55, 3.6)
+		player.look_at(fp + Vector3(0, 1.2, 0), Vector3.UP)
+		_note_fps("cover_ai")
+		await _snap("48_guards_cover")
+	# Mobile Low — rebuild world so unshaded / no shadow path is what loads
+	GameState.set_graphics_quality(0)
+	GameState.day_start_hour = 14.0
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.7).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(2.0, 1.4, 20.0)
+		player.look_at(Vector3(0.0, 1.5, 0.0), Vector3.UP)
+	await get_tree().create_timer(0.35).timeout
+	_note_fps("mobile_low")
+	await _snap("49_gfx_low")
+	print("GFX_SNAP complete")
 	get_tree().quit()
 
 

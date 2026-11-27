@@ -21,6 +21,7 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 - **Joseph's Cathedral HQ** — Boss · 12 hostiles · elite commander (unlocks after Ridge).
 - Difficulty labels on Outpost Select; Hope Dollar clears scale with difficulty (Extreme/Boss pay more). Replay beaten compounds at 50% payout.
 - Roles: **heavies**, **officers**, **commanders**, **dogs** + **handlers**, rooftop **snipers**, multi-storey **interior** patrols.
+- Combat AI uses cover (crates, sandbags, trucks, rocks). Hold roles suppress the last-seen ghost; flank roles slide to side cover. Lost sight starts a long search (`?`) of the last-seen area and nearby hides, then cools off. No live wallhack tracking. AI LOD still throttles far guards.
 - AI LOD + staged loading screen keep mobile WebGL workable.
 - **Hope Dollars** shop: weapons, items, **paid gunsmith attachments** (suppressor free), **persistent armour tiers**, **Guns for Hire** allies, and **buyable consumable supports** (Recon Drone, Mortar, Fangs, EMP, Overwatch, Gunship). Charges save to profile; New Run starts at zero. Free binoculars tagging (+ Pro upgrade in shop).
 - Liberation saves per outpost (`user://outpost_save.json`) and resets on **New Run**.
@@ -38,6 +39,7 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 - Hold Aim (RMB / LT / touch Aim) to raise the viewmodel from hip to sights — iron sights by default, or red dot / holo / scope when fitted in the Gunsmith.
 - True optic zoom vs hip FOV 70°: **red dot 1.5×** (~46.7°), **holo 2×** (35°), **scope 4×** (17.5°) with sniper Adjust Zoom cycling **4× → 6× → 8×** (mouse wheel / `N` on PC; touch **ZOOM** while ADS).
 - Scope overlay + breath-hold sway dampening for magnified scopes. Crosshair hides in ADS. Gunsmith optic choice persists into the field.
+- **Graphics** (GL Compatibility): day/night sky with clouds, sunset and stars; height haze; splat terrain and dirt paths; foliage wind with far pine cards; wear/rim on buildings, guns and guards; filmic tonemap, vignette and bloom on High. **Low** stays unshaded with no wind, shadows or bloom for mobile.
 - Mobile touch actions are contextual: Takedown / Reload / Use / Rock / ZOOM / Binos only show when usable (no dead buttons).
 
 ### Arsenal — 2 Weapon Slots + Weapon Wheel
@@ -151,12 +153,21 @@ Captured from a running Godot 4.3 session (`AUTO_CAPTURE=1`):
 | Day compound | ![Day](docs/screenshots/40_day_compound.png) |
 | Night compound + lights | ![Night](docs/screenshots/41_night_compound.png) |
 | Forest treeline border | ![Treeline](docs/screenshots/42_treeline_border.png) |
+| Graphics — day (High) | ![Day High](docs/screenshots/43_gfx_day.png) |
+| Graphics — sunset (High) | ![Sunset](docs/screenshots/44_gfx_sunset.png) |
+| Graphics — night (High) | ![Night High](docs/screenshots/45_gfx_night.png) |
+| Graphics — forest edge (High) | ![Forest](docs/screenshots/46_gfx_forest.png) |
+| Graphics — iron sights (High) | ![Guns](docs/screenshots/47_gfx_guns.png) |
+| Guards in cover | ![Cover](docs/screenshots/48_guards_cover.png) |
+| Graphics — mobile Low | ![Low](docs/screenshots/49_gfx_low.png) |
 
 ```bash
 # Automated screenshot capture (needs a display; use OpenGL if Vulkan is unavailable)
 AUTO_CAPTURE=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
 # Batch 2 (natural / overlook / iron / death / day-night / treeline)
 HAYDEN_SNAP2=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
+# Graphics + cover AI (day, sunset, night, forest, guns, cover, mobile Low)
+GFX_SNAP=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
 ```
 
 ## Exporting & GitHub Pages

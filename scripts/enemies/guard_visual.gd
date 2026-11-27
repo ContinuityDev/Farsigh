@@ -195,6 +195,7 @@ func _build_humanoid() -> void:
 	ProcMesh.add_part(_right_leg, ProcMesh.box_mesh(Vector3(0.15, 0.42, 0.16), pants), Vector3(0, -0.21, 0))
 	ProcMesh.add_part(_right_leg, ProcMesh.box_mesh(Vector3(0.13, 0.36, 0.14), pants), Vector3(0, -0.58, 0))
 	ProcMesh.add_part(_right_leg, ProcMesh.box_mesh(Vector3(0.14, 0.12, 0.23), boot), Vector3(0, -0.78, -0.03))
+	_wear_rig_materials(_rig)
 
 
 func _add_rot_track(anim: Animation, path: String, keys: Array) -> void:
@@ -592,6 +593,20 @@ func _build_dog_mesh() -> void:
 	for xz in [Vector2(-0.12, 0.22), Vector2(0.12, 0.22), Vector2(-0.12, -0.22), Vector2(0.12, -0.22)]:
 		ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.08, 0.34, 0.08), dark), Vector3(xz.x, 0.17, xz.y))
 	ProcMesh.add_part(dog, ProcMesh.box_mesh(Vector3(0.06, 0.06, 0.22), fur), Vector3(0, 0.48, 0.38), Vector3(20, 0, 0))
+
+
+func _wear_rig_materials(root: Node) -> void:
+	## High tier: cloth / kit gets wear + rim. Accents stay state-coloured later.
+	if root == null or GraphicsQuality == null or GraphicsQuality.level < GraphicsQuality.LEVEL_HIGH:
+		return
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi == null or mi.name.ends_with("Accent"):
+			continue
+		var sm := mi.material_override as StandardMaterial3D
+		if sm == null or sm.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
+			continue
+		mi.material_override = GraphicsQuality.make_surface_material(sm.albedo_color, sm.roughness, sm.metallic)
 
 
 func set_placeholder_color(color: Color) -> void:

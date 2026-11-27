@@ -78,6 +78,16 @@ var _body_scene: PackedScene = preload("res://scenes/items/body.tscn")
 var _last_hit_zone: String = ""
 var _death_kind: String = "body"  # body | head | back | explode
 var tagged: bool = false
+var _has_los: bool = false
+var _lost_los_t: float = 0.0
+var _cover_pos: Vector3 = Vector3.ZERO
+var _cover_refresh: float = 0.0
+var _peek_t: float = 0.0
+var _combat_role: String = "hold"  # hold (suppress) | flank
+var _escalated_search: bool = false
+var _search_spots: Array[Vector3] = []
+var _search_idx: int = 0
+var _ghost: Node3D = null
 var _tag_icon: Label3D = null
 var _alert_icon: Label3D = null
 var _meter_bg: MeshInstance3D = null
@@ -315,6 +325,11 @@ func _set_state(s: State) -> void:
 			# Delayed shout/radio — interruptible if killed first
 			if prev != State.COMBAT and not _warned:
 				_warn_timer = randf_range(WARN_DELAY_MIN, WARN_DELAY_MAX)
+			if prev != State.COMBAT:
+				_assign_combat_role()
+				_cover_refresh = 0.0
+				_lost_los_t = 0.0
+				_ensure_ghost()
 		State.DEAD:
 			color = Color(0.2, 0.2, 0.2)
 			_warn_timer = -1.0
@@ -502,6 +517,7 @@ func _update_vision(delta: float) -> void:
 	if dist < BUMP_NOTICE_DIST and state != State.COMBAT:
 		seen = true
 
+	_has_los = seen
 	if seen:
 		var profile := 1.0
 		if player.has_method("get_visibility_profile"):
@@ -511,9 +527,11 @@ func _update_vision(delta: float) -> void:
 		var rate := DETECTION_RATE * profile * (0.35 + dist_factor)
 		if dist < BUMP_NOTICE_DIST:
 			rate = maxf(rate, 2.2)
-		# Night-ish compound: slightly harder at long range
 		detection = clampf(detection + rate * delta, 0.0, 1.0)
+		# Only a real sighting updates last-seen — never wallhack the live position
 		last_known_pos = player.global_position
+		_lost_los_t = 0.0
+		_move_ghost(last_known_pos)
 		if detection >= 1.0:
 			_set_state(State.COMBAT)
 			if not _spotted_emitted:
@@ -526,7 +544,7 @@ func _update_vision(delta: float) -> void:
 			_set_state(State.SUSPICIOUS)
 	else:
 		if state != State.COMBAT and state != State.ALERT:
-			detection = maxf(0.0, detection - DETECTION_DECAY * delta)
+			detection = maxf(0.0, detection - DETECTION_DECAY * delta * (0.45 if _escalated_search else 1.0))
 
 	_refresh_alert_meter()
 	_push_detection_to_player()
@@ -742,13 +760,20 @@ func _do_search(delta: float) -> void:
 		else:
 			_going_to_alarm = false
 	else:
-		_move_toward(last_known_pos, ALERT_SPEED * _move_mult)
-		if global_position.distance_to(last_known_pos) < 1.5:
-			rotate_y(delta * 2.0)
+		_advance_search(delta)
+	# Escalated search (lost the target) lasts much longer, then cools to suspicious
 	var search_limit := SEARCH_TIME * (0.7 if is_officer else 1.0)
+	if _escalated_search:
+		search_limit *= 2.4
 	if _state_timer > search_limit:
-		_set_state(State.PATROL)
-		detection = 0.2
+		_escalated_search = false
+		_hide_ghost()
+		if detection > 0.25:
+			detection = 0.3
+			_set_state(State.SUSPICIOUS)
+		else:
+			_set_state(State.PATROL)
+			detection = 0.15
 
 
 func _tick_warn(delta: float) -> void:
@@ -798,56 +823,213 @@ func receive_warn(from_pos: Vector3, via_radio: bool = false) -> void:
 func _do_combat(delta: float) -> void:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	if not is_instance_valid(player) or _player_is_down(player):
-		_set_state(State.ALERT)
+		_begin_lost_search()
 		return
-	last_known_pos = player.global_position
-	var dist := global_position.distance_to(player.global_position)
-	# Snipers hold their overwatch perch and snipe at long range
+	_state_timer += delta
+	_move_ghost(last_known_pos)
+	# Lost the target: stop tracking the live body and search the last-seen area
+	if not _has_los:
+		_lost_los_t += delta
+		if _lost_los_t > 2.8:
+			_begin_lost_search()
+			return
+	# Snipers hold the perch — fire only with a real sightline, else watch the ghost
 	if is_sniper:
-		velocity.x = 0
-		velocity.z = 0
-		_look_at_pos(player.global_position)
-		if _fire_cooldown <= 0.0 and dist < VISION_RANGE * 1.8 and _has_line_of_sight(player):
+		velocity.x = 0.0
+		velocity.z = 0.0
+		var aim_s: Vector3 = player.global_position if _has_los else last_known_pos
+		_look_at_pos(aim_s)
+		if _has_los and _fire_cooldown <= 0.0 and global_position.distance_to(player.global_position) < VISION_RANGE * 1.8:
 			_fire_at(player)
 			_fire_cooldown = 1.15
-		_state_timer += delta
 		return
-	# Dogs rush and bite — no gun, no alarm
+	# Dogs rush the last seen spot, bite only in contact
 	if is_dog:
-		if dist > 1.6:
-			_move_toward(player.global_position, COMBAT_SPEED * _move_mult)
+		var bite_at: Vector3 = player.global_position if _has_los else last_known_pos
+		if global_position.distance_to(bite_at) > 1.6:
+			_move_toward(bite_at, COMBAT_SPEED * _move_mult)
 		else:
-			velocity.x = 0
-			velocity.z = 0
-			_look_at_pos(player.global_position)
-			if _fire_cooldown <= 0.0:
+			velocity.x = 0.0
+			velocity.z = 0.0
+			_look_at_pos(bite_at)
+			if _has_los and _fire_cooldown <= 0.0 and global_position.distance_to(player.global_position) < 1.8:
 				_bite_at(player)
 				_fire_cooldown = 0.55
-		_state_timer += delta
 		return
-	# Still try alarm if not used (officers sprint harder)
-	if not _alarm_used and not alarm_path.is_empty():
+	# Officers still hit the alarm once, then take cover
+	if not _alarm_used and is_officer and not alarm_path.is_empty() and _state_timer < 6.0:
 		var alarm := get_node_or_null(alarm_path)
 		if is_instance_valid(alarm) and alarm.has_method("is_disabled") and not alarm.is_disabled():
-			_move_toward(alarm.global_position, COMBAT_SPEED * (1.4 if is_officer else 1.0) * _move_mult)
+			_move_toward(alarm.global_position, COMBAT_SPEED * 1.15 * _move_mult)
 			if global_position.distance_to(alarm.global_position) < 1.8:
-				_look_at_pos(alarm.global_position)
 				if is_instance_valid(visual):
 					visual.play_alarm_press()
 				if alarm.has_method("trigger"):
 					alarm.trigger(self)
 				_alarm_used = true
 			return
-	if dist > 12.0:
-		_move_toward(player.global_position, COMBAT_SPEED * _move_mult)
+	_fight_from_cover(delta, player)
+
+
+func _assign_combat_role() -> void:
+	# Stable mix: heavies and sentries hold; officers and a name-hash slice flank
+	if is_heavy or is_sentry or is_sniper:
+		_combat_role = "hold"
+	elif is_officer or role == "commander":
+		_combat_role = "flank"
 	else:
-		velocity.x = 0
-		velocity.z = 0
-		_look_at_pos(player.global_position)
-		if _fire_cooldown <= 0.0 and _has_line_of_sight(player):
-			_fire_at(player)
-			_fire_cooldown = 0.45 if not is_heavy else 0.55
-	_state_timer += delta
+		_combat_role = "flank" if (hash(name) % 5) >= 3 else "hold"
+
+
+func _fight_from_cover(delta: float, player: Node3D) -> void:
+	## Move between cover, peek to shoot, suppress the last-seen ghost. Far LOD skips peek lean.
+	_cover_refresh -= delta
+	if _cover_pos == Vector3.ZERO or _cover_refresh <= 0.0:
+		_cover_pos = _pick_cover(_combat_role == "flank")
+		_cover_refresh = 4.5 if _combat_role == "hold" else 3.2
+	var at_cover := global_position.distance_to(_cover_pos) < 1.35
+	if not at_cover:
+		var spd := (ALERT_SPEED if _combat_role == "hold" else COMBAT_SPEED * 0.92) * _move_mult
+		if _lod_tier >= 2:
+			spd *= 0.85
+		_move_toward(_cover_pos, spd)
+		return
+	velocity.x = 0.0
+	velocity.z = 0.0
+	_peek_t += delta
+	var peeking := _lod_tier >= 2 or fmod(_peek_t, 2.4) > 1.15
+	var aim_at: Vector3 = player.global_position if _has_los else last_known_pos
+	if peeking:
+		_look_at_pos(aim_at)
+		if is_instance_valid(visual):
+			visual.rotation.z = deg_to_rad(7.0 if _combat_role == "flank" else -6.0)
+		if _fire_cooldown <= 0.0:
+			if _has_los:
+				_fire_at(player)
+				_fire_cooldown = 0.55 if _combat_role == "hold" else 0.72
+			else:
+				_suppress_at(last_known_pos)
+				_fire_cooldown = 0.85
+	else:
+		# Tucked behind cover, watching the ghost
+		_look_at_pos(last_known_pos)
+		if is_instance_valid(visual):
+			visual.rotation.z = 0.0
+
+
+func _pick_cover(flank: bool) -> Vector3:
+	var best := last_known_pos + (global_position - last_known_pos).normalized() * 6.0
+	if best.distance_to(global_position) < 0.5:
+		best = global_position + Vector3(2.5, 0, 1.5)
+	var best_score := -1e9
+	var to_lk := last_known_pos - global_position
+	to_lk.y = 0.0
+	var side := Vector3(-to_lk.z, 0.0, to_lk.x)
+	if side.length() > 0.1:
+		side = side.normalized()
+	else:
+		side = Vector3.RIGHT
+	var max_d := 18.0 if _lod_tier >= 2 else 26.0
+	for n in get_tree().get_nodes_in_group("cover_points"):
+		if not (n is Node3D):
+			continue
+		var pos: Vector3 = (n as Node3D).global_position
+		var d_self := global_position.distance_to(pos)
+		if d_self > max_d or d_self < 0.8:
+			continue
+		var d_lk := pos.distance_to(last_known_pos)
+		if d_lk < 4.0 or d_lk > 32.0:
+			continue
+		var score := -d_self * 0.35 - d_lk * 0.08
+		var off := pos - last_known_pos
+		off.y = 0.0
+		var side_dot := 0.0
+		if off.length() > 0.1:
+			side_dot = absf(side.dot(off.normalized()))
+			score += side_dot * (9.0 if flank else 2.0)
+		if not flank:
+			score -= side_dot * 2.0
+		if score > best_score:
+			best_score = score
+			best = pos
+	best.y = global_position.y
+	return best
+
+
+func _begin_lost_search() -> void:
+	_escalated_search = true
+	_search_spots.clear()
+	_search_spots.append(last_known_pos)
+	for n in get_tree().get_nodes_in_group("cover_points"):
+		if _search_spots.size() >= 5:
+			break
+		if n is Node3D and (n as Node3D).global_position.distance_to(last_known_pos) < 16.0:
+			_search_spots.append((n as Node3D).global_position)
+	# Flank offset + a couple of nearby hide checks
+	var side := Vector3(4.5 if _combat_role == "flank" else -3.5, 0, 3.0)
+	_search_spots.append(last_known_pos + side)
+	_search_spots.append(last_known_pos + Vector3(-side.x, 0, 5.0))
+	_search_idx = 0
+	investigate_pos = last_known_pos
+	detection = maxf(detection, 0.72)
+	_set_state(State.ALERT)
+
+
+func _advance_search(delta: float) -> void:
+	if _search_spots.is_empty():
+		_search_spots.append(last_known_pos)
+	var spot: Vector3 = _search_spots[_search_idx % _search_spots.size()]
+	_move_toward(spot, ALERT_SPEED * (0.82 if _escalated_search else 1.0) * _move_mult)
+	if global_position.distance_to(spot) < 1.6:
+		rotate_y(delta * 1.6)
+		_search_idx += 1
+		if _search_idx % _search_spots.size() == 0:
+			_state_timer += 1.2  # lingering at a sweep completion
+
+
+func _suppress_at(pos: Vector3) -> void:
+	## Fire at the last-seen ghost — noise + muzzle, no damage without a sightline.
+	_look_at_pos(pos)
+	NoiseBus.emit_noise(global_position, 36.0, "guard_suppress")
+	if is_instance_valid(visual):
+		visual.play_shoot()
+
+
+func _ensure_ghost() -> void:
+	if is_instance_valid(_ghost):
+		return
+	var g := MeshInstance3D.new()
+	g.name = "LastSeenGhost"
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.28
+	mesh.height = 0.56
+	g.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.85, 0.25, 0.35)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.7, 0.2)
+	mat.emission_energy_multiplier = 0.6
+	g.material_override = mat
+	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var scene := get_tree().current_scene
+	if scene:
+		scene.add_child(g)
+	_ghost = g
+	_move_ghost(last_known_pos)
+
+
+func _move_ghost(pos: Vector3) -> void:
+	if not is_instance_valid(_ghost):
+		return
+	_ghost.visible = state == State.COMBAT or state == State.ALERT
+	_ghost.global_position = Vector3(pos.x, pos.y + 0.15, pos.z)
+
+
+func _hide_ghost() -> void:
+	if is_instance_valid(_ghost):
+		_ghost.visible = false
 
 
 func _bite_at(player: Node3D) -> void:
@@ -865,9 +1047,12 @@ func _fire_at(player: Node3D) -> void:
 		return
 	if not is_instance_valid(player) or _player_is_down(player):
 		return
+	# Damage only with a live sightline — suppression handles the no-LOS case
+	if not _has_line_of_sight(player):
+		_suppress_at(last_known_pos)
+		return
 	NoiseBus.emit_noise(global_position, 55.0 if is_sniper else 40.0, "guard_sniper" if is_sniper else "guard_rifle")
 	if player.has_method("apply_damage"):
-		# Tuned vs player max HP 160 + armour DR (was 12/16/22)
 		var dmg := 18.0 if is_sniper else (14.0 if is_heavy else 10.0)
 		player.apply_damage(dmg, global_position, self)
 	if is_instance_valid(visual):

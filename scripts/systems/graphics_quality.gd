@@ -19,6 +19,12 @@ var _water_shader: Shader
 var _gun_shader: Shader
 var _lens_shader: Shader
 var _grade_shader: Shader
+var _sky_shader: Shader
+var _terrain_shader: Shader
+var _surface_shader: Shader
+var _terrain_mat: ShaderMaterial
+var _path_mat: ShaderMaterial
+var _surface_cache: Dictionary = {}
 
 
 func _ready() -> void:
@@ -27,6 +33,9 @@ func _ready() -> void:
 	_gun_shader = load("res://shaders/gun_rim.gdshader") as Shader
 	_lens_shader = load("res://shaders/scope_lens.gdshader") as Shader
 	_grade_shader = load("res://shaders/color_grade.gdshader") as Shader
+	_sky_shader = load("res://shaders/sky_cycle.gdshader") as Shader
+	_terrain_shader = load("res://shaders/terrain_splat.gdshader") as Shader
+	_surface_shader = load("res://shaders/surface_wear.gdshader") as Shader
 	# Default: High on desktop, Low on mobile / touch web
 	if OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios"):
 		level = LEVEL_LOW
@@ -78,17 +87,37 @@ func wants_scope_lens() -> bool:
 
 
 func wants_color_grade() -> bool:
+	return level >= LEVEL_MED
+
+
+func wants_shadows() -> bool:
+	return level >= LEVEL_MED
+
+
+func wants_bloom() -> bool:
 	return level >= LEVEL_HIGH
+
+
+func wants_sky_shader() -> bool:
+	return level >= LEVEL_MED and _sky_shader != null
+
+
+func wants_terrain_shader() -> bool:
+	return level >= LEVEL_MED and _terrain_shader != null
+
+
+func shadow_distance() -> float:
+	return 48.0 if level == LEVEL_MED else 80.0
 
 
 func fog_density_scale() -> float:
 	match level:
 		LEVEL_LOW:
-			return 0.65
+			return 0.45
 		LEVEL_MED:
-			return 1.0
+			return 0.85
 		_:
-			return 1.35
+			return 1.0
 
 
 func apply() -> void:
@@ -127,6 +156,85 @@ func make_water_material(shallow: Color = Color(0.18, 0.46, 0.52, 0.88), deep: C
 	mat.set_shader_parameter("deep_color", deep)
 	mat.set_shader_parameter("wave_speed", 0.32)
 	return mat
+
+
+func make_terrain_material(path_bias: float = 0.18) -> Material:
+	if not wants_terrain_shader():
+		return ProcMesh.mat(Color(0.30, 0.38, 0.22), 0.92, 0.0)
+	var mat := ShaderMaterial.new()
+	mat.shader = _terrain_shader
+	mat.set_shader_parameter("path_amount", path_bias)
+	return mat
+
+
+func make_surface_material(color: Color, roughness: float = 0.72, metallic: float = 0.05) -> Material:
+	if level < LEVEL_HIGH or _surface_shader == null:
+		return ProcMesh.mat(color, roughness, metallic)
+	var key := "%s_%.2f_%.2f" % [color.to_html(false), roughness, metallic]
+	if _surface_cache.has(key):
+		return _surface_cache[key]
+	var mat := ShaderMaterial.new()
+	mat.shader = _surface_shader
+	mat.set_shader_parameter("albedo", color)
+	mat.set_shader_parameter("roughness", roughness)
+	mat.set_shader_parameter("metallic", metallic)
+	mat.set_shader_parameter("wear", 0.45)
+	_surface_cache[key] = mat
+	return mat
+
+
+func apply_sky(env: Environment, hour: float, sun_elev: float) -> void:
+	if env == null:
+		return
+	if wants_sky_shader():
+		var sky := env.sky if env.sky else Sky.new()
+		var sm := sky.sky_material as ShaderMaterial
+		if sm == null or sm.shader != _sky_shader:
+			sm = ShaderMaterial.new()
+			sm.shader = _sky_shader
+			sky.sky_material = sm
+		env.sky = sky
+		env.background_mode = Environment.BG_SKY
+		sm.set_shader_parameter("sun_elev", sun_elev)
+		var night := sun_elev < -0.02
+		var dusk := absf(sun_elev) < 0.28 and not night
+		sm.set_shader_parameter("star_strength", 0.85 if night else (0.15 if dusk else 0.0))
+		sm.set_shader_parameter("cloud_cover", 0.35 if night else 0.5)
+	if wants_bloom():
+		env.glow_enabled = true
+		env.glow_intensity = 0.45 if sun_elev > 0.2 else 0.7
+		env.glow_bloom = 0.12
+		env.glow_strength = 0.8
+	else:
+		env.glow_enabled = false
+	# Depth haze on Med+, cheap exponential on Low. Height term keeps ground haze.
+	env.fog_height = 5.5
+	env.fog_height_density = 0.05 if level == LEVEL_LOW else 0.09
+	if level >= LEVEL_MED:
+		env.fog_mode = Environment.FOG_MODE_DEPTH
+		env.fog_depth_begin = 36.0 if level == LEVEL_MED else 42.0
+		env.fog_depth_end = 210.0
+		env.fog_depth_curve = 1.55
+	else:
+		env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
+		env.fog_density = 0.0014
+		env.fog_light_color = Color(0.55, 0.62, 0.58)
+	_apply_grade_for_hour(hour, sun_elev)
+
+
+func _apply_grade_for_hour(hour: float, sun_elev: float) -> void:
+	if not is_instance_valid(_grade_rect) or _grade_rect.material == null:
+		return
+	var sm := _grade_rect.material as ShaderMaterial
+	if sm == null:
+		return
+	var tint := Color(0.78, 0.86, 0.95, 0.06)
+	if sun_elev < -0.05:
+		tint = Color(0.35, 0.42, 0.7, 0.16)
+	elif absf(sun_elev) < 0.28:
+		tint = Color(0.95, 0.55, 0.28, 0.12)
+	sm.set_shader_parameter("grade_tint", tint)
+	sm.set_shader_parameter("vignette_strength", 0.22 if level == LEVEL_MED else 0.38)
 
 
 func make_gun_material(color: Color, metallic: float = 0.35, roughness: float = 0.55) -> Material:
@@ -188,11 +296,12 @@ func _refresh_world_env() -> void:
 	we.environment.fog_enabled = true
 	match level:
 		LEVEL_LOW:
-			we.environment.tonemap_exposure = 1.05
-		LEVEL_MED:
 			we.environment.tonemap_exposure = 1.0
+			we.environment.fog_density = 0.0014
+		LEVEL_MED:
+			we.environment.tonemap_exposure = 0.9
 		_:
-			we.environment.tonemap_exposure = 0.95
+			we.environment.tonemap_exposure = 0.86
 
 
 func _retag_group_materials(group: String, enable: bool) -> void:

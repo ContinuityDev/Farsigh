@@ -9,10 +9,18 @@ uniform float rim_strength : hint_range(0.0, 1.5) = 0.55;
 uniform float roughness : hint_range(0.0, 1.0) = 0.55;
 uniform float metallic : hint_range(0.0, 1.0) = 0.35;
 
+varying vec3 local_pos;
+
+void vertex() {
+	local_pos = VERTEX;
+}
+
 void fragment() {
 	float ndotv = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
 	float rim = pow(1.0 - ndotv, rim_power) * rim_strength;
-	ALBEDO = albedo.rgb + rim_color.rgb * rim;
+	float wear = fract(sin(dot(local_pos.xy, vec2(12.4, 78.2))) * 43758.0);
+	vec3 worn = albedo.rgb * mix(1.0, 0.72, smoothstep(0.62, 0.95, wear) * 0.55);
+	ALBEDO = worn + rim_color.rgb * rim;
 	ROUGHNESS = mix(roughness, 0.25, rim);
 	METALLIC = metallic;
 	EMISSION = rim_color.rgb * rim * 0.35;

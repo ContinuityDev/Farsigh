@@ -181,6 +181,14 @@ func rebuild_weapon(id: GameState.WeaponId, mods: Dictionary) -> void:
 			_build_bat(slot, body_col, accent_col)
 		GameState.WeaponId.TRANQ_PISTOL:
 			_build_pistol(slot, id, body_col, accent_col, mods, false)
+	_disable_viewmodel_shadows(slot)
+
+
+func _disable_viewmodel_shadows(n: Node) -> void:
+	if n is GeometryInstance3D:
+		(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for c in n.get_children():
+		_disable_viewmodel_shadows(c)
 
 
 # ============================================================================

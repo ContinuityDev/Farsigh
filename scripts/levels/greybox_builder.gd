@@ -987,6 +987,7 @@ func _crate(base_pos: Vector3, size: float, rot_y_deg: float) -> void:
 	ProcMesh.add_part(holder, ProcMesh.box_mesh(Vector3(size * 1.1, bt * 0.85, 0.04), trim), Vector3(0, 0, -size * 0.47), Vector3(0, 0, -42))
 
 	_add_box_collider(base_pos + Vector3(0, size * 0.5, 0), Vector3(size, size, size), rot_y_deg)
+	_mark_cover(base_pos + Vector3(size + 0.7, 0, 0))
 
 
 func _barrel(base_pos: Vector3, is_red_fuel: bool) -> void:
@@ -1026,6 +1027,8 @@ func _sandbag_wall(base_pos: Vector3, length: float, rot_y_deg: float) -> void:
 			ProcMesh.add_part(holder, bag, Vector3(start_x + i * 0.66, row_y, (0.04 if row == 1 else 0.0)), Vector3(0, 0, 90))
 
 	_add_box_collider(base_pos + Vector3(0, 0.42, 0), Vector3(length, 0.84, 0.55), rot_y_deg)
+	var side := Vector3(0, 0, 1.3).rotated(Vector3.UP, deg_to_rad(rot_y_deg))
+	_mark_cover(base_pos + side)
 
 
 func _pickup_truck(base_pos: Vector3, rot_y_deg: float, paint: Color, has_canopy: bool) -> void:
@@ -1075,6 +1078,8 @@ func _pickup_truck(base_pos: Vector3, rot_y_deg: float, paint: Color, has_canopy
 			ProcMesh.add_part(v, ProcMesh.cylinder_mesh(0.21, 0.30, rim, 0.4, 0.65, 8), Vector3(wx, 0.42, wz), Vector3(0, 0, 90))
 
 	_add_box_collider(base_pos + Vector3(0, 0.95, 0), Vector3(2.15, 1.9, 4.55), rot_y_deg)
+	var side := Vector3(2.2, 0, 0).rotated(Vector3.UP, deg_to_rad(rot_y_deg))
+	_mark_cover(base_pos + side)
 
 
 func _watchtower_at(c: Vector3) -> void:
@@ -1138,6 +1143,15 @@ func _boulder(pos: Vector3, radius: float) -> void:
 	var rock_col := Color(0.36, 0.35, 0.32)
 	ProcMesh.add_part(self, ProcMesh.sphere_mesh(radius, rock_col, 0.92, 0.02), pos, Vector3(12, 35, 8))
 	_add_box_collider(pos, Vector3(radius * 1.7, radius * 1.15, radius * 1.6), 0.0)
+	_mark_cover(pos + Vector3(radius + 0.8, 0, 0))
+
+
+func _mark_cover(pos: Vector3) -> void:
+	var m := Marker3D.new()
+	m.name = "CoverPoint"
+	m.position = pos
+	m.add_to_group("cover_points")
+	add_child(m)
 
 
 func _entry_cover(a: Vector3, b: Vector3) -> void:
@@ -1354,6 +1368,10 @@ func _scatter_grass(grass_spots: Array) -> void:
 
 
 func _pine_tree(pos: Vector3, scale_h: float) -> void:
+	# Outer thicket only — the playable treeline stays real cones
+	if pos.length() > 72.0 and GraphicsQuality and GraphicsQuality.level >= GraphicsQuality.LEVEL_MED:
+		_pine_impostor(pos, scale_h)
+		return
 	var trunk_col := Color(0.30, 0.21, 0.14)
 	var leaf_dark := Color(0.15, 0.28, 0.14)
 	var leaf_mid := Color(0.19, 0.34, 0.16)
@@ -1362,14 +1380,31 @@ func _pine_tree(pos: Vector3, scale_h: float) -> void:
 	t.scale = Vector3(scale_h, scale_h, scale_h)
 	add_child(t)
 	ProcMesh.add_part(t, ProcMesh.cylinder_mesh(0.28, 2.6, trunk_col, 0.92, 0.0, 7), Vector3(0, 1.3, 0))
+	var cones := 2 if (GraphicsQuality and GraphicsQuality.level == GraphicsQuality.LEVEL_LOW) else 3
 	var c1 := ProcMesh.add_part(t, ProcMesh.cone_mesh(2.1, 0.35, 3.0, leaf_dark, 0.9, 0.0, 7), Vector3(0, 3.2, 0))
 	var c2 := ProcMesh.add_part(t, ProcMesh.cone_mesh(1.65, 0.22, 2.6, leaf_mid, 0.9, 0.0, 7), Vector3(0, 5.0, 0))
-	var c3 := ProcMesh.add_part(t, ProcMesh.cone_mesh(1.1, 0.05, 2.2, leaf_dark, 0.9, 0.0, 7), Vector3(0, 6.6, 0))
-	for leaf in [c1, c2, c3]:
+	var leaves: Array = [c1, c2]
+	if cones > 2:
+		leaves.append(ProcMesh.add_part(t, ProcMesh.cone_mesh(1.1, 0.05, 2.2, leaf_dark, 0.9, 0.0, 7), Vector3(0, 6.6, 0)))
+	for leaf in leaves:
 		if GraphicsQuality:
 			leaf.material_override = GraphicsQuality.make_foliage_material(leaf_dark)
 		leaf.add_to_group("foliage_wind")
 
+
+func _pine_impostor(pos: Vector3, scale_h: float) -> void:
+	var t := Node3D.new()
+	t.position = pos
+	t.scale = Vector3(scale_h, scale_h, scale_h)
+	add_child(t)
+	var leaf := Color(0.16, 0.30, 0.14)
+	ProcMesh.add_part(t, ProcMesh.cylinder_mesh(0.22, 2.2, Color(0.28, 0.2, 0.13), 0.92, 0.0, 5), Vector3(0, 1.1, 0))
+	for yaw in [0.0, 90.0]:
+		var card := ProcMesh.pine_card_mesh(leaf)
+		if GraphicsQuality:
+			card.material_override = GraphicsQuality.make_foliage_material(leaf)
+		card.add_to_group("foliage_wind")
+		ProcMesh.add_part(t, card, Vector3(0, 0.15, 0), Vector3(0, yaw, 0))
 
 func _add_box_collider(pos: Vector3, size: Vector3, rot_y_deg: float) -> void:
 	var body := StaticBody3D.new()
@@ -1388,6 +1423,14 @@ func _add_box_collider(pos: Vector3, size: Vector3, rot_y_deg: float) -> void:
 func _box(pos: Vector3, size: Vector3, color: Color, collide: bool = true) -> void:
 	var mi := ProcMesh.box_mesh(size, color)
 	mi.position = pos
+	if GraphicsQuality and GraphicsQuality.wants_terrain_shader():
+		# Broad ground slabs get splat terrain; thin lanes read as dirt paths
+		if size.y <= 1.2 and size.x >= 40.0 and size.z >= 40.0:
+			mi.material_override = GraphicsQuality.make_terrain_material(0.22)
+		elif size.y <= 0.08 and (size.x >= 8.0 or size.z >= 8.0):
+			mi.material_override = GraphicsQuality.make_terrain_material(0.85)
+		elif size.y > 0.4 and size.x < 30.0 and GraphicsQuality.level >= GraphicsQuality.LEVEL_HIGH:
+			mi.material_override = GraphicsQuality.make_surface_material(color, 0.78, 0.04)
 	add_child(mi)
 	if collide:
 		_add_box_collider(pos, size, 0.0)
@@ -1430,6 +1473,13 @@ func _stage_natural_cover() -> void:
 		var ang := float(i) * 0.9
 		var p := Vector3(cos(ang) * (14.0 + float(i)), 0.08, sin(ang) * (11.0 + float(i % 3)))
 		_box(p, Vector3(1.6, 0.08, 0.28), Color(0.38, 0.28, 0.18), false)
+	# Ground wear decals along the courtyard
+	for d in [
+		Vector3(-6, 0.05, 6), Vector3(4, 0.05, 10), Vector3(8, 0.05, -6), Vector3(-2, 0.05, -8),
+	]:
+		var stain := ProcMesh.box_mesh(Vector3(2.4, 0.02, 1.5), Color(0.16, 0.12, 0.08, 0.72))
+		stain.position = d
+		add_child(stain)
 	if layout == "lumber_mill" or layout == "ranch_redbarn":
 		_log_pile(Vector3(-8, 0, 6), 15.0)
 		if not lightweight_props:
