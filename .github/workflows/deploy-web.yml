@@ -88,7 +88,10 @@ jobs:
           # Replace only top-level docs web files; keep docs/screenshots/
           find docs -maxdepth 1 -type f -delete
           cp -a build/web/. docs/
+          rm -f docs/*.import
           test -f docs/index.html
+          test -f docs/index.pck
+          test -f docs/index.wasm
           test -f docs/.nojekyll
 
       - name: Commit docs web build
@@ -96,7 +99,9 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # *.pck is gitignored for local exports; force-add the Pages copy
           git add -A docs
+          git add -f docs/index.pck
           if git diff --cached --quiet; then
             echo "No docs/ changes to commit"
             exit 0
