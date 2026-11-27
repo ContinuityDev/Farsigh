@@ -166,6 +166,7 @@ pause_menu={
 3d_physics/layer_5="bodies"
 3d_physics/layer_6="interactables"
 3d_physics/layer_7="noise_triggers"
+3d_physics/layer_8="hitboxes"
 
 [debug]
 

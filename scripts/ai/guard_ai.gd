@@ -37,11 +37,12 @@ var _alarm_used: bool = false
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 @onready var vision_ray: RayCast3D = $VisionRay
-@onready var mesh: MeshInstance3D = $MeshInstance3D
 @onready var label: Label3D = $StateLabel
+@onready var visual: GuardVisual = $Visual
+@onready var hit_zones: Node3D = $HitZones
 
-var _mat: StandardMaterial3D
 var _body_scene: PackedScene = preload("res://scenes/items/body.tscn")
+var _last_hit_zone: String = ""
 
 
 func _ready() -> void:
@@ -49,9 +50,8 @@ func _ready() -> void:
 	collision_layer = 4
 	collision_mask = 1 | 2
 	NoiseBus.noise_emitted.connect(_on_noise)
-	_mat = StandardMaterial3D.new()
-	_mat.albedo_color = Color(0.55, 0.25, 0.2)
-	mesh.material_override = _mat
+	if visual:
+		visual.set_placeholder_color(Color(0.55, 0.25, 0.2))
 	_cache_patrol()
 	_set_state(State.PATROL)
 
@@ -99,24 +99,29 @@ func _set_state(s: State) -> void:
 	state = s
 	_state_timer = 0.0
 	_going_to_alarm = false
+	var color := Color(0.55, 0.25, 0.2)
 	match s:
 		State.PATROL:
-			_mat.albedo_color = Color(0.55, 0.25, 0.2)
+			color = Color(0.55, 0.25, 0.2)
 		State.SUSPICIOUS:
-			_mat.albedo_color = Color(0.75, 0.6, 0.15)
+			color = Color(0.75, 0.6, 0.15)
 		State.ALERT:
-			_mat.albedo_color = Color(0.85, 0.45, 0.1)
+			color = Color(0.85, 0.45, 0.1)
 		State.COMBAT:
-			_mat.albedo_color = Color(0.9, 0.15, 0.1)
+			color = Color(0.9, 0.15, 0.1)
 		State.DEAD:
-			_mat.albedo_color = Color(0.2, 0.2, 0.2)
+			color = Color(0.2, 0.2, 0.2)
+	if visual:
+		visual.set_placeholder_color(color)
+		visual.play_state(State.keys()[s])
 	state_changed.emit(State.keys()[s])
 
 
 func _update_label() -> void:
 	if label:
-		label.text = State.keys()[state]
-		label.modulate = _mat.albedo_color
+		var zone_suffix := (" [%s]" % _last_hit_zone) if _last_hit_zone != "" and state != State.DEAD else ""
+		label.text = State.keys()[state] + zone_suffix
+		label.modulate = Color(0.9, 0.85, 0.7)
 
 
 func _update_vision(delta: float) -> void:
@@ -332,12 +337,12 @@ func _fire_at(player: Node3D) -> void:
 	NoiseBus.emit_noise(global_position, 40.0, "guard_rifle")
 	if player.has_method("apply_damage"):
 		player.apply_damage(12.0)
-	# Soft feedback: flash
-	_mat.albedo_color = Color(1, 0.4, 0.3)
-	get_tree().create_timer(0.08).timeout.connect(func():
-		if state == State.COMBAT:
-			_mat.albedo_color = Color(0.9, 0.15, 0.1)
-	)
+	if visual:
+		visual.set_placeholder_color(Color(1, 0.4, 0.3))
+		get_tree().create_timer(0.08).timeout.connect(func():
+			if state == State.COMBAT and visual:
+				visual.set_placeholder_color(Color(0.9, 0.15, 0.1))
+		)
 
 
 func _move_toward(target: Vector3, speed: float) -> void:
@@ -359,16 +364,48 @@ func _look_at_pos(pos: Vector3) -> void:
 		look_at(p, Vector3.UP)
 
 
-func apply_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO, _source: Node = null) -> void:
+func apply_damage(amount: float, hit_pos: Vector3 = Vector3.ZERO, source: Node = null, zone_name: String = "") -> void:
 	if state == State.DEAD:
 		return
+	# Fallback if caller didn't resolve a HitZone: infer from height
+	if zone_name == "" and hit_pos != Vector3.ZERO:
+		zone_name = _infer_zone_from_point(hit_pos)
+		amount = _damage_for_inferred_zone(amount, zone_name)
+	_last_hit_zone = zone_name
 	hp -= amount
 	detection = 1.0
-	if _source is Node3D:
-		last_known_pos = (_source as Node3D).global_position
+	if source is Node3D:
+		last_known_pos = (source as Node3D).global_position
 	_set_state(State.COMBAT)
 	if hp <= 0.0:
 		_die(false)
+
+
+func apply_hit_zone(zone: HitZone, base_damage: float, hit_pos: Vector3 = Vector3.ZERO, source: Node = null) -> void:
+	if zone == null:
+		apply_damage(base_damage, hit_pos, source)
+		return
+	var dmg := zone.resolve_damage(base_damage)
+	apply_damage(dmg, hit_pos, source, zone.zone_name())
+
+
+func _infer_zone_from_point(hit_pos: Vector3) -> String:
+	var local_y := to_local(hit_pos).y
+	if local_y >= 1.45:
+		return "HEAD"
+	if local_y >= 0.7:
+		return "TORSO"
+	return "LIMBS"
+
+
+func _damage_for_inferred_zone(base: float, zone_name: String) -> float:
+	match zone_name:
+		"HEAD":
+			return 9999.0
+		"LIMBS":
+			return base * 0.55
+		_:
+			return base
 
 
 func melee_takedown(_player: Node3D) -> void:

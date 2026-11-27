@@ -63,8 +63,10 @@ Menus use large touch-friendly buttons. Display stretch mode is `canvas_items` +
 ```
 scripts/
   ai/           Guard state machine, vision, hearing reactions
+  combat/       HitZone body-part damage (HEAD one-shots)
+  enemies/      GuardVisual placeholder + AnimationPlayer hooks
   player/       FPS controller (keyboard / gamepad / touch)
-  weapons/      WeaponData + WeaponManager (noise, ammo, hitscan/projectiles)
+  weapons/      WeaponData, WeaponManager, ViewmodelRig slots
   systems/      GameState, SaveManager, NoiseBus, TouchInput, Alarm, OutpostManager
   items/        Bodies, rocks, arrows, knives
   ui/           Main menu, loadout, HUD, touch controls
@@ -72,9 +74,24 @@ scripts/
 scenes/
   levels/outpost.tscn   Playable compound
   player/ enemies/ items/ ui/
-export_presets.cfg      Windows, Linux, macOS, Android, iOS
-docs/screenshots/       Captured running-game images
+export_presets.cfg      Windows, Linux, macOS, Android, iOS, Web
+docs/                   GitHub Pages web build + screenshots/
 ```
+
+### Combat hit zones
+
+Guards expose `HitZones/Head|Torso|Limbs` (`HitZone` areas on physics layer `hitboxes`). Weapons raycast/probe those areas:
+
+| Zone | Effect |
+|------|--------|
+| HEAD | Always lethal (one-shot) |
+| TORSO | Full weapon damage |
+| LIMBS | ~55% damage |
+
+### Art-pass hooks (placeholders only)
+
+- **Viewmodels:** `Player/Head/Camera3D/Viewmodels` (`ViewmodelRig`) with `PistolSlot`, `RifleSlot`, `BowSlot`, `KnifeSlot` — swap in real meshes later.
+- **Guards:** `Guard/Visual` (`GuardVisual` + `AnimationPlayer`) expects `idle` / `walk` / `alert` / `combat` / `death` — replace `PlaceholderMesh` with a character scene without changing AI.
 
 ### Extending with more compounds
 

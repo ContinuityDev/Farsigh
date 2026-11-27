@@ -23,25 +23,58 @@ func launch(dir: Vector3, dmg: float, speed: float, can_retrieve: bool = false, 
 
 func _ready() -> void:
 	contact_monitor = true
-	max_contacts_reported = 4
+	max_contacts_reported = 8
 	body_entered.connect(_on_body_entered)
 	add_to_group("suspicious_items")
 	collision_layer = 8
-	collision_mask = 1 | 4 | 16
+	# world + enemies + bodies + hitboxes
+	collision_mask = 1 | 4 | 16 | 128
+
+
+func _physics_process(_delta: float) -> void:
+	if spent:
+		return
+	# Area HitZones are not RigidBody contacts — probe with a short ray along velocity
+	if linear_velocity.length() < 0.5:
+		return
+	var space := get_world_3d().direct_space_state
+	var from := global_position
+	var to := global_position + linear_velocity.normalized() * 0.6
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collision_mask = 1 | 16 | 128
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	query.exclude = [get_rid()]
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return
+	_resolve_hit(hit.collider, hit.position)
 
 
 func _on_body_entered(body: Node) -> void:
-	if spent:
+	_resolve_hit(body, global_position)
+
+
+func _resolve_hit(body: Object, hit_pos: Vector3) -> void:
+	if spent or body == null:
 		return
 	spent = true
-	NoiseBus.emit_noise(global_position, impact_noise, item_kind)
-	if body.has_method("apply_damage"):
-		body.apply_damage(damage, global_position, _owner)
+	NoiseBus.emit_noise(hit_pos, impact_noise, item_kind)
+	if body is HitZone:
+		var zone := body as HitZone
+		var owner_node := zone.get_damage_owner()
+		if owner_node and owner_node.has_method("apply_hit_zone"):
+			owner_node.apply_hit_zone(zone, damage, hit_pos, _owner)
+		elif owner_node and owner_node.has_method("apply_damage"):
+			owner_node.apply_damage(zone.resolve_damage(damage), hit_pos, _owner, zone.zone_name())
+	elif body.has_method("apply_damage"):
+		body.apply_damage(damage, hit_pos, _owner)
 	elif body.get_parent() and body.get_parent().has_method("apply_damage"):
-		body.get_parent().apply_damage(damage, global_position, _owner)
+		body.get_parent().apply_damage(damage, hit_pos, _owner)
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	freeze = true
+	set_physics_process(false)
 	if not retrievable:
 		await get_tree().create_timer(2.0).timeout
 		queue_free()

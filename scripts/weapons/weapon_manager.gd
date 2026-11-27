@@ -25,8 +25,24 @@ const ARROW_SCENE := preload("res://scenes/items/arrow.tscn")
 const KNIFE_SCENE := preload("res://scenes/items/thrown_knife.tscn")
 
 
+var viewmodel_rig: ViewmodelRig
+
+
 func _ready() -> void:
 	_equip_from_loadout()
+	call_deferred("_bind_viewmodel_rig")
+
+
+func _bind_viewmodel_rig() -> void:
+	var cam := get_node_or_null(camera_path) as Camera3D
+	if cam:
+		viewmodel_rig = cam.get_node_or_null("Viewmodels") as ViewmodelRig
+	_refresh_viewmodel()
+
+
+func _refresh_viewmodel() -> void:
+	if viewmodel_rig:
+		viewmodel_rig.show_weapon(get_active().id)
 
 
 func _equip_from_loadout() -> void:
@@ -117,17 +133,16 @@ func _fire_shot(w: WeaponData) -> void:
 func _hitscan(origin: Vector3, dir: Vector3, w: WeaponData) -> void:
 	var space := get_viewport().get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * w.max_range)
-	query.collision_mask = 1 | 4 | 16 | 32
+	# world + hitboxes + bodies + interactables (prefer HitZones over enemy capsules)
+	query.collision_mask = 1 | 16 | 32 | 128
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
 	query.exclude = [_player_rid()]
 	var hit := space.intersect_ray(query)
 	_spawn_tracer(origin, hit.get("position", origin + dir * minf(w.max_range, 40.0)))
 	if hit.is_empty():
 		return
-	var collider = hit.collider
-	if collider and collider.has_method("apply_damage"):
-		collider.apply_damage(w.damage, hit.position, get_parent())
-	elif collider and collider.get_parent() and collider.get_parent().has_method("apply_damage"):
-		collider.get_parent().apply_damage(w.damage, hit.position, get_parent())
+	_apply_weapon_hit(hit.collider, w.damage, hit.position)
 
 
 func _spawn_projectile(scene: PackedScene, origin: Vector3, dir: Vector3, w: WeaponData) -> void:
@@ -180,7 +195,25 @@ func switch_slot(to_primary: bool) -> void:
 	active_is_primary = to_primary
 	_reloading = false
 	weapon_switched.emit(get_active().display_name)
+	_refresh_viewmodel()
 	_emit_ammo()
+
+
+func _apply_weapon_hit(collider: Object, damage: float, hit_pos: Vector3) -> void:
+	if collider == null:
+		return
+	if collider is HitZone:
+		var zone := collider as HitZone
+		var owner_node := zone.get_damage_owner()
+		if owner_node and owner_node.has_method("apply_hit_zone"):
+			owner_node.apply_hit_zone(zone, damage, hit_pos, get_parent())
+		elif owner_node and owner_node.has_method("apply_damage"):
+			owner_node.apply_damage(zone.resolve_damage(damage), hit_pos, get_parent(), zone.zone_name())
+		return
+	if collider.has_method("apply_damage"):
+		collider.apply_damage(damage, hit_pos, get_parent())
+	elif collider.get_parent() and collider.get_parent().has_method("apply_damage"):
+		collider.get_parent().apply_damage(damage, hit_pos, get_parent())
 
 
 func select_weapon_index(index: int) -> void:
