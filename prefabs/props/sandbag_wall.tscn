@@ -1,0 +1,132 @@
+[gd_scene load_steps=7 format=3]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_55021"]
+specular_mode = 2
+albedo_color = Color(0.58, 0.51, 0.38, 1)
+roughness = 0.92
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_870lg"]
+radius = 0.15
+height = 0.72
+radial_segments = 8
+rings = 3
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_x13t1"]
+specular_mode = 2
+albedo_color = Color(0.52, 0.46, 0.34, 1)
+roughness = 0.92
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_y5rsf"]
+size = Vector3(3.2, 0.84, 0.55)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8tixm"]
+shading_mode = 0
+albedo_color = Color(0.95, 0.75, 0.15, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_ilubc"]
+radius = 0.18
+height = 0.36
+
+[node name="SandbagWall" type="Node3D"]
+
+[node name="@Node3D@35" type="Node3D" parent="."]
+
+[node name="@MeshInstance3D@36" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -1.32, 0.13, 0)
+material_override = SubResource("StandardMaterial3D_55021")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@37" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -0.66, 0.13, 0)
+material_override = SubResource("StandardMaterial3D_x13t1")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@38" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0, 0.13, 0)
+material_override = SubResource("StandardMaterial3D_55021")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@39" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0.66, 0.13, 0)
+material_override = SubResource("StandardMaterial3D_x13t1")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@40" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 1.32, 0.13, 0)
+material_override = SubResource("StandardMaterial3D_55021")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@41" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -1.32, 0.36, 0.04)
+material_override = SubResource("StandardMaterial3D_x13t1")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@42" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -0.66, 0.36, 0.04)
+material_override = SubResource("StandardMaterial3D_55021")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@43" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0, 0.36, 0.04)
+material_override = SubResource("StandardMaterial3D_x13t1")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@44" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0.66, 0.36, 0.04)
+material_override = SubResource("StandardMaterial3D_55021")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@45" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 1.32, 0.36, 0.04)
+material_override = SubResource("StandardMaterial3D_x13t1")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@46" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -0.99, 0.59, 0)
+material_override = SubResource("StandardMaterial3D_55021")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@47" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -0.33, 0.59, 0)
+material_override = SubResource("StandardMaterial3D_x13t1")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@48" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0.33, 0.59, 0)
+material_override = SubResource("StandardMaterial3D_55021")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@MeshInstance3D@49" type="MeshInstance3D" parent="@Node3D@35"]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0.99, 0.59, 0)
+material_override = SubResource("StandardMaterial3D_x13t1")
+gi_mode = 0
+mesh = SubResource("CapsuleMesh_870lg")
+
+[node name="@StaticBody3D@51" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 0)
+collision_mask = 0
+
+[node name="@CollisionShape3D@50" type="CollisionShape3D" parent="@StaticBody3D@51"]
+shape = SubResource("BoxShape3D_y5rsf")
+
+[node name="CoverPoint" type="Marker3D" parent="." groups=["cover_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.3)
+
+[node name="CoverGizmo" type="MeshInstance3D" parent="CoverPoint" groups=["editor_gizmo"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+material_override = SubResource("StandardMaterial3D_8tixm")
+cast_shadow = 0
+mesh = SubResource("SphereMesh_ilubc")

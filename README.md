@@ -160,6 +160,9 @@ Captured from a running Godot 4.3 session (`AUTO_CAPTURE=1`):
 | Graphics — iron sights (High) | ![Guns](docs/screenshots/47_gfx_guns.png) |
 | Guards in cover | ![Cover](docs/screenshots/48_guards_cover.png) |
 | Graphics — mobile Low | ![Low](docs/screenshots/49_gfx_low.png) |
+| Ground textures (day) | ![Ground](docs/screenshots/50_ground_day.png) |
+| Compound from prefabs | ![Compound](docs/screenshots/51_compound_day.png) |
+| Prefab library in the editor | ![Prefabs](docs/screenshots/53_prefabs_folder.png) |
 
 ```bash
 # Automated screenshot capture (needs a display; use OpenGL if Vulkan is unavailable)
@@ -168,7 +171,11 @@ AUTO_CAPTURE=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
 HAYDEN_SNAP2=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
 # Graphics + cover AI (day, sunset, night, forest, guns, cover, mobile Low)
 GFX_SNAP=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
+# Ground textures + prefab compound (HUD included)
+ASSET_SNAP=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
 ```
+
+Map pieces are drag-and-drop scenes under `res://prefabs/`. See [docs/CUSTOM_ASSETS.md](docs/CUSTOM_ASSETS.md).
 
 ## Exporting & GitHub Pages
 

@@ -1,0 +1,431 @@
+[gd_scene load_steps=37 format=3]
+
+[ext_resource type="Shader" path="res://shaders/surface_wear.gdshader" id="1_uihbx"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_23tq8"]
+render_priority = 0
+shader = ExtResource("1_uihbx")
+shader_parameter/albedo = Color(0.34, 0.25, 0.17, 1)
+shader_parameter/wear_col = null
+shader_parameter/roughness = 0.78
+shader_parameter/metallic = 0.04
+shader_parameter/wear = 0.45
+shader_parameter/rim_color = null
+shader_parameter/rim_strength = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_08ee3"]
+size = Vector3(0.28, 6, 0.28)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_urp0s"]
+size = Vector3(0.28, 6, 0.28)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_lpaqw"]
+size = Vector3(0.28, 6, 0.28)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ee24k"]
+size = Vector3(0.28, 6, 0.28)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fjw2h"]
+size = Vector3(0.28, 6, 0.28)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ml3rb"]
+specular_mode = 2
+albedo_color = Color(0.34, 0.25, 0.17, 1)
+metallic = 0.05
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_3lqaj"]
+size = Vector3(3.9, 0.14, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ns8sy"]
+size = Vector3(0.12, 0.14, 3.9)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gikp6"]
+specular_mode = 2
+albedo_color = Color(0.45, 0.34, 0.22, 1)
+metallic = 0.05
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_nfdn7"]
+size = Vector3(4.3, 0.32, 4.3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6i5hv"]
+size = Vector3(4.3, 0.32, 4.3)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gw8x2"]
+render_priority = 0
+shader = ExtResource("1_uihbx")
+shader_parameter/albedo = Color(0.45, 0.34, 0.22, 1)
+shader_parameter/wear_col = null
+shader_parameter/roughness = 0.78
+shader_parameter/metallic = 0.04
+shader_parameter/wear = 0.45
+shader_parameter/rim_color = null
+shader_parameter/rim_strength = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_wfcjg"]
+size = Vector3(4.2, 1.05, 0.22)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_prdxy"]
+size = Vector3(4.2, 1.05, 0.22)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ewd5h"]
+size = Vector3(0.22, 1.05, 4.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_7mygc"]
+size = Vector3(0.22, 1.05, 4.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_kicru"]
+size = Vector3(0.22, 1.05, 4.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_14u6y"]
+size = Vector3(1.5, 1.05, 0.22)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ptj1f"]
+size = Vector3(1.5, 1.05, 0.22)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_a0bs7"]
+size = Vector3(1.5, 1.05, 0.22)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_phx2b"]
+specular_mode = 2
+albedo_color = Color(0.33, 0.36, 0.38, 1)
+metallic = 0.45
+roughness = 0.55
+
+[sub_resource type="BoxMesh" id="BoxMesh_1kry5"]
+size = Vector3(4.8, 0.18, 4.8)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_utme8"]
+specular_mode = 2
+albedo_color = Color(1, 0.88, 0.55, 1)
+roughness = 0.4
+emission_enabled = true
+emission = Color(1, 0.88, 0.55, 1)
+emission_energy_multiplier = 1.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_la35j"]
+size = Vector3(0.42, 0.26, 0.24)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ytiem"]
+render_priority = 0
+shader = ExtResource("1_uihbx")
+shader_parameter/albedo = Color(0.22, 0.24, 0.25, 1)
+shader_parameter/wear_col = null
+shader_parameter/roughness = 0.78
+shader_parameter/metallic = 0.04
+shader_parameter/wear = 0.45
+shader_parameter/rim_color = null
+shader_parameter/rim_strength = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_fqi70"]
+size = Vector3(0.08, 3.4, 0.08)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eh41b"]
+specular_mode = 2
+albedo_color = Color(0.22, 0.24, 0.25, 1)
+metallic = 0.05
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_evq6m"]
+size = Vector3(0.72, 0.1, 0.14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_yga18"]
+size = Vector3(0.72, 0.1, 0.14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_oie67"]
+size = Vector3(0.72, 0.1, 0.14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_un34x"]
+size = Vector3(0.72, 0.1, 0.14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_oa68i"]
+size = Vector3(0.72, 0.1, 0.14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ivetp"]
+size = Vector3(0.72, 0.1, 0.14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5ui5a"]
+size = Vector3(0.72, 0.1, 0.14)
+
+[node name="Watchtower" type="Node3D"]
+
+[node name="@MeshInstance3D@217" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.65, 3, -1.65)
+material_override = SubResource("ShaderMaterial_23tq8")
+gi_mode = 0
+mesh = SubResource("BoxMesh_08ee3")
+
+[node name="@StaticBody3D@219" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.65, 3, -1.65)
+collision_mask = 0
+
+[node name="@CollisionShape3D@218" type="CollisionShape3D" parent="@StaticBody3D@219"]
+shape = SubResource("BoxShape3D_urp0s")
+
+[node name="@MeshInstance3D@220" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.65, 3, 1.65)
+material_override = SubResource("ShaderMaterial_23tq8")
+gi_mode = 0
+mesh = SubResource("BoxMesh_08ee3")
+
+[node name="@StaticBody3D@222" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.65, 3, 1.65)
+collision_mask = 0
+
+[node name="@CollisionShape3D@221" type="CollisionShape3D" parent="@StaticBody3D@222"]
+shape = SubResource("BoxShape3D_lpaqw")
+
+[node name="@MeshInstance3D@223" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.65, 3, -1.65)
+material_override = SubResource("ShaderMaterial_23tq8")
+gi_mode = 0
+mesh = SubResource("BoxMesh_08ee3")
+
+[node name="@StaticBody3D@225" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.65, 3, -1.65)
+collision_mask = 0
+
+[node name="@CollisionShape3D@224" type="CollisionShape3D" parent="@StaticBody3D@225"]
+shape = SubResource("BoxShape3D_ee24k")
+
+[node name="@MeshInstance3D@226" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.65, 3, 1.65)
+material_override = SubResource("ShaderMaterial_23tq8")
+gi_mode = 0
+mesh = SubResource("BoxMesh_08ee3")
+
+[node name="@StaticBody3D@228" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.65, 3, 1.65)
+collision_mask = 0
+
+[node name="@CollisionShape3D@227" type="CollisionShape3D" parent="@StaticBody3D@228"]
+shape = SubResource("BoxShape3D_fjw2h")
+
+[node name="@MeshInstance3D@229" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.743145, -0.669131, 0, 0.669131, 0.743145, 0, 0, 0, 1, 0, 1.65, -1.65)
+material_override = SubResource("StandardMaterial3D_ml3rb")
+gi_mode = 0
+mesh = SubResource("BoxMesh_3lqaj")
+
+[node name="@MeshInstance3D@230" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.743145, 0.669131, 0, -0.669131, 0.743145, 0, 0, 0, 1, 0, 1.65, -1.65)
+material_override = SubResource("StandardMaterial3D_ml3rb")
+gi_mode = 0
+mesh = SubResource("BoxMesh_3lqaj")
+
+[node name="@MeshInstance3D@231" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.743145, -0.669131, 0, 0.669131, 0.743145, 0, 0, 0, 1, 0, 1.65, 1.65)
+material_override = SubResource("StandardMaterial3D_ml3rb")
+gi_mode = 0
+mesh = SubResource("BoxMesh_3lqaj")
+
+[node name="@MeshInstance3D@232" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.743145, 0.669131, 0, -0.669131, 0.743145, 0, 0, 0, 1, 0, 1.65, 1.65)
+material_override = SubResource("StandardMaterial3D_ml3rb")
+gi_mode = 0
+mesh = SubResource("BoxMesh_3lqaj")
+
+[node name="@MeshInstance3D@233" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.743145, -0.669131, 0, 0.669131, 0.743145, -1.65, 1.65, 0)
+material_override = SubResource("StandardMaterial3D_ml3rb")
+gi_mode = 0
+mesh = SubResource("BoxMesh_ns8sy")
+
+[node name="@MeshInstance3D@234" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.743145, 0.669131, 0, -0.669131, 0.743145, -1.65, 1.65, 0)
+material_override = SubResource("StandardMaterial3D_ml3rb")
+gi_mode = 0
+mesh = SubResource("BoxMesh_ns8sy")
+
+[node name="@MeshInstance3D@235" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.743145, -0.669131, 0, 0.669131, 0.743145, 1.65, 1.65, 0)
+material_override = SubResource("StandardMaterial3D_ml3rb")
+gi_mode = 0
+mesh = SubResource("BoxMesh_ns8sy")
+
+[node name="@MeshInstance3D@236" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.743145, 0.669131, 0, -0.669131, 0.743145, 1.65, 1.65, 0)
+material_override = SubResource("StandardMaterial3D_ml3rb")
+gi_mode = 0
+mesh = SubResource("BoxMesh_ns8sy")
+
+[node name="@MeshInstance3D@237" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.3, 0)
+material_override = SubResource("StandardMaterial3D_gikp6")
+gi_mode = 0
+mesh = SubResource("BoxMesh_nfdn7")
+
+[node name="@StaticBody3D@239" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.3, 0)
+collision_mask = 0
+
+[node name="@CollisionShape3D@238" type="CollisionShape3D" parent="@StaticBody3D@239"]
+shape = SubResource("BoxShape3D_6i5hv")
+
+[node name="@MeshInstance3D@240" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.95, -2)
+material_override = SubResource("ShaderMaterial_gw8x2")
+gi_mode = 0
+mesh = SubResource("BoxMesh_wfcjg")
+
+[node name="@StaticBody3D@242" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.95, -2)
+collision_mask = 0
+
+[node name="@CollisionShape3D@241" type="CollisionShape3D" parent="@StaticBody3D@242"]
+shape = SubResource("BoxShape3D_prdxy")
+
+[node name="@MeshInstance3D@243" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 3.95, 0)
+material_override = SubResource("ShaderMaterial_gw8x2")
+gi_mode = 0
+mesh = SubResource("BoxMesh_ewd5h")
+
+[node name="@StaticBody3D@245" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 3.95, 0)
+collision_mask = 0
+
+[node name="@CollisionShape3D@244" type="CollisionShape3D" parent="@StaticBody3D@245"]
+shape = SubResource("BoxShape3D_7mygc")
+
+[node name="@MeshInstance3D@246" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 3.95, 0)
+material_override = SubResource("ShaderMaterial_gw8x2")
+gi_mode = 0
+mesh = SubResource("BoxMesh_ewd5h")
+
+[node name="@StaticBody3D@248" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 3.95, 0)
+collision_mask = 0
+
+[node name="@CollisionShape3D@247" type="CollisionShape3D" parent="@StaticBody3D@248"]
+shape = SubResource("BoxShape3D_kicru")
+
+[node name="@MeshInstance3D@249" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.3, 3.95, 2)
+material_override = SubResource("ShaderMaterial_gw8x2")
+gi_mode = 0
+mesh = SubResource("BoxMesh_14u6y")
+
+[node name="@StaticBody3D@251" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.3, 3.95, 2)
+collision_mask = 0
+
+[node name="@CollisionShape3D@250" type="CollisionShape3D" parent="@StaticBody3D@251"]
+shape = SubResource("BoxShape3D_ptj1f")
+
+[node name="@MeshInstance3D@252" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 3.95, 2)
+material_override = SubResource("ShaderMaterial_gw8x2")
+gi_mode = 0
+mesh = SubResource("BoxMesh_14u6y")
+
+[node name="@StaticBody3D@254" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 3.95, 2)
+collision_mask = 0
+
+[node name="@CollisionShape3D@253" type="CollisionShape3D" parent="@StaticBody3D@254"]
+shape = SubResource("BoxShape3D_a0bs7")
+
+[node name="@MeshInstance3D@255" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.994522, -0.104528, 0, 0.104528, 0.994522, 0, 6.05, 0)
+material_override = SubResource("StandardMaterial3D_phx2b")
+gi_mode = 0
+mesh = SubResource("BoxMesh_1kry5")
+
+[node name="@MeshInstance3D@256" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 5.75, 2.15)
+material_override = SubResource("StandardMaterial3D_utme8")
+gi_mode = 0
+mesh = SubResource("BoxMesh_la35j")
+
+[node name="@MeshInstance3D@257" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.34, 1.7, 2.15)
+material_override = SubResource("ShaderMaterial_ytiem")
+gi_mode = 0
+mesh = SubResource("BoxMesh_fqi70")
+
+[node name="@MeshInstance3D@258" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.34, 1.7, 2.15)
+material_override = SubResource("ShaderMaterial_ytiem")
+gi_mode = 0
+mesh = SubResource("BoxMesh_fqi70")
+
+[node name="@MeshInstance3D@259" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 2.15)
+material_override = SubResource("StandardMaterial3D_eh41b")
+gi_mode = 0
+mesh = SubResource("BoxMesh_evq6m")
+
+[node name="@StaticBody3D@261" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 2.15)
+collision_mask = 0
+
+[node name="@CollisionShape3D@260" type="CollisionShape3D" parent="@StaticBody3D@261"]
+shape = SubResource("BoxShape3D_yga18")
+
+[node name="@MeshInstance3D@262" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.87, 2.15)
+material_override = SubResource("StandardMaterial3D_eh41b")
+gi_mode = 0
+mesh = SubResource("BoxMesh_evq6m")
+
+[node name="@StaticBody3D@264" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.87, 2.15)
+collision_mask = 0
+
+[node name="@CollisionShape3D@263" type="CollisionShape3D" parent="@StaticBody3D@264"]
+shape = SubResource("BoxShape3D_oie67")
+
+[node name="@MeshInstance3D@265" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.39, 2.15)
+material_override = SubResource("StandardMaterial3D_eh41b")
+gi_mode = 0
+mesh = SubResource("BoxMesh_evq6m")
+
+[node name="@StaticBody3D@267" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.39, 2.15)
+collision_mask = 0
+
+[node name="@CollisionShape3D@266" type="CollisionShape3D" parent="@StaticBody3D@267"]
+shape = SubResource("BoxShape3D_un34x")
+
+[node name="@MeshInstance3D@268" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.91, 2.15)
+material_override = SubResource("StandardMaterial3D_eh41b")
+gi_mode = 0
+mesh = SubResource("BoxMesh_evq6m")
+
+[node name="@StaticBody3D@270" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.91, 2.15)
+collision_mask = 0
+
+[node name="@CollisionShape3D@269" type="CollisionShape3D" parent="@StaticBody3D@270"]
+shape = SubResource("BoxShape3D_oa68i")
+
+[node name="@MeshInstance3D@271" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.43, 2.15)
+material_override = SubResource("StandardMaterial3D_eh41b")
+gi_mode = 0
+mesh = SubResource("BoxMesh_evq6m")
+
+[node name="@StaticBody3D@273" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.43, 2.15)
+collision_mask = 0
+
+[node name="@CollisionShape3D@272" type="CollisionShape3D" parent="@StaticBody3D@273"]
+shape = SubResource("BoxShape3D_ivetp")
+
+[node name="@MeshInstance3D@274" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.95, 2.15)
+material_override = SubResource("StandardMaterial3D_eh41b")
+gi_mode = 0
+mesh = SubResource("BoxMesh_evq6m")
+
+[node name="@StaticBody3D@276" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.95, 2.15)
+collision_mask = 0
+
+[node name="@CollisionShape3D@275" type="CollisionShape3D" parent="@StaticBody3D@276"]
+shape = SubResource("BoxShape3D_5ui5a")

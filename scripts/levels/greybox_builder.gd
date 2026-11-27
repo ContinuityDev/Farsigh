@@ -12,8 +12,39 @@ const OutpostCatalog = preload("res://scripts/levels/outpost_catalog.gd")
 var current_outpost_id: String = ""
 ## When true, skip Kenney GLB foliage / barriers (mobile web GPU relief).
 var lightweight_props: bool = false
+## Baker sets this while authoring a prefab so the raw mesh is saved, not an instance.
+var force_raw: bool = false
 var _leaf_tex: ImageTexture = null
 var _leaf_mat_cache: Dictionary = {}  # Color html -> StandardMaterial3D
+var _path_strips: Array = []
+
+const PREFAB_CRATE := "res://prefabs/props/crate.tscn"
+const PREFAB_SANDBAG := "res://prefabs/props/sandbag_wall.tscn"
+const PREFAB_BARREL := "res://prefabs/props/barrel.tscn"
+const PREFAB_BARREL_FUEL := "res://prefabs/props/barrel_fuel.tscn"
+const PREFAB_TRUCK := "res://prefabs/props/pickup_truck.tscn"
+const PREFAB_TRUCK_CANOPY := "res://prefabs/props/pickup_truck_canopy.tscn"
+const PREFAB_BOULDER := "res://prefabs/props/boulder.tscn"
+const PREFAB_BARRIER := "res://prefabs/props/jersey_barrier.tscn"
+const PREFAB_PINE := "res://prefabs/foliage/pine_tree.tscn"
+const PREFAB_BUSH := "res://prefabs/foliage/bush_cluster.tscn"
+const PREFAB_FENCE := "res://prefabs/buildings/fence_segment.tscn"
+const PREFAB_GATE := "res://prefabs/buildings/gate_arch.tscn"
+const PREFAB_WATCHTOWER := "res://prefabs/buildings/watchtower.tscn"
+const PREFAB_SHACK_A := "res://prefabs/buildings/shack_barracks.tscn"
+const PREFAB_SHACK_B := "res://prefabs/buildings/shack_armory.tscn"
+const PREFAB_HQ := "res://prefabs/buildings/hq_multistorey.tscn"
+const PREFAB_GARAGE := "res://prefabs/buildings/garage.tscn"
+const PREFAB_FLOOD := "res://prefabs/buildings/floodlight.tscn"
+const PREFAB_LIGHT_POLE := "res://prefabs/buildings/light_pole.tscn"
+const PREFAB_ENTRANCE := "res://prefabs/gameplay/entrance.tscn"
+const PREFAB_BOAT := "res://prefabs/props/patrol_boat.tscn"
+const PREFAB_HAY := "res://prefabs/props/hay_bale.tscn"
+const PREFAB_LOGS := "res://prefabs/props/log_pile.tscn"
+const PREFAB_SILO := "res://prefabs/buildings/grain_silo.tscn"
+const PREFAB_WINDMILL := "res://prefabs/buildings/windmill.tscn"
+const PREFAB_RADAR := "res://prefabs/buildings/radar_dish.tscn"
+const PREFAB_RANCH_FENCE := "res://prefabs/buildings/ranch_fence.tscn"
 
 
 func _ready() -> void:
@@ -35,6 +66,8 @@ func build_outpost(outpost_id: String) -> void:
 	current_outpost_id = outpost_id
 	for c in get_children():
 		c.queue_free()
+	if _load_compound_scene(outpost_id):
+		return
 	_build_sync(outpost_id)
 
 
@@ -44,7 +77,44 @@ func _layout_for(outpost_id: String) -> String:
 	return String(d.get("layout", outpost_id))
 
 
+func _load_compound_scene(outpost_id: String) -> bool:
+	## Authored compound (prefab instances). Skipped while the baker is writing it.
+	if force_raw or OS.get_environment("BAKE_COMPOUNDS") == "1":
+		return false
+	var path := "res://scenes/compounds/%s.tscn" % outpost_id
+	if not ResourceLoader.exists(path):
+		return false
+	var packed := load(path) as PackedScene
+	if packed == null:
+		return false
+	var inst := packed.instantiate()
+	inst.name = "Compound"
+	add_child(inst)
+	DropIn.apply(inst)
+	if GraphicsQuality:
+		GraphicsQuality.refresh_group_materials()
+	print("COMPOUND_SCENE ", path)
+	return true
+
+
+func _try_place(scene_path: String, pos: Vector3, rot_y: float = 0.0, scl: Vector3 = Vector3.ONE) -> bool:
+	if force_raw or not ResourceLoader.exists(scene_path):
+		return false
+	var packed := load(scene_path) as PackedScene
+	if packed == null:
+		return false
+	var inst := packed.instantiate() as Node3D
+	if inst == null:
+		return false
+	inst.position = pos
+	inst.rotation_degrees.y = rot_y
+	inst.scale = scl
+	add_child(inst)
+	return true
+
+
 func _build_sync(outpost_id: String) -> void:
+	_path_strips.clear()
 	match _layout_for(outpost_id):
 		"ranch_redbarn":
 			_build_ranch()
@@ -60,16 +130,27 @@ func _build_sync(outpost_id: String) -> void:
 	_stage_overlook()
 	_stage_compound_lights()
 	_stage_treeline_border()
+	_stage_ground_tufts()
 
 
 func build_outpost_async(outpost_id: String, on_stage: Callable = Callable()) -> PackedStringArray:
 	## Chunked build with frame yields so mobile browsers keep WebGL alive.
 	var errors: PackedStringArray = []
 	current_outpost_id = outpost_id
+	_path_strips.clear()
 	for c in get_children():
 		c.queue_free()
 	# Let frees apply before we start allocating
 	await get_tree().process_frame
+	if _load_compound_scene(outpost_id):
+		if lightweight_props:
+			if on_stage.is_valid():
+				on_stage.call("Optimizing meshes…", 0.95)
+			await _consolidate_static_meshes()
+		if on_stage.is_valid():
+			on_stage.call("Geometry ready", 1.0)
+		print("GREYBOX_READY id=", outpost_id, " children=", get_child_count(), " scene=1")
+		return errors
 	await get_tree().process_frame
 	var stages: Array = _stage_plan(outpost_id)
 	var i := 0
@@ -144,6 +225,8 @@ func _collect_bakeable_meshes(node: Node, parent_xf: Transform3D, by_mat: Dictio
 		# Keep alpha-cut leafy bushes / wind foliage unbaked (scissor + wind need live meshes)
 		var cname := String(c.name)
 		if cname.begins_with("BushCluster") or cname.begins_with("HideBush") or c.is_in_group("foliage_wind"):
+			continue
+		if c.is_in_group("editor_gizmo") or c.is_in_group("guard_spawn") or c.is_in_group("patrol_point") or c.is_in_group("entrances"):
 			continue
 		if c is StaticBody3D:
 			# Keep colliders; still recurse in case meshes are nested oddly
@@ -238,7 +321,7 @@ func _build_compound_alpha() -> void:
 	_buildings()
 	_courtyard_cover()
 	_vehicles()
-	_watchtower_at(Vector3(-18.0, 0, -18.0))
+	_watchtower_at(Vector3(-15.25, 0, -15.25))
 	_approach_cover()
 	_trees_and_foliage()
 
@@ -303,6 +386,8 @@ func _perimeter() -> void:
 
 
 func _gate_arch(center: Vector3, post_col: Color, sign_col: Color) -> void:
+	if _try_place(PREFAB_GATE, center):
+		return
 	_box(center + Vector3(-4.0, 2.3, 0), Vector3(0.4, 4.6, 0.4), post_col)
 	_box(center + Vector3(4.0, 2.3, 0), Vector3(0.4, 4.6, 0.4), post_col)
 	_box(center + Vector3(0.0, 4.45, 0), Vector3(8.6, 0.35, 0.45), sign_col, false)
@@ -312,19 +397,28 @@ func _gate_arch(center: Vector3, post_col: Color, sign_col: Color) -> void:
 
 
 func _fence_segment(base_center: Vector3, size: Vector3, wall_col: Color, post_col: Color) -> void:
+	# Prefab is 4m along X, 3m tall, 0.45m thick. Scale (and yaw) to the requested run.
+	var along_x := size.x >= size.z
+	var scl := Vector3(size.x / 4.0, size.y / 3.0, size.z / 0.45) if along_x else Vector3(size.z / 4.0, size.y / 3.0, size.x / 0.45)
+	if _try_place(PREFAB_FENCE, base_center, 0.0 if along_x else 90.0, scl):
+		return
 	_box(base_center + Vector3(0, size.y * 0.5, 0), size, wall_col, true)
 	var top_size := Vector3(size.x, 0.18, size.z + 0.12) if size.x >= size.z else Vector3(size.x + 0.12, 0.18, size.z)
 	_box(base_center + Vector3(0, size.y + 0.08, 0), top_size, post_col, false)
 
 
 func _buildings() -> void:
-	_hollow_building(Vector3(-11, 0, -4), Vector3(9, 3.6, 7), Color(0.44, 0.42, 0.38), Color(0.30, 0.25, 0.20), "S")
-	_hollow_building(Vector3(12, 0, -6), Vector3(7, 3.4, 9), Color(0.42, 0.39, 0.35), Color(0.28, 0.30, 0.28), "W")
+	if not _try_place(PREFAB_SHACK_A, Vector3(-11, 0, -4)):
+		_hollow_building(Vector3(-11, 0, -4), Vector3(9, 3.6, 7), Color(0.44, 0.42, 0.38), Color(0.30, 0.25, 0.20), "S")
+	if not _try_place(PREFAB_SHACK_B, Vector3(12, 0, -6)):
+		_hollow_building(Vector3(12, 0, -6), Vector3(7, 3.4, 9), Color(0.42, 0.39, 0.35), Color(0.28, 0.30, 0.28), "W")
 	# 2-storey Multi-Room HQ + Reachable Rooftop with Radio Mast
-	BuildingKit.build_multi_storey(self, Vector3(1, 0, -14), 11.0, 7.6, 3.3, Color(0.38, 0.41, 0.43), Color(0.26, 0.24, 0.22), "S", true, "E")
-	_radio_mast(Vector3(4.2, 6.75, -14.5))
+	if not _try_place(PREFAB_HQ, Vector3(1, 0, -14)):
+		BuildingKit.build_multi_storey(self, Vector3(1, 0, -14), 11.0, 7.6, 3.3, Color(0.38, 0.41, 0.43), Color(0.26, 0.24, 0.22), "S", true, "E")
+		_radio_mast(Vector3(4.2, 6.75, -14.5))
 	# Drive-in Garage in southeast yard
-	BuildingKit.build_garage(self, Vector3(10, 0, 12), 8.6, 6.0, 3.3, Color(0.40, 0.38, 0.34), Color(0.32, 0.22, 0.18), "N")
+	if not _try_place(PREFAB_GARAGE, Vector3(10, 0, 12)):
+		BuildingKit.build_garage(self, Vector3(10, 0, 12), 8.6, 6.0, 3.3, Color(0.40, 0.38, 0.34), Color(0.32, 0.22, 0.18), "N")
 	_crate(Vector3(-11, 0, -4), 1.15, 0.0)
 	_crate(Vector3(12, 0, -6), 1.15, 90.0)
 
@@ -613,7 +707,7 @@ func _river_terrain() -> void:
 		water_mat.metallic = 0.25
 		water_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		water_mi.material_override = water_mat
-	water_mi.add_to_group("water_fx")
+	water_mi.add_to_group("water_fx", true)
 	water_mi.position = Vector3(0, -0.45, -48)
 	add_child(water_mi)
 	_add_box_collider(Vector3(0, -1.2, -48), Vector3(175, 0.5, 85), 0.0)
@@ -828,6 +922,8 @@ func _radio_mast(mast_base: Vector3) -> void:
 
 
 func _radar_dish(base_pos: Vector3, yaw_deg: float) -> void:
+	if _try_place(PREFAB_RADAR, base_pos, yaw_deg):
+		return
 	var h := Node3D.new()
 	h.position = base_pos
 	h.rotation_degrees.y = yaw_deg
@@ -838,6 +934,8 @@ func _radar_dish(base_pos: Vector3, yaw_deg: float) -> void:
 
 
 func _grain_silo(base_pos: Vector3, radius: float, height: float) -> void:
+	if _try_place(PREFAB_SILO, base_pos, 0.0, Vector3(radius / 2.5, height / 8.5, radius / 2.5)):
+		return
 	var galv := Color(0.68, 0.70, 0.72)
 	var seam := Color(0.50, 0.52, 0.54)
 	ProcMesh.add_part(self, ProcMesh.cylinder_mesh(radius, height, galv, 0.45, 0.55, 14), base_pos + Vector3(0, height * 0.5, 0))
@@ -849,6 +947,8 @@ func _grain_silo(base_pos: Vector3, radius: float, height: float) -> void:
 
 
 func _windmill(base_pos: Vector3) -> void:
+	if _try_place(PREFAB_WINDMILL, base_pos):
+		return
 	var steel := Color(0.45, 0.46, 0.44)
 	var vane := Color(0.68, 0.22, 0.16)
 	for sx in [-0.7, 0.7]:
@@ -861,6 +961,8 @@ func _windmill(base_pos: Vector3) -> void:
 
 
 func _hay_bale(base_pos: Vector3, rot_y_deg: float) -> void:
+	if _try_place(PREFAB_HAY, base_pos, rot_y_deg):
+		return
 	var hay := Color(0.76, 0.62, 0.24)
 	var twine := Color(0.38, 0.26, 0.14)
 	var h := Node3D.new()
@@ -876,6 +978,18 @@ func _hay_bale(base_pos: Vector3, rot_y_deg: float) -> void:
 func _ranch_fence(base_center: Vector3, size: Vector3, color: Color) -> void:
 	var horiz := size.x >= size.z
 	var length := size.x if horiz else size.z
+	# Prefab is a 4m run along X, 1.35m tall, 0.3m thick. Tile it so posts stay a sane size.
+	if not force_raw and ResourceLoader.exists(PREFAB_RANCH_FENCE):
+		var n := maxi(1, int(round(length / 4.0)))
+		var step := length / float(n)
+		var thick := size.z if horiz else size.x
+		var scl := Vector3(step / 4.0, size.y / 1.35, thick / 0.3)
+		var yaw := 0.0 if horiz else 90.0
+		for i in n:
+			var t := -length * 0.5 + (float(i) + 0.5) * step
+			var pos := base_center + (Vector3(t, 0, 0) if horiz else Vector3(0, 0, t))
+			_try_place(PREFAB_RANCH_FENCE, pos, yaw, scl)
+		return
 	var posts := maxi(2, int(length / 3.2) + 1)
 	for i in range(posts):
 		var t := -length * 0.5 + (float(i) / float(posts - 1)) * length
@@ -888,6 +1002,8 @@ func _ranch_fence(base_center: Vector3, size: Vector3, color: Color) -> void:
 
 
 func _log_pile(base_pos: Vector3, rot_y_deg: float) -> void:
+	if _try_place(PREFAB_LOGS, base_pos, rot_y_deg):
+		return
 	var bark := Color(0.35, 0.24, 0.15)
 	var cut := Color(0.68, 0.54, 0.34)
 	var h := Node3D.new()
@@ -908,6 +1024,8 @@ func _log_pile(base_pos: Vector3, rot_y_deg: float) -> void:
 
 
 func _patrol_boat(base_pos: Vector3, rot_y_deg: float) -> void:
+	if _try_place(PREFAB_BOAT, base_pos, rot_y_deg):
+		return
 	var hull := Color(0.24, 0.30, 0.34)
 	var deck := Color(0.55, 0.56, 0.54)
 	var cabin := Color(0.76, 0.75, 0.72)
@@ -967,6 +1085,8 @@ func _wall_with_door(origin: Vector3, offset: Vector3, size: Vector3, has_door: 
 
 
 func _crate(base_pos: Vector3, size: float, rot_y_deg: float) -> void:
+	if _try_place(PREFAB_CRATE, base_pos, rot_y_deg, Vector3.ONE * size):
+		return
 	var wood := Color(0.50, 0.37, 0.22)
 	var trim := Color(0.36, 0.25, 0.14)
 	var iron := Color(0.18, 0.19, 0.20)
@@ -991,6 +1111,8 @@ func _crate(base_pos: Vector3, size: float, rot_y_deg: float) -> void:
 
 
 func _barrel(base_pos: Vector3, is_red_fuel: bool) -> void:
+	if _try_place(PREFAB_BARREL_FUEL if is_red_fuel else PREFAB_BARREL, base_pos):
+		return
 	var body_col := Color(0.68, 0.16, 0.12) if is_red_fuel else Color(0.28, 0.34, 0.24)
 	var rib_col := body_col.darkened(0.22)
 	var stripe_col := Color(0.92, 0.74, 0.18) if is_red_fuel else Color(0.38, 0.36, 0.30)
@@ -1008,6 +1130,9 @@ func _barrel(base_pos: Vector3, is_red_fuel: bool) -> void:
 
 
 func _sandbag_wall(base_pos: Vector3, length: float, rot_y_deg: float) -> void:
+	# Prefab is 3.2m long along X.
+	if _try_place(PREFAB_SANDBAG, base_pos, rot_y_deg, Vector3(length / 3.2, 1.0, 1.0)):
+		return
 	var bag_col := Color(0.58, 0.51, 0.38)
 	var bag_alt := Color(0.52, 0.46, 0.34)
 	var holder := Node3D.new()
@@ -1032,6 +1157,8 @@ func _sandbag_wall(base_pos: Vector3, length: float, rot_y_deg: float) -> void:
 
 
 func _pickup_truck(base_pos: Vector3, rot_y_deg: float, paint: Color, has_canopy: bool) -> void:
+	if _try_place(PREFAB_TRUCK_CANOPY if has_canopy else PREFAB_TRUCK, base_pos, rot_y_deg):
+		return
 	var dark := Color(0.14, 0.15, 0.16)
 	var tire := Color(0.09, 0.09, 0.10)
 	var rim := Color(0.55, 0.57, 0.58)
@@ -1083,6 +1210,8 @@ func _pickup_truck(base_pos: Vector3, rot_y_deg: float, paint: Color, has_canopy
 
 
 func _watchtower_at(c: Vector3) -> void:
+	if _try_place(PREFAB_WATCHTOWER, c):
+		return
 	var timber := Color(0.34, 0.25, 0.17)
 	var plank := Color(0.45, 0.34, 0.22)
 	var tin := Color(0.33, 0.36, 0.38)
@@ -1119,6 +1248,8 @@ func _watchtower_at(c: Vector3) -> void:
 
 
 func _jersey_barrier(pos: Vector3, rot_y_deg: float) -> void:
+	if _try_place(PREFAB_BARRIER, pos, rot_y_deg):
+		return
 	# Skip Kenney GLB on mobile web — procedural barrier keeps the silhouette
 	# without texture decode / extra imported materials.
 	if lightweight_props:
@@ -1140,6 +1271,8 @@ func _jersey_barrier(pos: Vector3, rot_y_deg: float) -> void:
 
 
 func _boulder(pos: Vector3, radius: float) -> void:
+	if _try_place(PREFAB_BOULDER, pos, 0.0, Vector3.ONE * (radius / 0.85)):
+		return
 	var rock_col := Color(0.36, 0.35, 0.32)
 	ProcMesh.add_part(self, ProcMesh.sphere_mesh(radius, rock_col, 0.92, 0.02), pos, Vector3(12, 35, 8))
 	_add_box_collider(pos, Vector3(radius * 1.7, radius * 1.15, radius * 1.6), 0.0)
@@ -1150,11 +1283,26 @@ func _mark_cover(pos: Vector3) -> void:
 	var m := Marker3D.new()
 	m.name = "CoverPoint"
 	m.position = pos
-	m.add_to_group("cover_points")
 	add_child(m)
+	m.add_to_group("cover_points", true)
+	var gizmo := MeshInstance3D.new()
+	gizmo.name = "CoverGizmo"
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.18
+	sphere.height = 0.36
+	gizmo.mesh = sphere
+	gizmo.position = Vector3(0, 0.7, 0)
+	gizmo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	gizmo.add_to_group("editor_gizmo", true)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.95, 0.75, 0.15)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	gizmo.material_override = mat
+	m.add_child(gizmo)
 
 
 func _entry_cover(a: Vector3, b: Vector3) -> void:
+	_try_place(PREFAB_ENTRANCE, (a + b) * 0.5)
 	## Bush + tall-grass cover strung along an entrance approach (A→B).
 	var mid := (a + b) * 0.5
 	_bush_cluster(mid, 5 if lightweight_props else 7, 2.4)
@@ -1165,6 +1313,9 @@ func _entry_cover(a: Vector3, b: Vector3) -> void:
 
 
 func _bush_cluster(center: Vector3, count: int = 5, spread: float = 2.2) -> void:
+	var bush_scale := clampf(float(count) / 5.0, 0.75, 1.35)
+	if _try_place(PREFAB_BUSH, center, 0.0, Vector3.ONE * bush_scale):
+		return
 	## Natural group of 3–8 leafy bushes + grass around the base + one hide zone.
 	count = clampi(count, 3, 8)
 	var root := Node3D.new()
@@ -1264,7 +1415,7 @@ func _leafy_bush(parent: Node3D, local_pos: Vector3, scale: float, yaw_deg: floa
 	# Small dark AO core — cards carry the silhouette
 	var core := ProcMesh.sphere_mesh(0.16, dark, 0.98, 0.0)
 	core.scale = Vector3(1.0, 0.75, 1.0)
-	core.add_to_group("foliage_wind")
+	core.add_to_group("foliage_wind", true)
 	ProcMesh.add_part(bush, core, Vector3(0, 0.38, 0))
 	var card_n := 2 if lightweight_props else 3
 	for i in range(card_n):
@@ -1278,7 +1429,7 @@ func _leafy_bush(parent: Node3D, local_pos: Vector3, scale: float, yaw_deg: floa
 		mi.mesh = plane
 		mi.material_override = _leaf_card_material(col)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.add_to_group("foliage_wind")
+		mi.add_to_group("foliage_wind", true)
 		mi.position = Vector3(float(i % 2) * 0.04 - 0.02, 0.58 + float(i) * 0.03, float(i) * 0.02)
 		mi.rotation_degrees = Vector3(float(i % 2) * 6.0 - 3.0, float(i) * (90.0 if card_n == 2 else 60.0) + float(i) * 7.0, float(i % 2) * 10.0 - 5.0)
 		bush.add_child(mi)
@@ -1291,7 +1442,7 @@ func _leafy_bush(parent: Node3D, local_pos: Vector3, scale: float, yaw_deg: floa
 		om.mesh = outer
 		om.material_override = _leaf_card_material(lite.darkened(0.05))
 		om.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		om.add_to_group("foliage_wind")
+		om.add_to_group("foliage_wind", true)
 		om.position = Vector3(0.12, 0.5, 0.06)
 		om.rotation_degrees = Vector3(8, 28, -8)
 		bush.add_child(om)
@@ -1314,7 +1465,7 @@ func _scatter_grass_at(parent: Node3D, _world_center: Vector3, count: int, radiu
 		mm.material_override = GraphicsQuality.make_foliage_material(tuft_col)
 	else:
 		mm.material_override = ProcMesh.mat(tuft_col, 0.92, 0.0)
-	mm.add_to_group("foliage_wind")
+	mm.add_to_group("foliage_wind", true)
 	mm.multimesh = multimesh
 	mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mm)
@@ -1347,7 +1498,7 @@ func _scatter_grass(grass_spots: Array) -> void:
 		mm.material_override = GraphicsQuality.make_foliage_material(tuft_col)
 	else:
 		mm.material_override = ProcMesh.mat(tuft_col, 0.92, 0.0)
-	mm.add_to_group("foliage_wind")
+	mm.add_to_group("foliage_wind", true)
 	mm.multimesh = multimesh
 	mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mm)
@@ -1368,6 +1519,8 @@ func _scatter_grass(grass_spots: Array) -> void:
 
 
 func _pine_tree(pos: Vector3, scale_h: float) -> void:
+	if pos.length() <= 72.0 and _try_place(PREFAB_PINE, pos, 0.0, Vector3.ONE * scale_h):
+		return
 	# Outer thicket only — the playable treeline stays real cones
 	if pos.length() > 72.0 and GraphicsQuality and GraphicsQuality.level >= GraphicsQuality.LEVEL_MED:
 		_pine_impostor(pos, scale_h)
@@ -1389,7 +1542,7 @@ func _pine_tree(pos: Vector3, scale_h: float) -> void:
 	for leaf in leaves:
 		if GraphicsQuality:
 			leaf.material_override = GraphicsQuality.make_foliage_material(leaf_dark)
-		leaf.add_to_group("foliage_wind")
+		leaf.add_to_group("foliage_wind", true)
 
 
 func _pine_impostor(pos: Vector3, scale_h: float) -> void:
@@ -1403,7 +1556,7 @@ func _pine_impostor(pos: Vector3, scale_h: float) -> void:
 		var card := ProcMesh.pine_card_mesh(leaf)
 		if GraphicsQuality:
 			card.material_override = GraphicsQuality.make_foliage_material(leaf)
-		card.add_to_group("foliage_wind")
+		card.add_to_group("foliage_wind", true)
 		ProcMesh.add_part(t, card, Vector3(0, 0.15, 0), Vector3(0, yaw, 0))
 
 func _add_box_collider(pos: Vector3, size: Vector3, rot_y_deg: float) -> void:
@@ -1429,11 +1582,64 @@ func _box(pos: Vector3, size: Vector3, color: Color, collide: bool = true) -> vo
 			mi.material_override = GraphicsQuality.make_terrain_material(0.22)
 		elif size.y <= 0.08 and (size.x >= 8.0 or size.z >= 8.0):
 			mi.material_override = GraphicsQuality.make_terrain_material(0.85)
+			_path_strips.append({"pos": pos, "size": size})
 		elif size.y > 0.4 and size.x < 30.0 and GraphicsQuality.level >= GraphicsQuality.LEVEL_HIGH:
 			mi.material_override = GraphicsQuality.make_surface_material(color, 0.78, 0.04)
 	add_child(mi)
 	if collide:
 		_add_box_collider(pos, size, 0.0)
+
+
+func _stage_ground_tufts() -> void:
+	## Short grass cards along dirt-path edges so the splat has a silhouette.
+	if _path_strips.is_empty():
+		return
+	var tufts: Array[Transform3D] = []
+	var cap := 36 if lightweight_props else 90
+	for strip in _path_strips:
+		var pos: Vector3 = strip["pos"]
+		var size: Vector3 = strip["size"]
+		var along_x := size.x >= size.z
+		var length := size.x if along_x else size.z
+		var step := 2.4 if lightweight_props else 1.6
+		var n := maxi(1, int(length / step))
+		for i in range(n):
+			if tufts.size() >= cap:
+				break
+			var t := (float(i) + 0.5) / float(n) - 0.5
+			var edge := (size.z if along_x else size.x) * 0.5 + 0.2
+			for side in [-1.0, 1.0]:
+				if tufts.size() >= cap:
+					break
+				var p := pos
+				if along_x:
+					p += Vector3(t * size.x, size.y * 0.5, side * edge)
+				else:
+					p += Vector3(side * edge, size.y * 0.5, t * size.z)
+				var xf := Transform3D()
+				var h := 0.7 + float((i + int(side)) % 3) * 0.18
+				xf = xf.scaled(Vector3(1.0, h, 1.0))
+				xf = xf.rotated(Vector3.UP, float(i) * 0.7 + side)
+				xf.origin = p + Vector3(0, 0.22 * h, 0)
+				tufts.append(xf)
+	if tufts.is_empty():
+		return
+	var mm := MultiMeshInstance3D.new()
+	mm.name = "PathEdgeGrass"
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	var blade := BoxMesh.new()
+	blade.size = Vector3(0.08, 0.46, 0.16)
+	multimesh.mesh = blade
+	multimesh.instance_count = tufts.size()
+	if GraphicsQuality:
+		mm.material_override = GraphicsQuality.make_foliage_material(Color(0.22, 0.40, 0.16))
+	mm.add_to_group("foliage_wind", true)
+	mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mm.multimesh = multimesh
+	add_child(mm)
+	for i in range(tufts.size()):
+		multimesh.set_instance_transform(i, tufts[i])
 
 
 # ============================================================================
@@ -1543,6 +1749,8 @@ func _stage_compound_lights() -> void:
 
 
 func _yard_light_pole(base: Vector3) -> void:
+	if _try_place(PREFAB_LIGHT_POLE, base):
+		return
 	var steel := Color(0.22, 0.23, 0.24)
 	_box(base + Vector3(0, 2.4, 0), Vector3(0.14, 4.8, 0.14), steel, true)
 	_box(base + Vector3(0, 4.85, 0.35), Vector3(0.55, 0.12, 0.55), steel, false)
@@ -1550,6 +1758,8 @@ func _yard_light_pole(base: Vector3) -> void:
 
 
 func _compound_floodlight(pos: Vector3) -> void:
+	if _try_place(PREFAB_FLOOD, pos):
+		return
 	var housing := ProcMesh.box_mesh(Vector3(0.42, 0.22, 0.28), Color(0.85, 0.82, 0.7))
 	housing.material_override = ProcMesh.emissive(Color(1.0, 0.92, 0.7), 1.2)
 	ProcMesh.add_part(self, housing, pos)
@@ -1561,7 +1771,7 @@ func _compound_floodlight(pos: Vector3) -> void:
 	light.omni_range = 14.0
 	light.shadow_enabled = false
 	light.visible = false  # DayNightCycle turns on at night
-	light.add_to_group("compound_lights")
+	light.add_to_group("compound_lights", true)
 	add_child(light)
 	# Spot cone downward for a bit of direction
 	var spot := SpotLight3D.new()
@@ -1573,7 +1783,7 @@ func _compound_floodlight(pos: Vector3) -> void:
 	spot.spot_angle = 48.0
 	spot.shadow_enabled = false
 	spot.visible = false
-	spot.add_to_group("compound_lights")
+	spot.add_to_group("compound_lights", true)
 	add_child(spot)
 
 

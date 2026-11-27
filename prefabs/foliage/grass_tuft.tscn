@@ -1,0 +1,100 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Shader" path="res://shaders/foliage_wind.gdshader" id="1_5kyb7"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pqsig"]
+render_priority = 0
+shader = ExtResource("1_5kyb7")
+shader_parameter/albedo = Color(0.2, 0.4, 0.16, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_gc2qr"]
+size = Vector3(0.06, 0.42, 0.14)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_s5ile"]
+render_priority = 0
+shader = ExtResource("1_5kyb7")
+shader_parameter/albedo = Color(0.26, 0.46, 0.18, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_b6c7m"]
+size = Vector3(0.06, 0.5, 0.14)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4oxoh"]
+render_priority = 0
+shader = ExtResource("1_5kyb7")
+shader_parameter/albedo = Color(0.16, 0.34, 0.13, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_lwk1n"]
+size = Vector3(0.06, 0.58, 0.14)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_62ejm"]
+render_priority = 0
+shader = ExtResource("1_5kyb7")
+shader_parameter/albedo = Color(0.2, 0.4, 0.16, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_yqbxd"]
+size = Vector3(0.06, 0.42, 0.14)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xc82s"]
+render_priority = 0
+shader = ExtResource("1_5kyb7")
+shader_parameter/albedo = Color(0.26, 0.46, 0.18, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_p6cgg"]
+size = Vector3(0.06, 0.5, 0.14)
+
+[node name="GrassTuft" type="Node3D"]
+
+[node name="@MeshInstance3D@787" type="MeshInstance3D" parent="." groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.21, 0)
+material_override = SubResource("ShaderMaterial_pqsig")
+cast_shadow = 0
+mesh = SubResource("BoxMesh_gc2qr")
+
+[node name="@MeshInstance3D@788" type="MeshInstance3D" parent="." groups=["foliage_wind"]]
+transform = Transform3D(0.809017, 0, 0.587785, 0, 1, 0, -0.587785, 0, 0.809017, 0.0320999, 0.25, 0.115627)
+material_override = SubResource("ShaderMaterial_s5ile")
+cast_shadow = 0
+mesh = SubResource("BoxMesh_b6c7m")
+
+[node name="@MeshInstance3D@789" type="MeshInstance3D" parent="." groups=["foliage_wind"]]
+transform = Transform3D(0.309017, 0, 0.951057, 0, 1, 0, -0.951057, 0, 0.309017, -0.102827, 0.29, 0.0618602)
+material_override = SubResource("ShaderMaterial_4oxoh")
+cast_shadow = 0
+mesh = SubResource("BoxMesh_lwk1n")
+
+[node name="@MeshInstance3D@790" type="MeshInstance3D" parent="." groups=["foliage_wind"]]
+transform = Transform3D(-0.309017, 0, 0.951057, 0, 1, 0, -0.951057, 0, -0.309017, -0.0871119, 0.21, -0.0825319)
+material_override = SubResource("ShaderMaterial_62ejm")
+cast_shadow = 0
+mesh = SubResource("BoxMesh_yqbxd")
+
+[node name="@MeshInstance3D@791" type="MeshInstance3D" parent="." groups=["foliage_wind"]]
+transform = Transform3D(-0.809017, 0, 0.587785, 0, 1, 0, -0.587785, 0, -0.809017, 0.056222, 0.25, -0.106015)
+material_override = SubResource("ShaderMaterial_xc82s")
+cast_shadow = 0
+mesh = SubResource("BoxMesh_p6cgg")

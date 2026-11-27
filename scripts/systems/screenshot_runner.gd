@@ -5,6 +5,11 @@ extends Node
 
 
 func _ready() -> void:
+	if OS.get_environment("BAKE_COMPOUNDS") == "1":
+		await get_tree().process_frame
+		load("res://scripts/tools/bake_prefabs.gd").bake(get_tree())
+		get_tree().quit()
+		return
 	if OS.get_environment("WHEEL_SNAP") == "1":
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_wheels_only()
@@ -20,6 +25,10 @@ func _ready() -> void:
 	if OS.get_environment("GFX_SNAP") == "1":
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_graphics_and_ai()
+		return
+	if OS.get_environment("ASSET_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_assets()
 		return
 	if OS.get_environment("AUTO_CAPTURE") != "1":
 		return
@@ -649,6 +658,42 @@ func _note_fps(tag: String) -> void:
 	var fps := Performance.get_monitor(Performance.TIME_FPS)
 	var frame_ms := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
 	print("FPS_NOTE %s fps=%.1f process_ms=%.2f quality=%s" % [tag, fps, frame_ms, GraphicsQuality.level_name() if GraphicsQuality else "?"])
+
+
+func _snap_assets() -> void:
+	await get_tree().process_frame
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(2)
+	GameState.day_start_hour = 14.0
+	GameState.set_full_loadout(GameState.WeaponId.RIFLE, GameState.WeaponId.PISTOL, GameState.WeaponId.SHOTGUN, GameState.WeaponId.FRAG, GameState.WeaponId.MACHETE)
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.6).timeout
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 1.35, 16.0)
+		player.look_at(Vector3(0.0, 0.15, 6.0), Vector3.UP)
+	await get_tree().create_timer(0.45).timeout
+	_note_fps("ground_day")
+	await _snap("50_ground_day")
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 8.0, 42.0)
+		player.look_at(Vector3(0.0, 2.0, 0.0), Vector3.UP)
+	await get_tree().create_timer(0.35).timeout
+	_note_fps("compound_day")
+	await _snap("51_compound_day")
+	var spawns := 0
+	var covers := 0
+	for n in get_tree().get_nodes_in_group("guard_spawn"):
+		spawns += 1
+	for n in get_tree().get_nodes_in_group("cover_points"):
+		covers += 1
+	print("ASSET_NOTE spawns=", spawns, " covers=", covers, " guards=", get_tree().get_nodes_in_group("guards").size())
+	print("ASSET_SNAP complete")
+	get_tree().quit()
 
 
 func _snap_graphics_and_ai() -> void:

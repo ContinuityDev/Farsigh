@@ -107,7 +107,8 @@ func _run_load_pipeline(def: Dictionary) -> void:
 	var grey_n := grey.get_child_count() if grey else -1
 	var mesh_n := _count_meshes(grey) if grey else 0
 	print("OUTPOST_LOAD_VERIFY grey_children=", grey_n, " meshes=", mesh_n, " guards=", _count_group("guards"))
-	if grey == null or grey_n < 4 or mesh_n < 4:
+	# A baked compound is one child holding the whole yard. Mesh count is the real check.
+	if grey == null or grey_n < 1 or mesh_n < 4:
 		_report_load_error("Stage geometry missing or incomplete (parts=%d meshes=%d)" % [grey_n, mesh_n])
 	var player := get_node_or_null("Player")
 	if player == null:
@@ -452,8 +453,10 @@ func _rebuild_outpost_entities_async(def: Dictionary, guard_scene: PackedScene, 
 
 	# Always spawn full garrison (including replays of beaten compounds)
 
-	# Spawn guards in small batches so mobile WebGL can upload meshes
-	var guard_specs: Array = def.get("guards", [])
+	# Spawn guards in small batches so mobile WebGL can upload meshes.
+	# Markers dropped into the compound scene win over the catalog so an
+	# edit in the Godot editor actually moves the patrol.
+	var guard_specs: Array = _specs_from_markers(def)
 	var guard_ps: PackedScene = guard_scene if guard_scene else GUARD_SCENE
 	for i in range(guard_specs.size()):
 		var spec: Dictionary = guard_specs[i]
@@ -488,6 +491,43 @@ func _rebuild_outpost_entities_async(def: Dictionary, guard_scene: PackedScene, 
 		if i % 2 == 1:
 			await get_tree().process_frame
 			_set_load_progress(0.68 + 0.12 * float(i + 1) / float(maxi(guard_specs.size(), 1)), "Guards & dogs", "Hostile %d/%d" % [i + 1, guard_specs.size()])
+
+
+func _specs_from_markers(def: Dictionary) -> Array:
+	var grey := get_node_or_null("Greybox")
+	if grey == null:
+		return def.get("guards", [])
+	var markers: Array[Node3D] = []
+	_collect_spawn_markers(grey, markers)
+	if markers.is_empty():
+		return def.get("guards", [])
+	markers.sort_custom(func(a: Node3D, b: Node3D) -> bool: return String(a.name) < String(b.name))
+	var out: Array = []
+	for n in markers:
+		var pts: Array[Vector3] = []
+		for c in n.get_children():
+			if c is Node3D and (c.is_in_group("patrol_point") or String(c.name).begins_with("Patrol")):
+				pts.append((c as Node3D).global_position)
+		if pts.is_empty():
+			pts.append(n.global_position)
+		out.append({
+			"pos": n.global_position,
+			"rot": n.global_rotation_degrees.y,
+			"patrol": pts,
+			"role": String(n.get("role")) if n.get("role") != null else "patrol",
+			"sniper": bool(n.get("sniper")),
+			"sentry": bool(n.get("sentry")),
+			"dog_id": String(n.get("dog_id")) if n.get("dog_id") != null else "",
+		})
+	print("SPAWN_MARKERS ", markers.size(), " catalog=", (def.get("guards", []) as Array).size())
+	return out
+
+
+func _collect_spawn_markers(node: Node, into: Array[Node3D]) -> void:
+	for c in node.get_children():
+		if c.is_in_group("guard_spawn") and c is Node3D:
+			into.append(c)
+		_collect_spawn_markers(c, into)
 
 
 func _bind_guards() -> void:

@@ -1,0 +1,2896 @@
+[gd_scene load_steps=150 format=4]
+
+[ext_resource type="Shader" path="res://shaders/terrain_splat.gdshader" id="1_6mxbs"]
+[ext_resource type="Texture2D" path="res://assets/textures/ground/Ground037.png" id="2_y0753"]
+[ext_resource type="Texture2D" path="res://assets/textures/ground/Grass004.png" id="3_kxgve"]
+[ext_resource type="Texture2D" path="res://assets/textures/ground/Gravel020.png" id="4_5sdvy"]
+[ext_resource type="Texture2D" path="res://assets/textures/ground/Ground048.png" id="5_h1k2p"]
+[ext_resource type="Texture2D" path="res://assets/textures/ground/Ground054.png" id="6_mtumw"]
+[ext_resource type="Shader" path="res://shaders/surface_wear.gdshader" id="7_irp1f"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/fence_segment.tscn" id="8_wf4lr"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/gate_arch.tscn" id="9_oct23"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/entrance.tscn" id="10_v6jtm"]
+[ext_resource type="PackedScene" path="res://prefabs/foliage/bush_cluster.tscn" id="11_nms03"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/shack_barracks.tscn" id="12_8j6mb"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/shack_armory.tscn" id="13_fnjqp"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/hq_multistorey.tscn" id="14_noghy"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/garage.tscn" id="15_cmi8y"]
+[ext_resource type="PackedScene" path="res://prefabs/props/crate.tscn" id="16_p1iml"]
+[ext_resource type="PackedScene" path="res://prefabs/props/sandbag_wall.tscn" id="17_lxsta"]
+[ext_resource type="PackedScene" path="res://prefabs/props/barrel_fuel.tscn" id="18_l46mn"]
+[ext_resource type="PackedScene" path="res://prefabs/props/barrel.tscn" id="19_muhbk"]
+[ext_resource type="PackedScene" path="res://prefabs/props/pickup_truck.tscn" id="20_3avpo"]
+[ext_resource type="PackedScene" path="res://prefabs/props/pickup_truck_canopy.tscn" id="21_2w8t7"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/watchtower.tscn" id="22_3xmak"]
+[ext_resource type="PackedScene" path="res://prefabs/props/jersey_barrier.tscn" id="23_lv5uy"]
+[ext_resource type="PackedScene" path="res://prefabs/props/boulder.tscn" id="24_j6va2"]
+[ext_resource type="PackedScene" path="res://prefabs/foliage/pine_tree.tscn" id="25_geia8"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/floodlight.tscn" id="26_nqrlh"]
+[ext_resource type="PackedScene" path="res://prefabs/buildings/light_pole.tscn" id="27_c2t8u"]
+[ext_resource type="Shader" path="res://shaders/foliage_wind.gdshader" id="28_rvrtk"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/guard_spawn.tscn" id="29_01iqg"]
+[ext_resource type="Script" path="res://scripts/levels/guard_spawn_marker.gd" id="30_q4iic"]
+[ext_resource type="PackedScene" path="res://prefabs/gameplay/patrol_point.tscn" id="31_pcdor"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_u7kxk"]
+render_priority = 0
+shader = ExtResource("1_6mxbs")
+shader_parameter/path_amount = 0.22
+shader_parameter/detail_strength = 0.26
+shader_parameter/uv_scale = 0.24
+shader_parameter/grass_tex = ExtResource("3_kxgve")
+shader_parameter/dirt_tex = ExtResource("2_y0753")
+shader_parameter/mud_tex = ExtResource("5_h1k2p")
+shader_parameter/gravel_tex = ExtResource("4_5sdvy")
+shader_parameter/path_tex = ExtResource("6_mtumw")
+
+[sub_resource type="BoxMesh" id="BoxMesh_6ku00"]
+size = Vector3(160, 1, 160)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_827tc"]
+size = Vector3(160, 1, 160)
+
+[sub_resource type="BoxMesh" id="BoxMesh_afbir"]
+size = Vector3(58, 0.03, 58)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gk52n"]
+render_priority = 0
+shader = ExtResource("1_6mxbs")
+shader_parameter/path_amount = 0.85
+shader_parameter/detail_strength = 0.26
+shader_parameter/uv_scale = 0.24
+shader_parameter/grass_tex = ExtResource("3_kxgve")
+shader_parameter/dirt_tex = ExtResource("2_y0753")
+shader_parameter/mud_tex = ExtResource("5_h1k2p")
+shader_parameter/gravel_tex = ExtResource("4_5sdvy")
+shader_parameter/path_tex = ExtResource("6_mtumw")
+
+[sub_resource type="BoxMesh" id="BoxMesh_nhyhu"]
+size = Vector3(6, 0.03, 48)
+
+[sub_resource type="BoxMesh" id="BoxMesh_somfg"]
+size = Vector3(36, 0.03, 4.4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_xjvnm"]
+size = Vector3(4.4, 0.03, 36)
+
+[sub_resource type="BoxMesh" id="BoxMesh_nn4vx"]
+size = Vector3(3.2, 0.02, 22)
+
+[sub_resource type="BoxMesh" id="BoxMesh_rujx4"]
+size = Vector3(18, 0.02, 2.8)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mwhyw"]
+render_priority = 0
+shader = ExtResource("7_irp1f")
+shader_parameter/albedo = Color(0.26, 0.33, 0.22, 1)
+shader_parameter/wear_col = null
+shader_parameter/roughness = 0.78
+shader_parameter/metallic = 0.04
+shader_parameter/wear = 0.45
+shader_parameter/rim_color = null
+shader_parameter/rim_strength = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_viwta"]
+size = Vector3(14, 0.76, 6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_mrh0c"]
+size = Vector3(14, 0.76, 6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_auxmw"]
+size = Vector3(14, 0.76, 6)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ot1bp"]
+size = Vector3(6, 0.7, 16)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_lysic"]
+size = Vector3(6, 0.7, 16)
+
+[sub_resource type="BoxMesh" id="BoxMesh_a5vxg"]
+size = Vector3(12, 0.6, 5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_qw5dp"]
+size = Vector3(12, 0.6, 5)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jpsn7"]
+render_priority = 0
+shader = ExtResource("7_irp1f")
+shader_parameter/albedo = Color(0.27, 0.33, 0.21, 1)
+shader_parameter/wear_col = null
+shader_parameter/roughness = 0.78
+shader_parameter/metallic = 0.04
+shader_parameter/wear = 0.45
+shader_parameter/rim_color = null
+shader_parameter/rim_strength = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_bymih"]
+size = Vector3(5.5, 0.55, 4.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_jgsuo"]
+size = Vector3(5.5, 0.55, 4.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_d44gf"]
+size = Vector3(4.8, 0.45, 5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wat8a"]
+size = Vector3(4.8, 0.45, 5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_8xi1o"]
+size = Vector3(6, 0.5, 4.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5irm5"]
+size = Vector3(6, 0.5, 4.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_6g3fl"]
+size = Vector3(5.2, 0.4, 3.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_g1eli"]
+size = Vector3(5.2, 0.4, 3.8)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_oc3us"]
+specular_mode = 2
+albedo_color = Color(0.27, 0.33, 0.21, 1)
+metallic = 0.05
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_818pb"]
+size = Vector3(8, 0.35, 3.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_4jkxl"]
+size = Vector3(8, 0.35, 3.5)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_grr85"]
+render_priority = 0
+shader = ExtResource("7_irp1f")
+shader_parameter/albedo = Color(0.32, 0.33, 0.31, 1)
+shader_parameter/wear_col = null
+shader_parameter/roughness = 0.78
+shader_parameter/metallic = 0.04
+shader_parameter/wear = 0.45
+shader_parameter/rim_color = null
+shader_parameter/rim_strength = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_dlu8v"]
+size = Vector3(1.15, 3.5, 1.15)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bjuuc"]
+size = Vector3(1.15, 3.5, 1.15)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u51nt"]
+specular_mode = 2
+albedo_color = Color(0.24, 0.25, 0.23, 1)
+metallic = 0.05
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_yh11q"]
+size = Vector3(1.3, 0.2, 1.3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p0ci4"]
+size = Vector3(1.15, 3.5, 1.15)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2shxk"]
+size = Vector3(1.15, 3.5, 1.15)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_eh5e6"]
+size = Vector3(1.15, 3.5, 1.15)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u0n4f"]
+specular_mode = 2
+albedo_color = Color(0.38, 0.28, 0.18, 1)
+metallic = 0.05
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_u4shj"]
+size = Vector3(1.6, 0.08, 0.28)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xd65a"]
+transparency = 1
+specular_mode = 2
+albedo_color = Color(0.16, 0.12, 0.08, 0.72)
+metallic = 0.05
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_3se3k"]
+size = Vector3(2.4, 0.02, 1.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_og2y6"]
+size = Vector3(200, 0.9, 200)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_sidl5"]
+size = Vector3(200, 0.9, 200)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_107yc"]
+specular_mode = 2
+albedo_color = Color(0.28, 0.2, 0.13, 1)
+roughness = 0.92
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_ogm2p"]
+top_radius = 0.22
+bottom_radius = 0.22
+height = 2.2
+radial_segments = 5
+rings = 1
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_cxgxr"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_d7e1g"]
+_surfaces = [{
+"aabb": AABB(-1.55, 0, 0, 3.1, 5.35, 1e-05),
+"attribute_data": PackedByteArray("AAAAAAAAAAAAAIA/AAAAAAAAAD8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAD8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAD8AAIA/AAAAAAAAAAAAAIA/AAAAAAAAAD8AAIA/"),
+"format": 34359738391,
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 12,
+"vertex_data": PackedByteArray("ZmbGvwAAAAAAAAAAZmbGPwAAAAAAAAAAAAAAAJqZSUAAAAAAAACAv2ZmFkAAAAAAAACAP2ZmFkAAAAAAAAAAADMzq0AAAAAAZmbGvwAAAAAAAAAAAAAAAJqZSUAAAAAAZmbGPwAAAAAAAAAAAACAv2ZmFkAAAAAAAAAAADMzq0AAAAAAAACAP2ZmFkAAAAAA/3//f/9/AID/f/9//38AgP9//3//fwCA/3//f/9/AID/f/9//38AgP9//3//fwCA//////9/AID//////38AgP//////fwCA//////9/AID//////38AgP//////fwCA")
+}]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0tkpc"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ffnga"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pkscg"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_khv51"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fbgm4"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xqo2l"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_msjnw"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bqb77"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nvqpq"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0gpcb"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hffej"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_x7ntg"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sxkvf"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vk355"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tnlr0"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jdo1a"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_av3km"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7ah35"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_u07rb"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pftur"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_j4fsu"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_lfx45"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_6bful"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7uciy"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2vmpc"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mq4mw"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_umaei"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xhb21"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_y0fjf"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nyvnd"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_udl4b"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4uwrh"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bjg86"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jo0qw"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bfkak"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_d60xp"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_13avi"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_o1ggo"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_08ehf"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fw83v"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0pkgu"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_b3wf0"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_j4jqk"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_aet7g"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_d652r"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_d2u2y"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_3l1vt"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_6i6na"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8q8ba"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qf2dx"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_rbgl5"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ub5c3"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tw2kx"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_elqjj"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hcxnb"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_d7psw"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2exmo"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_uppip"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_wn2nu"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7vlkd"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_3gcb1"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_edd5y"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ga40n"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_h8ycb"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_exarb"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_j2jqg"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_yqtsy"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.16, 0.3, 0.14, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5qviw"]
+render_priority = 0
+shader = ExtResource("28_rvrtk")
+shader_parameter/albedo = Color(0.22, 0.4, 0.16, 1)
+shader_parameter/wind_strength = 0.22
+shader_parameter/wind_speed = 1.2
+shader_parameter/wind_scale = null
+shader_parameter/roughness = null
+shader_parameter/metallic = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_eya8v"]
+size = Vector3(0.08, 0.46, 0.16)
+
+[sub_resource type="MultiMesh" id="MultiMesh_ojl6m"]
+transform_format = 1
+instance_count = 90
+mesh = SubResource("BoxMesh_eya8v")
+
+[node name="Compound" type="Node3D"]
+
+[node name="@MeshInstance3D@6803" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+material_override = SubResource("ShaderMaterial_u7kxk")
+gi_mode = 0
+mesh = SubResource("BoxMesh_6ku00")
+
+[node name="@StaticBody3D@6805" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6804" type="CollisionShape3D" parent="@StaticBody3D@6805"]
+shape = SubResource("BoxShape3D_827tc")
+
+[node name="@MeshInstance3D@6806" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, 0)
+material_override = SubResource("ShaderMaterial_u7kxk")
+gi_mode = 0
+mesh = SubResource("BoxMesh_afbir")
+
+[node name="@MeshInstance3D@6807" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 20)
+material_override = SubResource("ShaderMaterial_gk52n")
+gi_mode = 0
+mesh = SubResource("BoxMesh_nhyhu")
+
+[node name="@MeshInstance3D@6808" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0.025, 2)
+material_override = SubResource("ShaderMaterial_gk52n")
+gi_mode = 0
+mesh = SubResource("BoxMesh_somfg")
+
+[node name="@MeshInstance3D@6809" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0.025, 0)
+material_override = SubResource("ShaderMaterial_gk52n")
+gi_mode = 0
+mesh = SubResource("BoxMesh_xjvnm")
+
+[node name="@MeshInstance3D@6810" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.028, 12)
+material_override = SubResource("ShaderMaterial_gk52n")
+gi_mode = 0
+mesh = SubResource("BoxMesh_nn4vx")
+
+[node name="@MeshInstance3D@6811" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.028, -8)
+material_override = SubResource("ShaderMaterial_gk52n")
+gi_mode = 0
+mesh = SubResource("BoxMesh_rujx4")
+
+[node name="@MeshInstance3D@6812" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.38, 38)
+material_override = SubResource("ShaderMaterial_mwhyw")
+gi_mode = 0
+mesh = SubResource("BoxMesh_viwta")
+
+[node name="@StaticBody3D@6814" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.38, 38)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6813" type="CollisionShape3D" parent="@StaticBody3D@6814"]
+shape = SubResource("BoxShape3D_mrh0c")
+
+[node name="@MeshInstance3D@6815" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.38, 38)
+material_override = SubResource("ShaderMaterial_mwhyw")
+gi_mode = 0
+mesh = SubResource("BoxMesh_viwta")
+
+[node name="@StaticBody3D@6817" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.38, 38)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6816" type="CollisionShape3D" parent="@StaticBody3D@6817"]
+shape = SubResource("BoxShape3D_auxmw")
+
+[node name="@MeshInstance3D@6818" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -34, 0.35, 0)
+material_override = SubResource("ShaderMaterial_mwhyw")
+gi_mode = 0
+mesh = SubResource("BoxMesh_ot1bp")
+
+[node name="@StaticBody3D@6820" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -34, 0.35, 0)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6819" type="CollisionShape3D" parent="@StaticBody3D@6820"]
+shape = SubResource("BoxShape3D_lysic")
+
+[node name="@MeshInstance3D@6821" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.3, -36)
+material_override = SubResource("ShaderMaterial_mwhyw")
+gi_mode = 0
+mesh = SubResource("BoxMesh_a5vxg")
+
+[node name="@StaticBody3D@6823" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.3, -36)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6822" type="CollisionShape3D" parent="@StaticBody3D@6823"]
+shape = SubResource("BoxShape3D_qw5dp")
+
+[node name="@MeshInstance3D@6824" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0.22, 22)
+material_override = SubResource("ShaderMaterial_jpsn7")
+gi_mode = 0
+mesh = SubResource("BoxMesh_bymih")
+
+[node name="@StaticBody3D@6826" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0.22, 22)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6825" type="CollisionShape3D" parent="@StaticBody3D@6826"]
+shape = SubResource("BoxShape3D_jgsuo")
+
+[node name="@MeshInstance3D@6827" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0.18, 18)
+material_override = SubResource("ShaderMaterial_jpsn7")
+gi_mode = 0
+mesh = SubResource("BoxMesh_d44gf")
+
+[node name="@StaticBody3D@6829" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0.18, 18)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6828" type="CollisionShape3D" parent="@StaticBody3D@6829"]
+shape = SubResource("BoxShape3D_wat8a")
+
+[node name="@MeshInstance3D@6830" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0.2, -22)
+material_override = SubResource("ShaderMaterial_jpsn7")
+gi_mode = 0
+mesh = SubResource("BoxMesh_8xi1o")
+
+[node name="@StaticBody3D@6832" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0.2, -22)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6831" type="CollisionShape3D" parent="@StaticBody3D@6832"]
+shape = SubResource("BoxShape3D_5irm5")
+
+[node name="@MeshInstance3D@6833" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0.16, -20)
+material_override = SubResource("ShaderMaterial_jpsn7")
+gi_mode = 0
+mesh = SubResource("BoxMesh_6g3fl")
+
+[node name="@StaticBody3D@6835" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0.16, -20)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6834" type="CollisionShape3D" parent="@StaticBody3D@6835"]
+shape = SubResource("BoxShape3D_g1eli")
+
+[node name="@MeshInstance3D@6836" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, 42)
+material_override = SubResource("StandardMaterial3D_oc3us")
+gi_mode = 0
+mesh = SubResource("BoxMesh_818pb")
+
+[node name="@StaticBody3D@6838" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, 42)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6837" type="CollisionShape3D" parent="@StaticBody3D@6838"]
+shape = SubResource("BoxShape3D_4jkxl")
+
+[node name="FenceSegment" type="Node3D" parent="." instance=ExtResource("8_wf4lr")]
+transform = Transform3D(4.5, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, 30)
+
+[node name="@Node3D@6839" type="Node3D" parent="." instance=ExtResource("8_wf4lr")]
+transform = Transform3D(4.5, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 30)
+
+[node name="GateArch" type="Node3D" parent="." instance=ExtResource("9_oct23")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 30)
+
+[node name="Entrance" type="Marker3D" parent="." groups=["entrances"] instance=ExtResource("10_v6jtm")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 34)
+
+[node name="BushCluster" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 0, 0, 34)
+
+[node name="@Node3D@6840" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, -3.6, 0, 34)
+
+[node name="@Node3D@6841" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 3.6, 0, 34)
+
+[node name="@Node3D@6842" type="Node3D" parent="." instance=ExtResource("8_wf4lr")]
+transform = Transform3D(5, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -30)
+
+[node name="@Node3D@6843" type="Node3D" parent="." instance=ExtResource("8_wf4lr")]
+transform = Transform3D(3.5, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -30)
+
+[node name="@Marker3D@6844" type="Marker3D" parent="." groups=["entrances"] instance=ExtResource("10_v6jtm")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -33)
+
+[node name="@Node3D@6845" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 2, 0, -33)
+
+[node name="@Node3D@6846" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, -0.4, 0, -33)
+
+[node name="@Node3D@6847" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 4.4, 0, -33)
+
+[node name="@Node3D@6848" type="Node3D" parent="." instance=ExtResource("8_wf4lr")]
+transform = Transform3D(-2.18557e-07, 0, 1, 0, 1, 0, -5, 0, -4.37114e-08, -30, 0, -14)
+
+[node name="@Node3D@6849" type="Node3D" parent="." instance=ExtResource("8_wf4lr")]
+transform = Transform3D(-1.96701e-07, 0, 1, 0, 1, 0, -4.5, 0, -4.37114e-08, -30, 0, 16)
+
+[node name="@Marker3D@6850" type="Marker3D" parent="." groups=["entrances"] instance=ExtResource("10_v6jtm")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33, 0, 2)
+
+[node name="@Node3D@6851" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -33, 0, 2)
+
+[node name="@Node3D@6852" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, -33, 0, -0.4)
+
+[node name="@Node3D@6853" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, -33, 0, 4.4)
+
+[node name="@Node3D@6854" type="Node3D" parent="." instance=ExtResource("8_wf4lr")]
+transform = Transform3D(-1.96701e-07, 0, 1, 0, 1, 0, -4.5, 0, -4.37114e-08, 30, 0, -16)
+
+[node name="@Node3D@6855" type="Node3D" parent="." instance=ExtResource("8_wf4lr")]
+transform = Transform3D(-1.96701e-07, 0, 1, 0, 1, 0, -4.5, 0, -4.37114e-08, 30, 0, 16)
+
+[node name="@Node3D@6856" type="Node3D" parent="." instance=ExtResource("9_oct23")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 0)
+
+[node name="@Marker3D@6857" type="Marker3D" parent="." groups=["entrances"] instance=ExtResource("10_v6jtm")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0, 0)
+
+[node name="@Node3D@6858" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 33, 0, 0)
+
+[node name="@Node3D@6859" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 33, 0, -2.4)
+
+[node name="@Node3D@6860" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 33, 0, 2.4)
+
+[node name="@MeshInstance3D@6861" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1.75, -30)
+material_override = SubResource("ShaderMaterial_grr85")
+gi_mode = 0
+mesh = SubResource("BoxMesh_dlu8v")
+
+[node name="@StaticBody3D@6863" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1.75, -30)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6862" type="CollisionShape3D" parent="@StaticBody3D@6863"]
+shape = SubResource("BoxShape3D_bjuuc")
+
+[node name="@MeshInstance3D@6864" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 3.6, -30)
+material_override = SubResource("StandardMaterial3D_u51nt")
+gi_mode = 0
+mesh = SubResource("BoxMesh_yh11q")
+
+[node name="@MeshInstance3D@6865" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1.75, -30)
+material_override = SubResource("ShaderMaterial_grr85")
+gi_mode = 0
+mesh = SubResource("BoxMesh_dlu8v")
+
+[node name="@StaticBody3D@6867" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1.75, -30)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6866" type="CollisionShape3D" parent="@StaticBody3D@6867"]
+shape = SubResource("BoxShape3D_p0ci4")
+
+[node name="@MeshInstance3D@6868" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 3.6, -30)
+material_override = SubResource("StandardMaterial3D_u51nt")
+gi_mode = 0
+mesh = SubResource("BoxMesh_yh11q")
+
+[node name="@MeshInstance3D@6869" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1.75, 30)
+material_override = SubResource("ShaderMaterial_grr85")
+gi_mode = 0
+mesh = SubResource("BoxMesh_dlu8v")
+
+[node name="@StaticBody3D@6871" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1.75, 30)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6870" type="CollisionShape3D" parent="@StaticBody3D@6871"]
+shape = SubResource("BoxShape3D_2shxk")
+
+[node name="@MeshInstance3D@6872" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 3.6, 30)
+material_override = SubResource("StandardMaterial3D_u51nt")
+gi_mode = 0
+mesh = SubResource("BoxMesh_yh11q")
+
+[node name="@MeshInstance3D@6873" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1.75, 30)
+material_override = SubResource("ShaderMaterial_grr85")
+gi_mode = 0
+mesh = SubResource("BoxMesh_dlu8v")
+
+[node name="@StaticBody3D@6875" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1.75, 30)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6874" type="CollisionShape3D" parent="@StaticBody3D@6875"]
+shape = SubResource("BoxShape3D_eh5e6")
+
+[node name="@MeshInstance3D@6876" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 3.6, 30)
+material_override = SubResource("StandardMaterial3D_u51nt")
+gi_mode = 0
+mesh = SubResource("BoxMesh_yh11q")
+
+[node name="ShackBarracks" type="Node3D" parent="." instance=ExtResource("12_8j6mb")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, -4)
+
+[node name="ShackArmory" type="Node3D" parent="." instance=ExtResource("13_fnjqp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -6)
+
+[node name="HqMultistorey" type="Node3D" parent="." instance=ExtResource("14_noghy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, -14)
+
+[node name="Garage" type="Node3D" parent="." instance=ExtResource("15_cmi8y")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 12)
+
+[node name="Crate" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, -11, 0, -4)
+
+[node name="@Node3D@6877" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(-5.02681e-08, 0, 1.15, 0, 1.15, 0, -1.15, 0, -5.02681e-08, 12, 0, -6)
+
+[node name="@Node3D@6878" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.19543, 0, 0.104587, 0, 1.2, 0, -0.104587, 0, 1.19543, -3.2, 0, 6)
+
+[node name="@Node3D@6879" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.02705, 0, -0.218307, 0, 1.05, 0, 0.218307, 0, 1.02705, -1.7, 0, 6.3)
+
+[node name="@Node3D@6880" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.18832, 0, 0.167008, 0, 1.2, 0, -0.167008, 0, 1.18832, 3, 0, 2)
+
+[node name="@Node3D@6881" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.34671, 0, -0.0941712, 0, 1.35, 0, 0.0941712, 0, 1.34671, 4.5, 0, 2.2)
+
+[node name="@Node3D@6882" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(0.873266, 0, 0.21773, 0, 0.9, 0, -0.21773, 0, 0.873266, 4.5, 1.35, 2.2)
+
+[node name="@Node3D@6883" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.19927, 0, 0.0418794, 0, 1.2, 0, -0.0418794, 0, 1.19927, -6, 0, -1)
+
+[node name="@Node3D@6884" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, 0, 0, -2)
+
+[node name="@Node3D@6885" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.18177, 0, -0.208378, 0, 1.2, 0, 0.208378, 0, 1.18177, 7, 0, 6)
+
+[node name="@Node3D@6886" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.15911, 0, 0.310583, 0, 1.2, 0, -0.310583, 0, 1.15911, -8, 0, 10)
+
+[node name="@Node3D@6887" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.1437, 0, -0.120208, 0, 1.15, 0, 0.120208, 0, 1.1437, 2, 0, 14)
+
+[node name="@Node3D@6888" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.29683, 0, 0.0906834, 0, 1.3, 0, -0.0906834, 0, 1.29683, -2, 0, -8)
+
+[node name="SandbagWall" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(1.0625, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 3)
+
+[node name="@Node3D@6889" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(-4.09794e-08, 0, 1, 0, 1, 0, -0.9375, 0, -4.37114e-08, 5, 0, -2)
+
+[node name="@Node3D@6890" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(1.1875, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
+
+[node name="BarrelFuel" type="Node3D" parent="." instance=ExtResource("18_l46mn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -10)
+
+[node name="Barrel" type="Node3D" parent="." instance=ExtResource("19_muhbk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.75, 0, -9.6)
+
+[node name="@Node3D@6891" type="Node3D" parent="." instance=ExtResource("18_l46mn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0, 6)
+
+[node name="@Node3D@6892" type="Node3D" parent="." instance=ExtResource("18_l46mn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.3, 0, 6.5)
+
+[node name="@Node3D@6893" type="Node3D" parent="." instance=ExtResource("19_muhbk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 8)
+
+[node name="@Node3D@6894" type="Node3D" parent="." instance=ExtResource("18_l46mn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.7, 0, 8.4)
+
+[node name="@Node3D@6895" type="Node3D" parent="." instance=ExtResource("18_l46mn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8, 0, -11.5)
+
+[node name="PickupTruck" type="Node3D" parent="." instance=ExtResource("20_3avpo")]
+transform = Transform3D(0.913545, 0, -0.406737, 0, 1, 0, 0.406737, 0, 0.913545, 7.2, 0, 17.2)
+
+[node name="PickupTruckCanopy" type="Node3D" parent="." instance=ExtResource("21_2w8t7")]
+transform = Transform3D(0.848048, 0, 0.529919, 0, 1, 0, -0.529919, 0, 0.848048, -7.2, 0, -10.5)
+
+[node name="Watchtower" type="Node3D" parent="." instance=ExtResource("22_3xmak")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.25, 0, -15.25)
+
+[node name="JerseyBarrier" type="Node3D" parent="." instance=ExtResource("23_lv5uy")]
+transform = Transform3D(0.951057, 0, 0.309017, 0, 1, 0, -0.309017, 0, 0.951057, -4.2, 0, 26.8)
+
+[node name="@Node3D@6896" type="Node3D" parent="." instance=ExtResource("23_lv5uy")]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 4.4, 0, 26.8)
+
+[node name="@Node3D@6897" type="Node3D" parent="." instance=ExtResource("23_lv5uy")]
+transform = Transform3D(0.139173, 0, 0.990268, 0, 1, 0, -0.990268, 0, 0.139173, -26.5, 0, 5.2)
+
+[node name="@Node3D@6898" type="Node3D" parent="." instance=ExtResource("23_lv5uy")]
+transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, 9.5, 0, -26.5)
+
+[node name="Boulder" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.5, 26.5)
+
+[node name="@Node3D@6899" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27, 0.5, -2)
+
+[node name="@Node3D@6900" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26.2, 0.45, 10.5)
+
+[node name="@Node3D@6901" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.5, -28)
+
+[node name="@Node3D@6902" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.5, 0.45, -26.5)
+
+[node name="PineTree" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -20, 0, 34)
+
+[node name="@Node3D@6903" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.03, 0, 0, 0, 1.03, 0, 0, 0, 1.03, -13, 0, 37)
+
+[node name="@Node3D@6904" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.21, 0, 0, 0, 1.21, 0, 0, 0, 1.21, 14, 0, 35)
+
+[node name="@Node3D@6905" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.39, 0, 0, 0, 1.39, 0, 0, 0, 1.39, 22, 0, 32)
+
+[node name="@Node3D@6906" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -33, 0, 18)
+
+[node name="@Node3D@6907" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.03, 0, 0, 0, 1.03, 0, 0, 0, 1.03, -35, 0, 6)
+
+[node name="@Node3D@6908" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.21, 0, 0, 0, 1.21, 0, 0, 0, 1.21, -34, 0, -10)
+
+[node name="@Node3D@6909" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.39, 0, 0, 0, 1.39, 0, 0, 0, 1.39, -32, 0, -24)
+
+[node name="@Node3D@6910" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, -18, 0, -33)
+
+[node name="@Node3D@6911" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.03, 0, 0, 0, 1.03, 0, 0, 0, 1.03, -4, 0, -35)
+
+[node name="@Node3D@6912" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.21, 0, 0, 0, 1.21, 0, 0, 0, 1.21, 18, 0, -33)
+
+[node name="@Node3D@6913" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.39, 0, 0, 0, 1.39, 0, 0, 0, 1.39, 31, 0, -24)
+
+[node name="@Node3D@6914" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 33, 0, -6)
+
+[node name="@Node3D@6915" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.03, 0, 0, 0, 1.03, 0, 0, 0, 1.03, 32, 0, 12)
+
+[node name="@Node3D@6916" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.21, 0, 0, 0, 1.21, 0, 0, 0, 1.21, 30, 0, 25)
+
+[node name="@Node3D@6917" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 33)
+
+[node name="@Node3D@6918" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 8.5, 0, 33)
+
+[node name="@Node3D@6919" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, -22, 0, 14)
+
+[node name="@Node3D@6920" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33, 0, 4)
+
+[node name="@Node3D@6921" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -16, 0, -33)
+
+[node name="@Node3D@6922" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -33)
+
+[node name="@Node3D@6923" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, -33, 0, -2)
+
+[node name="@Node3D@6924" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 14, 0, 18)
+
+[node name="@Node3D@6925" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -12, 0, 18.5)
+
+[node name="@Node3D@6926" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.12487, 0, 0.239098, 0, 1.15, 0, -0.239098, 0, 1.12487, -10, 0, 8)
+
+[node name="@Node3D@6927" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(0.940755, 0, -0.132214, 0, 0.95, 0, 0.132214, 0, 0.940755, -8.5, 0, 8.4)
+
+[node name="@Node3D@6928" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.15911, 0, -0.310583, 0, 1.2, 0, 0.310583, 0, 1.15911, 9, 0, 4)
+
+[node name="@Node3D@6929" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(0.986677, 0, 0.359121, 0, 1.05, 0, -0.359121, 0, 0.986677, 10.4, 0, 4.3)
+
+[node name="@Node3D@6930" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.24524, 0, 0.108945, 0, 1.25, 0, -0.108945, 0, 1.24524, -4, 0, -10)
+
+[node name="@Node3D@6931" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.0199, 0, -0.412067, 0, 1.1, 0, 0.412067, 0, 1.0199, 3, 0, 16)
+
+[node name="@Node3D@6932" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.13881, 0, 0.160049, 0, 1.15, 0, -0.160049, 0, 1.13881, 14, 0, -2)
+
+[node name="@Node3D@6933" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(1.19343, 0, -0.125434, 0, 1.2, 0, 0.125434, 0, 1.19343, -14, 0, 2)
+
+[node name="@Node3D@6934" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(0.906308, 0, 0.422618, 0, 1, 0, -0.422618, 0, 0.906308, -12, 0, 14)
+
+[node name="@Node3D@6935" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(0.811899, 0, -0.5, 0, 1, 0, 0.46875, 0, 0.866025, 11, 0, 12)
+
+[node name="@Node3D@6936" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(1.12072, 0, 0.0871557, 0, 1, 0, -0.0980502, 0, 0.996195, 0, 0, -18)
+
+[node name="@Node3D@6937" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(0.299268, 0, 0.939693, 0, 1, 0, -0.822231, 0, 0.34202, -16, 0, -8)
+
+[node name="@Node3D@6938" type="Node3D" parent="." instance=ExtResource("18_l46mn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, -14)
+
+[node name="@Node3D@6939" type="Node3D" parent="." instance=ExtResource("19_muhbk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.2, 0, -13.5)
+
+[node name="@Node3D@6940" type="Node3D" parent="." instance=ExtResource("18_l46mn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, 12)
+
+[node name="@Node3D@6941" type="Node3D" parent="." instance=ExtResource("18_l46mn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.2, 0, 12.5)
+
+[node name="@Node3D@6942" type="Node3D" parent="." instance=ExtResource("19_muhbk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 8)
+
+[node name="@Node3D@6943" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(0.823529, 0, 0, 0, 0.823529, 0, 0, 0, 0.823529, -15, 0.45, 20)
+
+[node name="@Node3D@6944" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1.17647, 0, 0, 0, 1.17647, 0, 0, 0, 1.17647, 17, 0.5, 16)
+
+[node name="@Node3D@6945" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(0.823529, 0, 0, 0, 0.823529, 0, 0, 0, 0.823529, -18, 0.4, -14)
+
+[node name="@Node3D@6946" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(0.823529, 0, 0, 0, 0.823529, 0, 0, 0, 0.823529, 12, 0.55, -22)
+
+[node name="@Node3D@6947" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(0.823529, 0, 0, 0, 0.823529, 0, 0, 0, 0.823529, 0, 0.4, 28)
+
+[node name="@Node3D@6948" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0.45, 0)
+
+[node name="@MeshInstance3D@6949" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0.08, 0)
+material_override = SubResource("StandardMaterial3D_u0n4f")
+gi_mode = 0
+mesh = SubResource("BoxMesh_u4shj")
+
+[node name="@MeshInstance3D@6950" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.32415, 0.08, 9.39992)
+material_override = SubResource("StandardMaterial3D_u0n4f")
+gi_mode = 0
+mesh = SubResource("BoxMesh_u4shj")
+
+[node name="@MeshInstance3D@6951" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.63523, 0.08, 12.66)
+material_override = SubResource("StandardMaterial3D_u0n4f")
+gi_mode = 0
+mesh = SubResource("BoxMesh_u4shj")
+
+[node name="@MeshInstance3D@6952" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.3692, 0.08, 4.70118)
+material_override = SubResource("StandardMaterial3D_u0n4f")
+gi_mode = 0
+mesh = SubResource("BoxMesh_u4shj")
+
+[node name="@MeshInstance3D@6953" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.1417, 0.08, -5.31025)
+material_override = SubResource("StandardMaterial3D_u0n4f")
+gi_mode = 0
+mesh = SubResource("BoxMesh_u4shj")
+
+[node name="@MeshInstance3D@6954" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.00512, 0.08, -12.7079)
+material_override = SubResource("StandardMaterial3D_u0n4f")
+gi_mode = 0
+mesh = SubResource("BoxMesh_u4shj")
+
+[node name="@MeshInstance3D@6955" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.6939, 0.08, -8.50041)
+material_override = SubResource("StandardMaterial3D_u0n4f")
+gi_mode = 0
+mesh = SubResource("BoxMesh_u4shj")
+
+[node name="@MeshInstance3D@6956" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.05, 6)
+material_override = SubResource("StandardMaterial3D_xd65a")
+gi_mode = 0
+mesh = SubResource("BoxMesh_3se3k")
+
+[node name="@MeshInstance3D@6957" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.05, 10)
+material_override = SubResource("StandardMaterial3D_xd65a")
+gi_mode = 0
+mesh = SubResource("BoxMesh_3se3k")
+
+[node name="@MeshInstance3D@6958" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.05, -6)
+material_override = SubResource("StandardMaterial3D_xd65a")
+gi_mode = 0
+mesh = SubResource("BoxMesh_3se3k")
+
+[node name="@MeshInstance3D@6959" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.05, -8)
+material_override = SubResource("StandardMaterial3D_xd65a")
+gi_mode = 0
+mesh = SubResource("BoxMesh_3se3k")
+
+[node name="@Node3D@6960" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -5, 0, 5)
+
+[node name="@Node3D@6961" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 6, 0, -4)
+
+[node name="@Node3D@6962" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -10, 0, -12)
+
+[node name="@Node3D@6963" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 12, 0, 8)
+
+[node name="@Node3D@6964" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(1.125, 0, 0, 0, 1, 0, 0, 0, 1, 1, 6.7, -11)
+
+[node name="@Node3D@6965" type="Node3D" parent="." instance=ExtResource("17_lxsta")]
+transform = Transform3D(-3.82475e-08, 0, 1, 0, 1, 0, -0.875, 0, -4.37114e-08, -2, 6.7, -14)
+
+[node name="@Node3D@6966" type="Node3D" parent="." instance=ExtResource("16_p1iml")]
+transform = Transform3D(0.880333, 0, 0.187121, 0, 0.9, 0, -0.187121, 0, 0.880333, 3, 6.7, -12.5)
+
+[node name="@Node3D@6967" type="Node3D" parent="." instance=ExtResource("19_muhbk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 6.7, -12)
+
+[node name="Floodlight" type="Node3D" parent="." instance=ExtResource("26_nqrlh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 7.4, -14)
+
+[node name="LightPole" type="Node3D" parent="." instance=ExtResource("27_c2t8u")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, 18)
+
+[node name="@Node3D@6968" type="Node3D" parent="." instance=ExtResource("27_c2t8u")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 18)
+
+[node name="@Node3D@6969" type="Node3D" parent="." instance=ExtResource("27_c2t8u")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -18)
+
+[node name="@Node3D@6970" type="Node3D" parent="." instance=ExtResource("27_c2t8u")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, -18)
+
+[node name="@Node3D@6971" type="Node3D" parent="." instance=ExtResource("27_c2t8u")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 22)
+
+[node name="@Node3D@6972" type="Node3D" parent="." instance=ExtResource("27_c2t8u")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 0)
+
+[node name="@Node3D@6973" type="Node3D" parent="." instance=ExtResource("27_c2t8u")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -8)
+
+[node name="@Node3D@6974" type="Node3D" parent="." instance=ExtResource("26_nqrlh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 3, -10.2)
+
+[node name="@Node3D@6975" type="Node3D" parent="." instance=ExtResource("26_nqrlh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 2.8, -0.5)
+
+[node name="@Node3D@6976" type="Node3D" parent="." instance=ExtResource("26_nqrlh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.6, -1.5)
+
+[node name="@MeshInstance3D@6977" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.55, 0)
+material_override = SubResource("ShaderMaterial_u7kxk")
+gi_mode = 0
+mesh = SubResource("BoxMesh_og2y6")
+
+[node name="@StaticBody3D@6979" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.55, 0)
+collision_mask = 0
+
+[node name="@CollisionShape3D@6978" type="CollisionShape3D" parent="@StaticBody3D@6979"]
+shape = SubResource("BoxShape3D_sidl5")
+
+[node name="@Node3D@6980" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, 64, 0, 0)
+
+[node name="@Node3D@6981" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, 57.6495, 0, 6.36714)
+
+[node name="@Node3D@6982" type="Node3D" parent="."]
+transform = Transform3D(0.9975, 0, 0, 0, 0.9975, 0, 0, 0, 0.9975, 73.7633, 0, -5.91369)
+
+[node name="@MeshInstance3D@6983" type="MeshInstance3D" parent="@Node3D@6982"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@6984" type="MeshInstance3D" parent="@Node3D@6982" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_cxgxr")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@6985" type="MeshInstance3D" parent="@Node3D@6982" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_0tkpc")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@6986" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 66.9677, 0, 11.213)
+
+[node name="@Node3D@6987" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, 57.9233, 0, 16.3992)
+
+[node name="@Node3D@6988" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 67.8839, 0, 23.3885)
+
+[node name="@Node3D@6989" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, 56.4086, 0, 26.6802)
+
+[node name="@Node3D@6990" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, 64.1, 0, 34.8267)
+
+[node name="@MeshInstance3D@6991" type="MeshInstance3D" parent="@Node3D@6990"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@6992" type="MeshInstance3D" parent="@Node3D@6990" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_ffnga")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@6993" type="MeshInstance3D" parent="@Node3D@6990" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_pkscg")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@6994" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, 53.0343, 0, 36.8853)
+
+[node name="@Node3D@6995" type="Node3D" parent="."]
+transform = Transform3D(1.6275, 0, 0, 0, 1.6275, 0, 0, 0, 1.6275, 67.6378, 0, 30.0187)
+
+[node name="@MeshInstance3D@6996" type="MeshInstance3D" parent="@Node3D@6995"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@6997" type="MeshInstance3D" parent="@Node3D@6995" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_khv51")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@6998" type="MeshInstance3D" parent="@Node3D@6995" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_fbgm4")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@6999" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, 60.5409, 0, 47.3362)
+
+[node name="@MeshInstance3D@7000" type="MeshInstance3D" parent="@Node3D@6999"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7001" type="MeshInstance3D" parent="@Node3D@6999" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_xqo2l")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7002" type="MeshInstance3D" parent="@Node3D@6999" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_msjnw")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7003" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, 41.4932, 0, 40.5254)
+
+[node name="@Node3D@7004" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, 50.7746, 0, 38.9607)
+
+[node name="@Node3D@7005" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, 43.4481, 0, 41.6689)
+
+[node name="@Node3D@7006" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 46.3031, 0, 49.6632)
+
+[node name="@Node3D@7007" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, 37.2849, 0, 50.0359)
+
+[node name="@Node3D@7008" type="Node3D" parent="."]
+transform = Transform3D(1.2075, 0, 0, 0, 1.2075, 0, 0, 0, 1.2075, 54.6268, 0, 49.9191)
+
+[node name="@MeshInstance3D@7009" type="MeshInstance3D" parent="@Node3D@7008"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7010" type="MeshInstance3D" parent="@Node3D@7008" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_bqb77")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7011" type="MeshInstance3D" parent="@Node3D@7008" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_nvqpq")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7012" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 39.6179, 0, 59.8804)
+
+[node name="@Node3D@7013" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, 29.5152, 0, 57.4631)
+
+[node name="@Node3D@7014" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, 29.6528, 0, 66.6515)
+
+[node name="@MeshInstance3D@7015" type="MeshInstance3D" parent="@Node3D@7014"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7016" type="MeshInstance3D" parent="@Node3D@7014" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_0gpcb")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7017" type="MeshInstance3D" parent="@Node3D@7014" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_hffej")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7018" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, 17.616, 0, 55.2601)
+
+[node name="@Node3D@7019" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, 19.2139, 0, 74.4093)
+
+[node name="@MeshInstance3D@7020" type="MeshInstance3D" parent="@Node3D@7019"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7021" type="MeshInstance3D" parent="@Node3D@7019" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_x7ntg")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7022" type="MeshInstance3D" parent="@Node3D@7019" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_sxkvf")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7023" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, 8.56136, 0, 59.5881)
+
+[node name="@Node3D@7024" type="Node3D" parent="."]
+transform = Transform3D(1.8375, 0, 0, 0, 1.8375, 0, 0, 0, 1.8375, 24.1681, 0, 69.9422)
+
+[node name="@MeshInstance3D@7025" type="MeshInstance3D" parent="@Node3D@7024"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7026" type="MeshInstance3D" parent="@Node3D@7024" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_vk355")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7027" type="MeshInstance3D" parent="@Node3D@7024" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_tnlr0")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7028" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, 16.5644, 0, 61.8193)
+
+[node name="@Node3D@7029" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, 9.43595, 0, 61.6824)
+
+[node name="@Node3D@7030" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 6.50161, 0, 67.588)
+
+[node name="@Node3D@7031" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, -0.91085, 0, 64.5936)
+
+[node name="@Node3D@7032" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -5.0219, 0, 71.6242)
+
+[node name="@Node3D@7033" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, -10.3837, 0, 57.0629)
+
+[node name="@Node3D@7034" type="Node3D" parent="."]
+transform = Transform3D(1.4175, 0, 0, 0, 1.4175, 0, 0, 0, 1.4175, 0.739988, 0, 73.9963)
+
+[node name="@MeshInstance3D@7035" type="MeshInstance3D" parent="@Node3D@7034"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7036" type="MeshInstance3D" parent="@Node3D@7034" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_jdo1a")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7037" type="MeshInstance3D" parent="@Node3D@7034" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_av3km")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7038" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, -17.0497, 0, 70.9296)
+
+[node name="@MeshInstance3D@7039" type="MeshInstance3D" parent="@Node3D@7038"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7040" type="MeshInstance3D" parent="@Node3D@7038" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_7ah35")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7041" type="MeshInstance3D" parent="@Node3D@7038" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_u07rb")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7042" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, -20.4104, 0, 56.6344)
+
+[node name="@Node3D@7043" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, -30.0541, 0, 70.7296)
+
+[node name="@MeshInstance3D@7044" type="MeshInstance3D" parent="@Node3D@7043"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7045" type="MeshInstance3D" parent="@Node3D@7043" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_pftur")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7046" type="MeshInstance3D" parent="@Node3D@7043" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_j4fsu")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7047" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, -30.5602, 0, 54.4044)
+
+[node name="@Node3D@7048" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, -24.4917, 0, 59.1283)
+
+[node name="@Node3D@7049" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, -31.1238, 0, 56.608)
+
+[node name="@Node3D@7050" type="Node3D" parent="."]
+transform = Transform3D(0.9975, 0, 0, 0, 0.9975, 0, 0, 0, 0.9975, -22.7645, 0, 70.4115)
+
+[node name="@MeshInstance3D@7051" type="MeshInstance3D" parent="@Node3D@7050"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7052" type="MeshInstance3D" parent="@Node3D@7050" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_lfx45")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7053" type="MeshInstance3D" parent="@Node3D@7050" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_6bful")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7054" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, -35.9869, 0, 57.5791)
+
+[node name="@Node3D@7055" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, -35.9534, 0, 45.5121)
+
+[node name="@Node3D@7056" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -47.5862, 0, 53.7661)
+
+[node name="@Node3D@7057" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, -44.6058, 0, 40.4273)
+
+[node name="@Node3D@7058" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, -56.7057, 0, 45.893)
+
+[node name="@MeshInstance3D@7059" type="MeshInstance3D" parent="@Node3D@7058"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7060" type="MeshInstance3D" parent="@Node3D@7058" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_7uciy")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7061" type="MeshInstance3D" parent="@Node3D@7058" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_2vmpc")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7062" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, -52.5212, 0, 33.694)
+
+[node name="@Node3D@7063" type="Node3D" parent="."]
+transform = Transform3D(1.6275, 0, 0, 0, 1.6275, 0, 0, 0, 1.6275, -53.6176, 0, 51.0015)
+
+[node name="@MeshInstance3D@7064" type="MeshInstance3D" parent="@Node3D@7063"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7065" type="MeshInstance3D" parent="@Node3D@7063" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_mq4mw")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7066" type="MeshInstance3D" parent="@Node3D@7063" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_umaei")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7067" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, -66.901, 0, 37.8178)
+
+[node name="@MeshInstance3D@7068" type="MeshInstance3D" parent="@Node3D@7067"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7069" type="MeshInstance3D" parent="@Node3D@7067" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_xhb21")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7070" type="MeshInstance3D" parent="@Node3D@7067" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_y0fjf")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7071" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, -59.3868, 0, 25.4238)
+
+[node name="@Node3D@7072" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, -55.4256, 0, 32)
+
+[node name="@Node3D@7073" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, -53.1095, 0, 23.3106)
+
+[node name="@Node3D@7074" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, -63.6023, 0, 23.7731)
+
+[node name="@Node3D@7075" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, -58.3626, 0, 14.7595)
+
+[node name="@Node3D@7076" type="Node3D" parent="."]
+transform = Transform3D(1.2075, 0, 0, 0, 1.2075, 0, 0, 0, 1.2075, -67.024, 0, 31.3654)
+
+[node name="@MeshInstance3D@7077" type="MeshInstance3D" parent="@Node3D@7076"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7078" type="MeshInstance3D" parent="@Node3D@7076" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_nyvnd")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7079" type="MeshInstance3D" parent="@Node3D@7076" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_udl4b")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7080" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -70.4834, 0, 13.6869)
+
+[node name="@Node3D@7081" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, -62.1914, 0, 5.09859)
+
+[node name="@Node3D@7082" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, -72.9255, 0, 1.88917)
+
+[node name="@MeshInstance3D@7083" type="MeshInstance3D" parent="@Node3D@7082"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7084" type="MeshInstance3D" parent="@Node3D@7082" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_4uwrh")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7085" type="MeshInstance3D" parent="@Node3D@7082" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_bjg86")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7086" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, -64.3717, 0, -5.42648)
+
+[node name="@Node3D@7087" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, -76.0981, 0, -10.7239)
+
+[node name="@MeshInstance3D@7088" type="MeshInstance3D" parent="@Node3D@7087"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7089" type="MeshInstance3D" parent="@Node3D@7087" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_jo0qw")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7090" type="MeshInstance3D" parent="@Node3D@7087" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_bfkak")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7091" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, -56.1969, 0, -14.3494)
+
+[node name="@Node3D@7092" type="Node3D" parent="."]
+transform = Transform3D(1.8375, 0, 0, 0, 1.8375, 0, 0, 0, 1.8375, -73.8668, 0, -4.43734)
+
+[node name="@MeshInstance3D@7093" type="MeshInstance3D" parent="@Node3D@7092"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7094" type="MeshInstance3D" parent="@Node3D@7092" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_d60xp")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7095" type="MeshInstance3D" parent="@Node3D@7092" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_13avi")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7096" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, -63.4525, 0, -8.35368)
+
+[node name="@Node3D@7097" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, -58.4616, 0, -14.3623)
+
+[node name="@Node3D@7098" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, -64.9312, 0, -19.8581)
+
+[node name="@Node3D@7099" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, -57.3077, 0, -24.6899)
+
+[node name="@Node3D@7100" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -64.2503, 0, -32.049)
+
+[node name="@Node3D@7101" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, -54.2925, 0, -35.0069)
+
+[node name="@Node3D@7102" type="Node3D" parent="."]
+transform = Transform3D(1.4175, 0, 0, 0, 1.4175, 0, 0, 0, 1.4175, -68.6469, 0, -27.6335)
+
+[node name="@MeshInstance3D@7103" type="MeshInstance3D" parent="@Node3D@7102"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7104" type="MeshInstance3D" parent="@Node3D@7102" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_o1ggo")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7105" type="MeshInstance3D" parent="@Node3D@7102" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_08ehf")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7106" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, -59.0058, 0, -42.8955)
+
+[node name="@MeshInstance3D@7107" type="MeshInstance3D" parent="@Node3D@7106"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7108" type="MeshInstance3D" parent="@Node3D@7106" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_fw83v")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7109" type="MeshInstance3D" parent="@Node3D@7106" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_0pkgu")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7110" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, -42.8859, 0, -39.0486)
+
+[node name="@Node3D@7111" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, -53.8444, 0, -54.8334)
+
+[node name="@MeshInstance3D@7112" type="MeshInstance3D" parent="@Node3D@7111"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7113" type="MeshInstance3D" parent="@Node3D@7111" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_b3wf0")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7114" type="MeshInstance3D" parent="@Node3D@7111" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_j4jqk")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7115" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, -37.2084, 0, -47.3241)
+
+[node name="@Node3D@7116" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, -45.2548, 0, -45.2548)
+
+[node name="@Node3D@7117" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, -39.013, 0, -48.7006)
+
+[node name="@Node3D@7118" type="Node3D" parent="."]
+transform = Transform3D(0.9975, 0, 0, 0, 0.9975, 0, 0, 0, 0.9975, -56.3402, 0, -47.9769)
+
+[node name="@MeshInstance3D@7119" type="MeshInstance3D" parent="@Node3D@7118"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7120" type="MeshInstance3D" parent="@Node3D@7118" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_aet7g")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7121" type="MeshInstance3D" parent="@Node3D@7118" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_d652r")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7122" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, -39.4246, 0, -55.2821)
+
+[node name="@Node3D@7123" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, -31.508, 0, -56.3951)
+
+[node name="@Node3D@7124" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -31.463, 0, -64.5393)
+
+[node name="@Node3D@7125" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, -19.5389, 0, -54.6098)
+
+[node name="@Node3D@7126" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, -20.6993, 0, -69.9517)
+
+[node name="@MeshInstance3D@7127" type="MeshInstance3D" parent="@Node3D@7126"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7128" type="MeshInstance3D" parent="@Node3D@7126" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_d2u2y")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7129" type="MeshInstance3D" parent="@Node3D@7126" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_3l1vt")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7130" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, -10.6413, 0, -59.252)
+
+[node name="@Node3D@7131" type="Node3D" parent="."]
+transform = Transform3D(1.6275, 0, 0, 0, 1.6275, 0, 0, 0, 1.6275, -26.6007, 0, -69.0536)
+
+[node name="@MeshInstance3D@7132" type="MeshInstance3D" parent="@Node3D@7131"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7133" type="MeshInstance3D" parent="@Node3D@7131" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_6i6na")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7134" type="MeshInstance3D" parent="@Node3D@7131" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_8q8ba")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7135" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, -9.33716, 0, -76.2807)
+
+[node name="@MeshInstance3D@7136" type="MeshInstance3D" parent="@Node3D@7135"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7137" type="MeshInstance3D" parent="@Node3D@7135" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_qf2dx")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7138" type="MeshInstance3D" parent="@Node3D@7135" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_rbgl5")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7139" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, -0.736265, 0, -62.3957)
+
+[node name="@Node3D@7140" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, -8.35368, 0, -63.4525)
+
+[node name="@Node3D@7141" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, -1.35002, 0, -64.5859)
+
+[node name="@Node3D@7142" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 2.37601, 0, -67.8584)
+
+[node name="@Node3D@7143" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, 8.38056, 0, -57.3913)
+
+[node name="@Node3D@7144" type="Node3D" parent="."]
+transform = Transform3D(1.2075, 0, 0, 0, 1.2075, 0, 0, 0, 1.2075, -3.32888, 0, -73.9251)
+
+[node name="@MeshInstance3D@7145" type="MeshInstance3D" parent="@Node3D@7144"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7146" type="MeshInstance3D" parent="@Node3D@7144" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_ub5c3")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7147" type="MeshInstance3D" parent="@Node3D@7144" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_tw2kx")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7148" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 14.3278, 0, -70.3559)
+
+[node name="@Node3D@7149" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, 18.4161, 0, -57.3139)
+
+[node name="@Node3D@7150" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, 26.162, 0, -68.0974)
+
+[node name="@MeshInstance3D@7151" type="MeshInstance3D" parent="@Node3D@7150"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7152" type="MeshInstance3D" parent="@Node3D@7150" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_elqjj")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7153" type="MeshInstance3D" parent="@Node3D@7150" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_hcxnb")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7154" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, 28.6377, 0, -55.4404)
+
+[node name="@Node3D@7155" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, 39.0291, 0, -66.2016)
+
+[node name="@MeshInstance3D@7156" type="MeshInstance3D" parent="@Node3D@7155"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7157" type="MeshInstance3D" parent="@Node3D@7155" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_d7psw")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7158" type="MeshInstance3D" parent="@Node3D@7155" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_2exmo")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7159" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, 38.7185, 0, -51.7111)
+
+[node name="@Node3D@7160" type="Node3D" parent="."]
+transform = Transform3D(1.8375, 0, 0, 0, 1.8375, 0, 0, 0, 1.8375, 32.3672, 0, -66.546)
+
+[node name="@MeshInstance3D@7161" type="MeshInstance3D" parent="@Node3D@7160"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7162" type="MeshInstance3D" parent="@Node3D@7160" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_uppip")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7163" type="MeshInstance3D" parent="@Node3D@7160" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_wn2nu")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7164" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, 32, 0, -55.4256)
+
+[node name="@Node3D@7165" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, 34.3388, 0, -46.7423)
+
+[node name="@Node3D@7166" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 43.1946, 0, -52.3893)
+
+[node name="@Node3D@7167" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, 43.1638, 0, -41.9634)
+
+[node name="@Node3D@7168" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 54.1969, 0, -47.0949)
+
+[node name="@Node3D@7169" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, 51.31, 0, -35.5112)
+
+[node name="@Node3D@7170" type="Node3D" parent="."]
+transform = Transform3D(1.4175, 0, 0, 0, 1.4175, 0, 0, 0, 1.4175, 51.8, 0, -52.8465)
+
+[node name="@MeshInstance3D@7171" type="MeshInstance3D" parent="@Node3D@7170"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7172" type="MeshInstance3D" parent="@Node3D@7170" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_7vlkd")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7173" type="MeshInstance3D" parent="@Node3D@7170" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_3gcb1")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7174" type="Node3D" parent="."]
+transform = Transform3D(1.55, 0, 0, 0, 1.55, 0, 0, 0, 1.55, 62.2108, 0, -38.0988)
+
+[node name="@MeshInstance3D@7175" type="MeshInstance3D" parent="@Node3D@7174"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7176" type="MeshInstance3D" parent="@Node3D@7174" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_edd5y")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7177" type="MeshInstance3D" parent="@Node3D@7174" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_ga40n")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7178" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.364, 0, 0, 0, 1.364, 0, 0, 0, 1.364, 58.4608, 0, -27.4864)
+
+[node name="@Node3D@7179" type="Node3D" parent="."]
+transform = Transform3D(1.75, 0, 0, 0, 1.75, 0, 0, 0, 1.75, 71.2648, 0, -28.7619)
+
+[node name="@MeshInstance3D@7180" type="MeshInstance3D" parent="@Node3D@7179"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7181" type="MeshInstance3D" parent="@Node3D@7179" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_h8ycb")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7182" type="MeshInstance3D" parent="@Node3D@7179" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_exarb")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7183" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.54, 0, 0, 0, 1.54, 0, 0, 0, 1.54, 55.8427, 0, -15.6715)
+
+[node name="@Node3D@7184" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, 59.1283, 0, -24.4917)
+
+[node name="@Node3D@7185" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(0.836, 0, 0, 0, 0.836, 0, 0, 0, 0.836, 57.8104, 0, -16.7927)
+
+[node name="@Node3D@7186" type="Node3D" parent="."]
+transform = Transform3D(0.9975, 0, 0, 0, 0.9975, 0, 0, 0, 0.9975, 65.8854, 0, -33.6915)
+
+[node name="@MeshInstance3D@7187" type="MeshInstance3D" parent="@Node3D@7186"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+material_override = SubResource("StandardMaterial3D_107yc")
+gi_mode = 0
+mesh = SubResource("CylinderMesh_ogm2p")
+
+[node name="@MeshInstance3D@7188" type="MeshInstance3D" parent="@Node3D@7186" groups=["foliage_wind"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_j2jqg")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@MeshInstance3D@7189" type="MeshInstance3D" parent="@Node3D@7186" groups=["foliage_wind"]]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.15, 0)
+material_override = SubResource("ShaderMaterial_yqtsy")
+gi_mode = 0
+mesh = SubResource("ArrayMesh_d7e1g")
+
+[node name="@Node3D@7190" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 66.1612, 0, -15.268)
+
+[node name="@Node3D@7191" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.012, 0, 0, 0, 1.012, 0, 0, 0, 1.012, 61.9748, 0, -7.27172)
+
+[node name="@Node3D@7192" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 71.6669, 0, -4.3699)
+
+[node name="@Node3D@7193" type="Node3D" parent="." instance=ExtResource("25_geia8")]
+transform = Transform3D(1.188, 0, 0, 0, 1.188, 0, 0, 0, 1.188, 64.5221, 0, 3.17061)
+
+[node name="@Node3D@7194" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 51.5882, 0, 15.9581)
+
+[node name="@Node3D@7195" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 48.9944, 0, 28.3392)
+
+[node name="@Node3D@7196" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 43.3644, 0, 40.301)
+
+[node name="@Node3D@7197" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 34.7723, 0, 51.0894)
+
+[node name="@Node3D@7198" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 19.6882, 0, 50.283)
+
+[node name="@Node3D@7199" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 8.39098, 0, 55.9746)
+
+[node name="@Node3D@7200" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -4.47129, 0, 59.0309)
+
+[node name="@Node3D@7201" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -18.2631, 0, 59.0398)
+
+[node name="@Node3D@7202" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -27.0374, 0, 46.7437)
+
+[node name="@Node3D@7203" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -38.531, 0, 41.4599)
+
+[node name="@Node3D@7204" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -48.94, 0, 33.3094)
+
+[node name="@Node3D@7205" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -57.5461, 0, 22.532)
+
+[node name="@Node3D@7206" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -53.4033, 0, 8.00552)
+
+[node name="@Node3D@7207" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -56.4383, 0, -4.27491)
+
+[node name="@Node3D@7208" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -56.5559, 0, -17.4948)
+
+[node name="@Node3D@7209" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -53.4956, 0, -30.9428)
+
+[node name="@Node3D@7210" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -39.5554, 0, -36.761)
+
+[node name="@Node3D@7211" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -31.8465, 0, -46.7906)
+
+[node name="@Node3D@7212" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -21.5841, 0, -55.125)
+
+[node name="@Node3D@7213" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, -9.16188, 0, -61.1171)
+
+[node name="@Node3D@7214" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 4.07854, 0, -53.8458)
+
+[node name="@Node3D@7215" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 16.7264, 0, -54.072)
+
+[node name="@Node3D@7216" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 29.641, 0, -51.245)
+
+[node name="@Node3D@7217" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 42.0709, 0, -45.2689)
+
+[node name="@Node3D@7218" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 44.6412, 0, -30.3835)
+
+[node name="@Node3D@7219" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 52.704, 0, -20.6361)
+
+[node name="@Node3D@7220" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 58.5458, 0, -8.77643)
+
+[node name="@Node3D@7221" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 61.6235, 0, 4.66766)
+
+[node name="@Node3D@7222" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 38.2421, 0, 32.2109)
+
+[node name="@Node3D@7223" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1.29412, 0, 0, 0, 1.29412, 0, 0, 0, 1.29412, 36.7124, 0.5, 30.9224)
+
+[node name="@Node3D@7224" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 20.8888, 0, 46.5259)
+
+[node name="@Node3D@7225" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -1.39351, 0, 51.9813)
+
+[node name="@Node3D@7226" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -22.8936, 0, 44.4509)
+
+[node name="@Node3D@7227" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1.29412, 0, 0, 0, 1.29412, 0, 0, 0, 1.29412, -21.9779, 0.5, 42.6729)
+
+[node name="@Node3D@7228" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -40.7112, 0, 30.718)
+
+[node name="@Node3D@7229" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -50.9881, 0, 10.2084)
+
+[node name="@Node3D@7230" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -48.4307, 0, -12.4284)
+
+[node name="@Node3D@7231" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1.29412, 0, 0, 0, 1.29412, 0, 0, 0, 1.29412, -46.4935, 0.5, -11.9312)
+
+[node name="@Node3D@7232" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -39.007, 0, -32.8551)
+
+[node name="@Node3D@7233" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, -21.2983, 0, -47.4382)
+
+[node name="@Node3D@7234" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 1.33992, 0, -49.982)
+
+[node name="@Node3D@7235" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1.29412, 0, 0, 0, 1.29412, 0, 0, 0, 1.29412, 1.28632, 0.5, -47.9828)
+
+[node name="@Node3D@7236" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 23.3515, 0, -45.3399)
+
+[node name="@Node3D@7237" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 41.5095, 0, -31.3203)
+
+[node name="@Node3D@7238" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 49.0271, 0, -9.81573)
+
+[node name="@Node3D@7239" type="Node3D" parent="." instance=ExtResource("24_j6va2")]
+transform = Transform3D(1.29412, 0, 0, 0, 1.29412, 0, 0, 0, 1.29412, 47.066, 0.5, -9.4231)
+
+[node name="@Node3D@7240" type="Node3D" parent="." instance=ExtResource("11_nms03")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 49.3993, 0, 12.6769)
+
+[node name="PathEdgeGrass" type="MultiMeshInstance3D" parent="." groups=["foliage_wind"]]
+material_override = SubResource("ShaderMaterial_5qviw")
+cast_shadow = 0
+multimesh = SubResource("MultiMesh_ojl6m")
+
+[node name="GuardSpawn_01" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 0.1, 6)
+script = ExtResource("30_q4iic")
+role = "patrol"
+sniper = false
+sentry = false
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_01" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+
+[node name="@Marker3D@7241" type="Marker3D" parent="GuardSpawn_01" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -15)
+
+[node name="GuardSpawn_02" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 11.5, 0.1, 2)
+script = ExtResource("30_q4iic")
+role = "patrol"
+sniper = false
+sentry = false
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_02" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+
+[node name="@Marker3D@7242" type="Marker3D" parent="GuardSpawn_02" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10.5)
+
+[node name="GuardSpawn_03" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 1, 0.1, -9)
+script = ExtResource("30_q4iic")
+role = "interior"
+sniper = false
+sentry = false
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_03" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.5)
+
+[node name="@Marker3D@7243" type="Marker3D" parent="GuardSpawn_03" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, -5)
+
+[node name="GuardSpawn_04" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(-0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, -0.707107, -15.25, 3.6, -15.25)
+script = ExtResource("30_q4iic")
+role = "patrol"
+sniper = true
+sentry = false
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_04" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+
+[node name="GuardSpawn_05" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 14.5, 3.55, -8)
+script = ExtResource("30_q4iic")
+role = "patrol"
+sniper = true
+sentry = false
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_05" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+
+[node name="GuardSpawn_06" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, -14, 0.1, 14)
+script = ExtResource("30_q4iic")
+role = "heavy"
+sniper = false
+sentry = true
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_06" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+
+[node name="GuardSpawn_07" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.1, -12)
+script = ExtResource("30_q4iic")
+role = "commander"
+sniper = false
+sentry = false
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_07" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+
+[node name="@Marker3D@7244" type="Marker3D" parent="GuardSpawn_07" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 0)
+
+[node name="GuardSpawn_08" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.1, 10)
+script = ExtResource("30_q4iic")
+role = "handler"
+sniper = false
+sentry = false
+dog_id = "cult_dog"
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_08" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+
+[node name="@Marker3D@7245" type="Marker3D" parent="GuardSpawn_08" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -4)
+
+[node name="GuardSpawn_09" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.2, 0.1, 10)
+script = ExtResource("30_q4iic")
+role = "dog"
+sniper = false
+sentry = false
+dog_id = "cult_dog"
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_09" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+
+[node name="@Marker3D@7246" type="Marker3D" parent="GuardSpawn_09" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.3, 0, -3.5)
+
+[node name="GuardSpawn_10" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -6, 0.1, -2)
+script = ExtResource("30_q4iic")
+role = "heavy"
+sniper = false
+sentry = true
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_10" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+
+[node name="GuardSpawn_11" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 6, 0.1, -4)
+script = ExtResource("30_q4iic")
+role = "heavy"
+sniper = false
+sentry = true
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_11" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+
+[node name="GuardSpawn_12" type="Marker3D" parent="." groups=["guard_spawn"] instance=ExtResource("29_01iqg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -14)
+script = ExtResource("30_q4iic")
+role = "interior"
+sniper = true
+sentry = false
+dog_id = ""
+
+[node name="PatrolPoint" type="Marker3D" parent="GuardSpawn_12" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
+
+[node name="@Marker3D@7247" type="Marker3D" parent="GuardSpawn_12" groups=["patrol_point"] instance=ExtResource("31_pcdor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)

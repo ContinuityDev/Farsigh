@@ -22,6 +22,12 @@ var _grade_shader: Shader
 var _sky_shader: Shader
 var _terrain_shader: Shader
 var _surface_shader: Shader
+var _grass_tex: Texture2D
+var _dirt_tex: Texture2D
+var _mud_tex: Texture2D
+var _gravel_tex: Texture2D
+var _path_tex: Texture2D
+var _terrain_cache: Dictionary = {}
 var _terrain_mat: ShaderMaterial
 var _path_mat: ShaderMaterial
 var _surface_cache: Dictionary = {}
@@ -36,6 +42,11 @@ func _ready() -> void:
 	_sky_shader = load("res://shaders/sky_cycle.gdshader") as Shader
 	_terrain_shader = load("res://shaders/terrain_splat.gdshader") as Shader
 	_surface_shader = load("res://shaders/surface_wear.gdshader") as Shader
+	_grass_tex = load("res://assets/textures/ground/Grass004.png") as Texture2D
+	_dirt_tex = load("res://assets/textures/ground/Ground037.png") as Texture2D
+	_mud_tex = load("res://assets/textures/ground/Ground048.png") as Texture2D
+	_gravel_tex = load("res://assets/textures/ground/Gravel020.png") as Texture2D
+	_path_tex = load("res://assets/textures/ground/Ground054.png") as Texture2D
 	# Default: High on desktop, Low on mobile / touch web
 	if OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios"):
 		level = LEVEL_LOW
@@ -103,7 +114,7 @@ func wants_sky_shader() -> bool:
 
 
 func wants_terrain_shader() -> bool:
-	return level >= LEVEL_MED and _terrain_shader != null
+	return _terrain_shader != null and _grass_tex != null
 
 
 func shadow_distance() -> float:
@@ -118,6 +129,11 @@ func fog_density_scale() -> float:
 			return 0.85
 		_:
 			return 1.0
+
+
+func refresh_group_materials() -> void:
+	_retag_group_materials("foliage_wind", wants_wind())
+	_retag_group_materials("water_fx", wants_water_shader())
 
 
 func apply() -> void:
@@ -161,9 +177,20 @@ func make_water_material(shallow: Color = Color(0.18, 0.46, 0.52, 0.88), deep: C
 func make_terrain_material(path_bias: float = 0.18) -> Material:
 	if not wants_terrain_shader():
 		return ProcMesh.mat(Color(0.30, 0.38, 0.22), 0.92, 0.0)
+	var key := "%d_%.2f" % [level, path_bias]
+	if _terrain_cache.has(key):
+		return _terrain_cache[key]
 	var mat := ShaderMaterial.new()
 	mat.shader = _terrain_shader
+	mat.set_shader_parameter("grass_tex", _grass_tex)
+	mat.set_shader_parameter("dirt_tex", _dirt_tex)
+	mat.set_shader_parameter("mud_tex", _mud_tex)
+	mat.set_shader_parameter("gravel_tex", _gravel_tex)
+	mat.set_shader_parameter("path_tex", _path_tex)
 	mat.set_shader_parameter("path_amount", path_bias)
+	mat.set_shader_parameter("detail_strength", 0.0 if level == LEVEL_LOW else (0.16 if level == LEVEL_MED else 0.26))
+	mat.set_shader_parameter("uv_scale", 0.24)
+	_terrain_cache[key] = mat
 	return mat
 
 
@@ -309,12 +336,23 @@ func _retag_group_materials(group: String, enable: bool) -> void:
 	for n in get_tree().get_nodes_in_group(group):
 		if n.has_method("apply_quality"):
 			n.apply_quality(enable)
-		elif n is MeshInstance3D:
-			var mi := n as MeshInstance3D
-			if group == "foliage_wind" and enable:
-				var col := Color(0.22, 0.38, 0.16)
-				if mi.material_override is StandardMaterial3D:
-					col = (mi.material_override as StandardMaterial3D).albedo_color
-				mi.material_override = make_foliage_material(col)
+		elif n is MeshInstance3D or n is MultiMeshInstance3D:
+			var geo := n as GeometryInstance3D
+			if group == "foliage_wind":
+				if enable:
+					var col := Color(0.22, 0.38, 0.16)
+					if geo.material_override is StandardMaterial3D:
+						col = (geo.material_override as StandardMaterial3D).albedo_color
+					elif geo.material_override is ShaderMaterial:
+						var albedo = (geo.material_override as ShaderMaterial).get_shader_parameter("albedo")
+						if albedo is Color:
+							col = albedo
+					geo.material_override = make_foliage_material(col)
+				elif geo.material_override is ShaderMaterial:
+					var flat := Color(0.22, 0.38, 0.16)
+					var albedo_off = (geo.material_override as ShaderMaterial).get_shader_parameter("albedo")
+					if albedo_off is Color:
+						flat = albedo_off
+					geo.material_override = ProcMesh.mat(flat, 0.92, 0.0)
 			elif group == "water_fx" and enable:
-				mi.material_override = make_water_material()
+				geo.material_override = make_water_material()

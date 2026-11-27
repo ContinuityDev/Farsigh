@@ -876,18 +876,19 @@ func _ensure_weapon_wheels() -> void:
 
 func _ensure_gadget_lethal_hud() -> void:
 	_gadget_lethal_label = get_node_or_null("Root/GadgetLethalLabel") as Label
-	if _gadget_lethal_label:
-		return
-	_gadget_lethal_label = Label.new()
-	_gadget_lethal_label.name = "GadgetLethalLabel"
-	_gadget_lethal_label.add_theme_font_size_override("font_size", 15)
+	if _gadget_lethal_label == null:
+		_gadget_lethal_label = Label.new()
+		_gadget_lethal_label.name = "GadgetLethalLabel"
+		_gadget_lethal_label.add_theme_font_size_override("font_size", 15)
+		_gadget_lethal_label.add_theme_constant_override("outline_size", 4)
+		_gadget_lethal_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		_gadget_lethal_label.modulate = Color(0.88, 0.86, 0.72)
+		$Root.add_child(_gadget_lethal_label)
 	_gadget_lethal_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_gadget_lethal_label.offset_left = 16
-	_gadget_lethal_label.offset_top = -72
-	_gadget_lethal_label.offset_right = 420
+	_gadget_lethal_label.offset_left = 24
+	_gadget_lethal_label.offset_top = -96
+	_gadget_lethal_label.offset_right = 430
 	_gadget_lethal_label.offset_bottom = -16
-	_gadget_lethal_label.modulate = Color(0.88, 0.86, 0.72)
-	$Root.add_child(_gadget_lethal_label)
 
 
 func _ensure_vitals_bars() -> void:
@@ -1019,7 +1020,7 @@ func refresh_gadget_lethal_hud() -> void:
 		if wm.lethal != null:
 			lname = String(wm.lethal.display_name)
 			lcnt = int(wm.lethal_count)
-	_gadget_lethal_label.text = "GADGET [Q/T]: %s ×%d    LETHAL [G]: %s ×%d\nWHEEL [TAB] · SWAP [1/2]" % [gname, gcnt, lname, lcnt]
+	_gadget_lethal_label.text = "GADGET [Q]  %s ×%d\nLETHAL [G]  %s ×%d\nWHEEL [TAB]     SWAP [1/2]" % [gname, gcnt, lname, lcnt]
 
 
 func refresh_vitals() -> void:

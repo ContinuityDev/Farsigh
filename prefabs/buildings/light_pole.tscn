@@ -1,0 +1,82 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Shader" path="res://shaders/surface_wear.gdshader" id="1_m5jdc"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_skeos"]
+render_priority = 0
+shader = ExtResource("1_m5jdc")
+shader_parameter/albedo = Color(0.22, 0.23, 0.24, 1)
+shader_parameter/wear_col = null
+shader_parameter/roughness = 0.78
+shader_parameter/metallic = 0.04
+shader_parameter/wear = 0.45
+shader_parameter/rim_color = null
+shader_parameter/rim_strength = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_68ca4"]
+size = Vector3(0.14, 4.8, 0.14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_fdxlj"]
+size = Vector3(0.14, 4.8, 0.14)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_iq0fo"]
+specular_mode = 2
+albedo_color = Color(0.22, 0.23, 0.24, 1)
+metallic = 0.05
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_25xta"]
+size = Vector3(0.55, 0.12, 0.55)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tg3vd"]
+specular_mode = 2
+albedo_color = Color(1, 0.92, 0.7, 1)
+roughness = 0.4
+emission_enabled = true
+emission = Color(1, 0.92, 0.7, 1)
+emission_energy_multiplier = 1.2
+
+[sub_resource type="BoxMesh" id="BoxMesh_o8o72"]
+size = Vector3(0.42, 0.22, 0.28)
+
+[node name="LightPole" type="Node3D"]
+
+[node name="@MeshInstance3D@759" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
+material_override = SubResource("ShaderMaterial_skeos")
+gi_mode = 0
+mesh = SubResource("BoxMesh_68ca4")
+
+[node name="@StaticBody3D@761" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
+collision_mask = 0
+
+[node name="@CollisionShape3D@760" type="CollisionShape3D" parent="@StaticBody3D@761"]
+shape = SubResource("BoxShape3D_fdxlj")
+
+[node name="@MeshInstance3D@762" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.85, 0.35)
+material_override = SubResource("StandardMaterial3D_iq0fo")
+gi_mode = 0
+mesh = SubResource("BoxMesh_25xta")
+
+[node name="@MeshInstance3D@763" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.7, 0.15)
+material_override = SubResource("StandardMaterial3D_tg3vd")
+gi_mode = 0
+mesh = SubResource("BoxMesh_o8o72")
+
+[node name="CompoundLight" type="OmniLight3D" parent="." groups=["compound_lights"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.55, 0.15)
+visible = false
+light_color = Color(1, 0.88, 0.65, 1)
+light_energy = 1.4
+omni_range = 14.0
+
+[node name="@SpotLight3D@764" type="SpotLight3D" parent="." groups=["compound_lights"]]
+transform = Transform3D(1, 0, 0, 0, 0.258819, 0.965926, 0, -0.965926, 0.258819, 0, 4.7, 0.15)
+visible = false
+light_color = Color(1, 0.9, 0.7, 1)
+light_energy = 1.8
+spot_range = 18.0
+spot_angle = 48.0
