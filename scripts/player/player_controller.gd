@@ -37,6 +37,7 @@ var hp: float = 100.0
 var is_down: bool = false
 var _capsule: CapsuleShape3D
 var _crouch_toggled: bool = false
+var _capture_fire_suppress: float = 0.0
 
 
 func _ready() -> void:
@@ -45,25 +46,30 @@ func _ready() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	_capsule = collision_shape.shape as CapsuleShape3D
+	if is_instance_valid(collision_shape) and collision_shape.shape is CapsuleShape3D:
+		# Duplicate so changing crouch height never mutates a shared sub-resource.
+		_capsule = (collision_shape.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
+		collision_shape.shape = _capsule
 	add_to_group("player")
-	weapons.camera_path = weapons.get_path_to(camera)
+	if is_instance_valid(weapons) and is_instance_valid(camera):
+		weapons.camera_path = weapons.get_path_to(camera)
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	var hud := get_tree().get_first_node_in_group("hud")
-	if hud and hud.has_method("set_click_to_capture_hint"):
+	if is_instance_valid(hud) and hud.has_method("set_click_to_capture_hint"):
 		hud.set_click_to_capture_hint(TouchInput.is_web_desktop())
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if GameState.is_paused:
+	if GameState.is_paused or is_down:
 		return
-	# Desktop browser: click/tap canvas to capture mouse for look
+	# Desktop browser: click/tap canvas to capture mouse for look without firing
 	if OS.has_feature("web") and not TouchInput.is_touch_ui_desired():
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+				_capture_fire_suppress = 0.15
 				var hud := get_tree().get_first_node_in_group("hud")
-				if hud and hud.has_method("set_click_to_capture_hint"):
+				if is_instance_valid(hud) and hud.has_method("set_click_to_capture_hint"):
 					hud.set_click_to_capture_hint(false)
 				get_viewport().set_input_as_handled()
 				return
@@ -76,6 +82,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if GameState.is_paused or is_down:
 		return
+	if _capture_fire_suppress > 0.0:
+		_capture_fire_suppress = maxf(0.0, _capture_fire_suppress - delta)
+	# Keep desktop-web pointer lock hint synced if browser released lock (e.g. Esc)
+	if TouchInput.is_web_desktop():
+		var hud_hint := get_tree().get_first_node_in_group("hud")
+		if is_instance_valid(hud_hint) and hud_hint.has_method("set_click_to_capture_hint"):
+			hud_hint.set_click_to_capture_hint(Input.mouse_mode != Input.MOUSE_MODE_CAPTURED)
 
 	# Touch look swipe + gamepad stick
 	var touch_look := TouchInput.consume_look_relative()
@@ -112,6 +125,9 @@ func _physics_process(delta: float) -> void:
 		velocity.y = JUMP_VELOCITY
 
 	move_and_slide()
+	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
+		var horiz_speed := Vector2(velocity.x, velocity.z).length()
+		weapons.viewmodel_rig.set_move_factor(horiz_speed / WALK_SPEED if is_on_floor() else 0.0)
 	_update_footsteps(delta, direction.length() > 0.1 and is_on_floor(), sprinting)
 	_handle_combat_input()
 	_handle_interact_input()
@@ -124,15 +140,22 @@ func _apply_look(yaw: float, pitch: float) -> void:
 
 
 func _handle_crouch() -> void:
-	# Hold on PC / gamepad; toggle-friendly on touch (button hold also works)
-	var want := TouchInput.is_action_pressed("crouch")
+	# Toggle on C / gamepad B / touch button so players never hold Ctrl+W on web.
+	if TouchInput.is_action_just_pressed("crouch"):
+		_crouch_toggled = not _crouch_toggled
+	if TouchInput.is_action_just_pressed("jump") and _crouch_toggled:
+		_crouch_toggled = false
+	var want := _crouch_toggled
 	if want == is_crouching:
 		return
 	is_crouching = want
 	var target_h := CROUCH_HEIGHT if is_crouching else STAND_HEIGHT
-	_capsule.height = target_h
-	collision_shape.position.y = target_h * 0.5
-	head.position.y = target_h - 0.15
+	if is_instance_valid(_capsule):
+		_capsule.height = maxf(target_h, _capsule.radius * 2.0 + 0.05)
+	if is_instance_valid(collision_shape):
+		collision_shape.position.y = target_h * 0.5
+	if is_instance_valid(head):
+		head.position.y = target_h - 0.15
 
 
 func _update_footsteps(delta: float, moving: bool, sprinting: bool) -> void:
@@ -154,9 +177,10 @@ func _update_footsteps(delta: float, moving: bool, sprinting: bool) -> void:
 
 
 func _handle_combat_input() -> void:
-	if TouchInput.is_action_just_pressed("fire"):
+	var can_fire := _capture_fire_suppress <= 0.0
+	if can_fire and TouchInput.is_action_just_pressed("fire"):
 		weapons.try_fire()
-	elif TouchInput.is_action_pressed("fire"):
+	elif can_fire and TouchInput.is_action_pressed("fire"):
 		weapons.try_fire_held()
 	if TouchInput.is_action_just_pressed("reload"):
 		weapons.start_reload()

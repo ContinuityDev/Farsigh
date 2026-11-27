@@ -40,9 +40,11 @@ func _bind_viewmodel_rig() -> void:
 	_refresh_viewmodel()
 
 
-func _refresh_viewmodel() -> void:
-	if viewmodel_rig:
-		viewmodel_rig.show_weapon(get_active().id)
+func _refresh_viewmodel(animate_swap: bool = true) -> void:
+	if is_instance_valid(viewmodel_rig):
+		var active := get_active()
+		viewmodel_rig.show_weapon(active.id, animate_swap)
+		viewmodel_rig.set_bow_arrow_visible(active.id != GameState.WeaponId.BOW or _mag() > 0)
 
 
 func _equip_from_loadout() -> void:
@@ -118,10 +120,16 @@ func _fire_shot(w: WeaponData) -> void:
 		dir = -get_parent().global_transform.basis.z
 
 	NoiseBus.emit_noise(origin, w.noise_loudness, w.display_name)
+	if is_instance_valid(viewmodel_rig):
+		viewmodel_rig.play_fire(w.id)
+		if w.id == GameState.WeaponId.BOW:
+			viewmodel_rig.set_bow_arrow_visible(_mag() > 0)
 
 	match w.id:
 		GameState.WeaponId.BOW:
 			_spawn_projectile(ARROW_SCENE, origin, dir, w)
+			if _mag() <= 0 and _reserve() > 0:
+				start_reload()
 		GameState.WeaponId.KNIFE:
 			_spawn_projectile(KNIFE_SCENE, origin, dir, w)
 		_:
@@ -168,7 +176,10 @@ func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 	imm.surface_add_vertex(from)
 	imm.surface_add_vertex(to)
 	imm.surface_end()
-	get_tree().create_timer(0.05).timeout.connect(mesh_inst.queue_free)
+	get_tree().create_timer(0.05).timeout.connect(func():
+		if is_instance_valid(mesh_inst):
+			mesh_inst.queue_free()
+	)
 
 
 func start_reload() -> void:
@@ -176,7 +187,9 @@ func start_reload() -> void:
 	if _reloading or _mag() >= w.magazine_size or _reserve() <= 0:
 		return
 	_reloading = true
-	_reload_timer = RELOAD_TIME
+	_reload_timer = 0.85 if w.id == GameState.WeaponId.BOW else RELOAD_TIME
+	if is_instance_valid(viewmodel_rig):
+		viewmodel_rig.play_reload(_reload_timer)
 
 
 func _finish_reload() -> void:
@@ -186,6 +199,8 @@ func _finish_reload() -> void:
 	var take := mini(need, _reserve())
 	_set_mag(_mag() + take)
 	_set_reserve(_reserve() - take)
+	if is_instance_valid(viewmodel_rig) and w.id == GameState.WeaponId.BOW:
+		viewmodel_rig.set_bow_arrow_visible(_mag() > 0)
 	_emit_ammo()
 
 
@@ -242,10 +257,14 @@ func try_melee_takedown(player: Node3D) -> bool:
 		return false
 	if guard.has_method("melee_takedown"):
 		guard.melee_takedown(player)
+		if is_instance_valid(viewmodel_rig):
+			viewmodel_rig.play_fire(GameState.WeaponId.KNIFE)
 		NoiseBus.emit_noise(guard.global_position, 2.0, "melee_takedown")
 		return true
 	if guard.get_parent() and guard.get_parent().has_method("melee_takedown"):
 		guard.get_parent().melee_takedown(player)
+		if is_instance_valid(viewmodel_rig):
+			viewmodel_rig.play_fire(GameState.WeaponId.KNIFE)
 		NoiseBus.emit_noise(guard.global_position, 2.0, "melee_takedown")
 		return true
 	return false

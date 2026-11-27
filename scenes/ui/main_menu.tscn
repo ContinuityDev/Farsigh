@@ -91,7 +91,7 @@ offset_top = -48.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_font_sizes/font_size = 13
-text = "PC: WASD + Mouse  |  Gamepad supported  |  Touch controls on mobile"
+text = "PC: WASD + Mouse | C: Crouch | R: Reload | Q: Swap  |  Gamepad & Touch supported"
 horizontal_alignment = 1
 
 [connection signal="pressed" from="Center/VBox/ContinueBtn" to="." method="_on_continue_pressed"]

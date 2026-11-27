@@ -23,9 +23,13 @@ func _run() -> void:
 		quit(2)
 		return
 
-	# Put player in front of first guard and force full detection/combat
+	# Put player in front of first guard while CROUCHED and force full detection/combat
 	var g = guards[0]
 	player.global_position = g.global_position + (-g.global_transform.basis.z) * 4.0 + Vector3.UP * 0.1
+	# Toggle crouch explicitly (tests capsule height + crouch vision + crouch noise path)
+	player._crouch_toggled = true
+	player._handle_crouch()
+	print("SPOT crouched=", player.is_crouching, " head_y=", player.head.position.y)
 	g.detection = 1.0
 	g._set_state(g.State.COMBAT)
 	print("SPOT combat set, multi-guard fire...")

@@ -79,15 +79,19 @@ func _bind_player(player: Node) -> void:
 func _process(delta: float) -> void:
 	if _status_timer > 0.0:
 		_status_timer -= delta
-		if _status_timer <= 0.0:
+		if _status_timer <= 0.0 and is_instance_valid(status_label):
 			status_label.text = ""
 	# Smooth decay of detection meter when not updated
 	_detection_display = move_toward(_detection_display, GameState.last_detection, delta * 2.0)
-	detection_bar.value = _detection_display * 100.0
-	detection_bar.modulate = Color(0.3, 0.9, 0.4).lerp(Color(0.95, 0.2, 0.15), _detection_display)
+	if is_instance_valid(detection_bar):
+		detection_bar.value = _detection_display * 100.0
+		detection_bar.modulate = Color(0.3, 0.9, 0.4).lerp(Color(0.95, 0.2, 0.15), _detection_display)
 	var player := get_tree().get_first_node_in_group("player")
-	if player and "rock_count" in player:
-		rocks_label.text = "Rocks: %d" % player.rock_count
+	if is_instance_valid(player) and is_instance_valid(rocks_label):
+		var rocks := int(player.get("rock_count"))
+		var hp_val := int(player.get("hp"))
+		var stance := "CROUCH" if bool(player.get("is_crouching")) else "STAND"
+		rocks_label.text = "HP: %d  |  %s (C)  |  Rocks: %d" % [hp_val, stance, rocks]
 
 
 func _on_detection(value: float) -> void:
