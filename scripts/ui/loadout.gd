@@ -142,21 +142,29 @@ func _setup_preview_stage() -> void:
 	stage.add_child(rim_light)
 
 	var cam := Camera3D.new()
-	cam.position = Vector3(0.0, 0.08, 0.86)
-	cam.fov = 42.0
+	cam.position = Vector3(0.0, 0.05, 1.08)
+	cam.fov = 40.0
 	cam.current = true
 	stage.add_child(cam)
 
 	_preview_turntable = Node3D.new()
 	_preview_turntable.name = "Turntable"
-	_preview_turntable.position = Vector3(0.0, -0.02, 0.0)
+	_preview_turntable.position = Vector3(0.0, -0.01, 0.0)
 	stage.add_child(_preview_turntable)
 
 	_preview_rig = Node3D.new()
 	_preview_rig.set_script(ViewmodelRigScript)
-	_preview_rig.set_process(false)
 	_preview_turntable.add_child(_preview_rig)
-	_preview_rig.position = Vector3(0.0, 0.0, 0.0)
+	_preview_rig.set_process(false)
+	_preview_rig.position = Vector3.ZERO
+	var pv: Node3D = _preview_rig.get_node_or_null("ViewmodelPivot")
+	if pv != null:
+		pv.position = Vector3.ZERO
+		pv.rotation = Vector3.ZERO
+		for arm_name in ["LeftArm", "RightArm"]:
+			var arm := pv.get_node_or_null(arm_name)
+			if arm != null:
+				arm.visible = false
 
 
 func _build_slot_tabs() -> void:
@@ -259,10 +267,9 @@ func _update_preview(wid: GameState.WeaponId, mods: Dictionary) -> void:
 	_preview_rig.show_weapon(wid, false)
 	var slot: Node3D = _preview_rig.get_slot(wid)
 	if is_instance_valid(slot):
-		# Center weapon cleanly on the turntable and hide sleeves/gloves focus by scaling nicely
-		slot.position = Vector3(0.0, 0.0, 0.08)
+		slot.position = Vector3(0.0, -0.02, 0.14)
 		slot.rotation_degrees = Vector3(0.0, 0.0, 0.0)
-		slot.scale = Vector3(1.45, 1.45, 1.45)
+		slot.scale = Vector3(1.15, 1.15, 1.15)
 
 
 func _rebuild_stats(base_w: WeaponData, modded_w: WeaponData) -> void:

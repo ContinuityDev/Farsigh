@@ -52,11 +52,11 @@ func _bake_navmesh() -> void:
 		add_child(nav_region)
 
 	var nav_mesh := NavigationMesh.new()
-	nav_mesh.agent_radius = 0.45
-	nav_mesh.agent_height = 1.85
-	nav_mesh.agent_max_climb = 0.55
+	nav_mesh.agent_radius = 0.5
+	nav_mesh.agent_height = 1.75
+	nav_mesh.agent_max_climb = 0.5
 	nav_mesh.agent_max_slope = 50.0
-	nav_mesh.cell_size = 0.35
+	nav_mesh.cell_size = 0.25
 	nav_mesh.cell_height = 0.25
 	nav_mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
 	nav_mesh.geometry_collision_mask = 1

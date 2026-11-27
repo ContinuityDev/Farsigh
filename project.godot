@@ -208,6 +208,10 @@ gdscript/warnings/unsafe_property_access=1
 gdscript/warnings/unsafe_cast=1
 gdscript/warnings/return_value_discarded=0
 
+[navigation]
+
+3d/merge_rasterizer_cell_scale=0.001
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

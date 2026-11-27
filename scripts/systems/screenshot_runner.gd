@@ -1,5 +1,7 @@
 extends Node
-## Boot helper: AUTO_CAPTURE=1 drives menu → loadout → outpost & weapon/guard showcase shots.
+## Boot helper: AUTO_CAPTURE=1 captures showcase screenshots into docs/screenshots/
+## covering Map Select, Gunsmith Workbench, all new Far Cry 5–inspired outposts,
+## multi-storey interiors, customized weapons/mods, animations, and touch controls.
 
 
 func _ready() -> void:
@@ -7,74 +9,123 @@ func _ready() -> void:
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().process_frame
-	await get_tree().create_timer(1.2).timeout
-	await _snap("01_main_menu")
+	await get_tree().create_timer(0.8).timeout
 
+	# Prepare a rich sample campaign state (1 liberated outpost + modded arsenal)
+	SaveManager.clear_save()
 	GameState.start_new_run()
-	GameState.set_loadout(GameState.WeaponId.PISTOL, GameState.WeaponId.KNIFE)
+	GameState.mark_liberated("ranch_redbarn")
+	GameState.set_full_loadout(
+		GameState.WeaponId.RIFLE,
+		GameState.WeaponId.PISTOL,
+		GameState.WeaponId.BOW,
+		GameState.WeaponId.MOLOTOV,
+		GameState.WeaponId.MACHETE
+	)
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "muzzle", "suppressor")
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "optic", "holo")
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "mag", "extended")
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "underbarrel", "laser")
+	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "skin", "tan")
+	GameState.set_weapon_mod(GameState.WeaponId.BOW, "arrow", "explosive")
+	GameState.set_weapon_mod(GameState.WeaponId.BOW, "skin", "crimson")
+	GameState.select_outpost("lumber_mill")
+
+	# 1. Outpost / Map Select screen showing liberated status & tactical intel
+	get_tree().change_scene_to_file("res://scenes/ui/map_select.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.7).timeout
+	await _snap("01_map_select")
+
+	# 2. Gunsmith & Loadout workbench with live 3D weapon preview + mods + stat bars
 	get_tree().change_scene_to_file("res://scenes/ui/loadout.tscn")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	await get_tree().create_timer(1.0).timeout
-	await _snap("02_loadout")
+	await get_tree().create_timer(0.9).timeout
+	await _snap("02_gunsmith_workbench")
 
+	# 3. Seed Family Ranch (2-storey Big Red Barn, twin grain silos, farmhouse, hay bales)
+	GameState.outposts["ranch_redbarn"]["status"] = "active"
+	GameState.select_outpost("ranch_redbarn")
 	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	await get_tree().create_timer(1.8).timeout
-	# Move just inside the gate so compound, watchtower, pickup, crates, barrels, and guards shine
+	await get_tree().create_timer(1.0).timeout
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	if is_instance_valid(player):
-		player.global_position = Vector3(0.0, 0.1, 22.5)
-	await get_tree().create_timer(0.5).timeout
-	await _snap("03_outpost")
+		player.global_position = Vector3(-5.0, 2.8, 22.0)
+		player.look_at(Vector3(3.0, 2.2, -7.0), Vector3.UP)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("03_ranch_redbarn")
 
-	# Showcase Assault Rifle + muzzle flash
-	var wm = player.get_node_or_null("WeaponManager") if is_instance_valid(player) else null
-	if is_instance_valid(wm) and is_instance_valid(wm.viewmodel_rig):
-		wm.primary = WeaponData.make_rifle()
-		wm.primary_mag = wm.primary.magazine_size
-		wm.active_is_primary = true
-		wm._refresh_viewmodel(false)
-		wm._emit_ammo()
-		wm.viewmodel_rig.play_fire(GameState.WeaponId.RIFLE)
-		wm.viewmodel_rig._flash_t = 0.5
-		await get_tree().process_frame
-		await _snap("05_rifle_muzzle")
-		wm.viewmodel_rig._flash_t = 0.01
+	# 4. Baron Lumber Mill (2-storey saw hall, log piles, watchtowers, customized rifle w/ laser)
+	GameState.select_outpost("lumber_mill")
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(6.0, 1.8, 21.0)
+		player.look_at(Vector3(-1.0, 2.4, -10.0), Vector3.UP)
+		var wm = player.get_node_or_null("WeaponManager")
+		if is_instance_valid(wm):
+			wm.select_slot(2)  # Compound Bow w/ Explosive Warhead arrow
+			await get_tree().create_timer(0.35).timeout
+	await _snap("04_lumber_mill_bow")
 
-		# Showcase Hunting Bow with visible nocked arrow + close view of humanoid guard & pickup
-		wm.primary = WeaponData.make_bow()
-		wm.primary_mag = 1
-		wm._refresh_viewmodel(false)
-		wm._emit_ammo()
-		var guards := get_tree().get_nodes_in_group("guards")
-		if not guards.is_empty() and is_instance_valid(guards[0]) and is_instance_valid(player):
-			var g := guards[0] as Node3D
-			var fwd := -g.global_transform.basis.z
-			player.global_position = g.global_position + fwd * 4.2 + Vector3.UP * 0.1
-			player.look_at(g.global_position + Vector3.UP * 1.15, Vector3.UP)
-		await get_tree().create_timer(0.35).timeout
-		await _snap("06_bow_guard")
+	# 5. Whitetail Bait & Dock (river, wooden pier, patrol boat, 2-storey boathouse, bait shop)
+	GameState.select_outpost("river_dock")
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(-11.0, 4.2, -7.5)
+		player.look_at(Vector3(6.0, 0.6, -15.5), Vector3.UP)
+		var wm = player.get_node_or_null("WeaponManager")
+		if is_instance_valid(wm):
+			wm.select_slot(3)  # Molotov Cocktail lit bottle
+			await get_tree().create_timer(0.35).timeout
+	await _snap("05_river_dock_molotov")
 
-		# Showcase Throwing Knife + compound overview near watchtower/vehicles
-		wm.active_is_primary = false
-		wm._refresh_viewmodel(false)
-		wm._emit_ammo()
-		if is_instance_valid(player):
-			player.global_position = Vector3(-4.5, 0.1, -18.5)
-			player.look_at(Vector3(-14.5, 2.5, -14.5), Vector3.UP)
-		await get_tree().create_timer(0.35).timeout
-		await _snap("07_knife_watchtower")
+	# 6. Jacob's Ridge Bunker (reinforced concrete bunker, radar dishes, helipad, bunker basement)
+	GameState.select_outpost("hilltop_bunker")
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(8.5, 3.2, 19.0)
+		player.look_at(Vector3(0.0, 2.2, -13.0), Vector3.UP)
+		var wm = player.get_node_or_null("WeaponManager")
+		if is_instance_valid(wm):
+			wm.select_slot(0)  # Customized Rifle (Suppressor + Holo + Ext Mag + Laser + Tan)
+			await get_tree().create_timer(0.35).timeout
+	await _snap("06_hilltop_bunker")
 
-		# Restore pistol for touch controls shot
-		wm.primary = WeaponData.make_pistol()
-		wm.primary_mag = wm.primary.magazine_size
-		wm.active_is_primary = true
-		wm._refresh_viewmodel(false)
-		wm._emit_ammo()
+	# 7. Multi-storey HQ interior (stairs, see-through window, open door) + weapon inspect + Touch UI
+	GameState.select_outpost("compound_alpha")
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		# Stand inside 2nd floor HQ looking through see-through glass window across the compound
+		player.global_position = Vector3(-1.2, 3.45, -13.2)
+		player.look_at(Vector3(-1.2, 3.2, 8.0), Vector3.UP)
+		var wm = player.get_node_or_null("WeaponManager")
+		if is_instance_valid(wm) and is_instance_valid(wm.viewmodel_rig):
+			wm.select_slot(0)
+			wm.viewmodel_rig.play_inspect()
+			await get_tree().create_timer(0.55).timeout
+	await _snap("07_interior_inspect")
 
-	# Force touch UI overlay shot for docs (hidden on PC during normal play)
+	# 8. Touch Controls UI showing new Peek L/R, Inspect, Vault/Jump, and Takedown buttons
 	TouchInput.force_touch_ui = true
 	var hud := get_tree().get_first_node_in_group("hud")
 	if is_instance_valid(hud):
@@ -84,8 +135,14 @@ func _ready() -> void:
 			var root_c = tc.get_node_or_null("Root")
 			if is_instance_valid(root_c):
 				root_c.visible = true
-	await get_tree().create_timer(0.5).timeout
-	await _snap("04_touch_controls")
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 0.15, 22.0)
+		player.look_at(Vector3(0.0, 2.0, -10.0), Vector3.UP)
+		var wm = player.get_node_or_null("WeaponManager")
+		if is_instance_valid(wm):
+			wm.select_slot(4)  # Kukri Machete
+	await get_tree().create_timer(0.45).timeout
+	await _snap("08_touch_controls")
 
 	print("AUTO_CAPTURE complete")
 	await get_tree().create_timer(0.2).timeout

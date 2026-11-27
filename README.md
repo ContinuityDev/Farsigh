@@ -1,23 +1,45 @@
-# Outpost Liberation
+# Farsigh — Outpost Liberation
 
-Godot **4.3** first-person stealth shooter prototype inspired by Far Cry 5 outpost liberation. Approach a greybox compound, clear guards (ideally undetected), and liberate the outpost. Runs on **PC** (Windows / Linux / macOS), **mobile** (Android / iOS), and in the **browser** with the **GL Compatibility** renderer and on-screen touch controls.
+Godot **4.3** first-person stealth shooter inspired by Far Cry 5 outpost liberation. Pick an outpost on the Hope County map, customize a 5-slot loadout at the Gunsmith workbench, infiltrate multi-storey compounds, and liberate every outpost stealthily or loud. Runs on **PC** (Windows / Linux / macOS), **mobile** (Android / iOS), and in the **browser** with the **GL Compatibility** renderer and full touch controls.
 
 ## Play in browser
 
-**[Play Outpost Liberation](https://continuitydev.github.io/Farsigh/)** — no download required (GitHub Pages Web export, no threads so it works without COOP/COEP headers).
+**[Play Farsigh](https://continuitydev.github.io/Farsigh/)** — no download required (GitHub Pages Web export, no threads so it works without COOP/COEP headers).
 
 On desktop browsers: click the game once to capture the mouse. On phones: touch controls appear automatically.
 
-## Requirements
+## What's inside
 
-- [Godot 4.3+](https://godotengine.org/download) (4.3 or 4.x compatible)
-- Export templates matching your editor version (Project → Export)
+### 5 Far Cry 5–Inspired Outposts & Map Select
+- **Hope County Compound** (`compound_alpha`) — Militia supply depot with 2-storey HQ, watchtower, drive-in garage, 5 guards (1 sniper), 1 alarm.
+- **Seed Family Ranch** (`ranch_redbarn`) — Golden-hour ranch compound with a 2-storey red barn, twin grain silos, 2-storey white farmhouse, hay cover, 6 guards (1 sniper), 2 alarms.
+- **Baron Lumber Mill** (`lumber_mill`) — Pine forest sawmill with 2-storey saw hall, spinning saw deck, drying kiln, log stacks, twin towers, 7 guards (2 snipers), 2 alarms.
+- **Whitetail Bait & Dock** (`river_dock`) — Riverside bait shop, L-shaped wooden pier, patrol boat, 2-storey boathouse, 6 guards (1 sniper), 1 alarm.
+- **Jacob's Ridge Bunker** (`hilltop_bunker`) — Dusk hilltop fortress with a reinforced concrete bunker, walk-down underground bunker basement, radar dishes, helipad, 2-storey barracks, 8 guards (2 snipers), 2 alarms.
+- Liberation saves per outpost (`user://outpost_save.json`) and resets on **New Run**.
 
-## How to run
+### Multi-Storey Buildings & Runtime NavMesh
+- Multi-room & multi-storey structures with interior partitions, stairs, reachable parapet rooftops, drive-in garages, an underground bunker basement, cutout see-through glass windows, and interactive hinged doors (`E` to toggle, guards auto-open them).
+- Synchronous runtime `NavigationMesh` baking per outpost with `NavigationAgent3D` steering so guards patrol, investigate, and flank across rooms and floors.
 
-1. Open this folder in Godot (`project.godot`).
+### Animations & Player Movement
+- **Guards**: front & back takedown animations, investigate, look-around, radio-call, and alarm-press animations with smooth `AnimationPlayer` cross-fading.
+- **Player**: low-wall vaulting/climbing (`Space` near low cover), wall-safe lean/peek left & right (`Z` / `V`), weapon inspect (`I` / `T`), standing shoulder-carry & crouched body-drag viewmodel motion, and smooth ADS/sway/recoil transitions.
+
+### 14-Weapon Arsenal & 5-Slot Gunsmith
+- **Primary**: AR-C Assault Rifle, MP-40 / Vector SMG, M133 Pump Shotgun (8 pellets), MBP .50 Sniper Rifle (scope overlay), M60 LMG.
+- **Secondary**: 1911 Tactical Pistol, Skorpion Machine Pistol.
+- **Special / Bow**: Compound Bow, Tactical Crossbow.
+- **Throwables**: Throwing Knives, M67 Frag Grenade, Molotov Cocktail (fire area-of-effect).
+- **Melee**: Kukri Machete, Aluminum Bat.
+- **Gunsmith mods** (visible on the 3D workbench preview and live first-person viewmodel, with stat deltas): Suppressor, Compensator, Red Dot, Holo Sight, 4x Scope, Extended Mag, Vertical Grip, Tactical Laser, Standard / Fire / Explosive arrows & bolts, and 6 weapon skins/finishes.
+- Headshots are always one-shot with every weapon. Loadout and mods persist across sessions (`user://loadout_prefs.json`).
+
+## How to run locally
+
+1. Open this folder in Godot **4.3+** (`project.godot`).
 2. Press **F5** (or Play). Main menu loads first.
-3. Choose **New Run** → pick a loadout → **Deploy to Compound**.
+3. Choose **New Run** or **Outpost Map** → open **Gunsmith & Loadout** → **Deploy**.
 
 ### Controls (PC)
 
@@ -25,148 +47,56 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 |--------|------------------|---------|
 | Move | WASD | Left stick |
 | Look | Mouse | Right stick |
-| Jump | Space | A |
+| Jump / Vault low wall | Space | A |
 | Sprint | Shift | L3 |
 | Crouch | Ctrl | B |
-| Fire | LMB | RT / RB |
-| Aim (zoom) | RMB | LT |
+| Lean / Peek Left & Right | Z / V | — |
+| Fire / Throw / Swing | LMB | RT / RB |
+| Aim / Scope zoom | RMB | LT |
 | Reload | R | Y |
-| Interact / pick up body / disable alarm | E | X |
-| Melee takedown | F | R3 |
+| Weapon inspect | I or T | — |
+| Interact / door / body / alarm | E | X |
+| Takedown (front or back) | F | R3 |
 | Throw rock (distraction) | G | Select / Back |
-| Switch weapon | 1 / 2 or Q | D-pad right |
-| Drop body | X | — |
-| Pause | Esc | Start |
+| Switch weapon slot | 1–5 or Q | D-pad right |
+| Drop carried body | X | — |
+| Pause / Gunsmith shortcut | Esc | Start |
 
 ### Controls (Mobile / mobile browsers)
 
-Touch controls appear automatically on native mobile and on web builds when a touchscreen is available:
+Touch controls appear automatically on native mobile and on web builds when a touchscreen is available (preview on desktop with `TOUCH_UI=1 godot --path .`):
 
-- **Left virtual stick** — move  
-- **Right-side swipe** — look  
-- Buttons — Fire, Aim, Crouch, Sprint, Jump, Use, Rock, Reload, Swap, Takedown  
+- **Left virtual stick** — move
+- **Right-side swipe** — look
+- **Buttons** — `PEEK L`, `PEEK R`, `JUMP/VLT`, `CROUCH`, `SPRINT`, `FIRE`, `AIM`, `TAKEDOWN`, `ROCK`, `USE`, `INSPECT`, `SWAP`, `RELOAD`
 
-Menus use large touch-friendly buttons. Display stretch mode is `canvas_items` + `expand` for phones and tablets.
+## Screenshots
 
-## Gameplay loop
+Captured from a running Godot 4.3 session (`AUTO_CAPTURE=1`):
 
-1. Select primary: **suppressed pistol**, **loud rifle**, or **silent bow** (knife always secondary).
-2. Infiltrate via south or west entrance. Crouch to reduce visibility and footstep noise.
-3. Guards **patrol → suspicious → alert/search → combat**. Vision uses distance, crouch, and LOS; hearing reacts to gunshots, footsteps, and impacts.
-4. Guards spot **bodies** and **suspicious items** (arrows, knives, rocks). Hide bodies with **Use**.
-5. Disable the **alarm panel** before a guard reaches it, or reinforcements spawn.
-6. Eliminate all guards → outpost is **Liberated** and saved to disk (`user://outpost_save.json`).
-7. **Continue** keeps liberation; **New Run** resets progress.
+| | |
+|--|--|
+| Hope County Outpost Select | ![Outpost Select](docs/screenshots/01_map_select.png) |
+| 5-Slot Gunsmith & Live 3D Preview | ![Gunsmith Workbench](docs/screenshots/02_gunsmith_workbench.png) |
+| Seed Family Ranch (Modded AR-C) | ![Seed Family Ranch](docs/screenshots/03_ranch_redbarn.png) |
+| Baron Lumber Mill (Explosive Compound Bow) | ![Baron Lumber Mill](docs/screenshots/04_lumber_mill_bow.png) |
+| Whitetail Bait & Dock (Molotov Cocktail) | ![Whitetail Bait & Dock](docs/screenshots/05_river_dock_molotov.png) |
+| Jacob's Ridge Bunker (Helipad & Radar) | ![Jacob's Ridge Bunker](docs/screenshots/06_hilltop_bunker.png) |
+| Multi-Storey Interior Window & Weapon Inspect | ![Interior Inspect](docs/screenshots/07_interior_inspect.png) |
+| Mobile Touch Controls & Kukri Machete | ![Touch Controls](docs/screenshots/08_touch_controls.png) |
 
-## Project structure
-
-```
-scripts/
-  ai/           Guard state machine, vision, hearing reactions
-  combat/       HitZone body-part damage (HEAD one-shots)
-  enemies/      GuardVisual placeholder + AnimationPlayer hooks
-  player/       FPS controller (keyboard / gamepad / touch)
-  weapons/      WeaponData, WeaponManager, ViewmodelRig slots
-  systems/      GameState, SaveManager, NoiseBus, TouchInput, Alarm, OutpostManager
-  items/        Bodies, rocks, arrows, knives
-  ui/           Main menu, loadout, HUD, touch controls
-  levels/       Greybox compound builder
-scenes/
-  levels/outpost.tscn   Playable compound
-  player/ enemies/ items/ ui/
-export_presets.cfg      Windows, Linux, macOS, Android, iOS, Web
-docs/                   GitHub Pages web build + screenshots/
+```bash
+# Automated screenshot capture (needs a display; use OpenGL if Vulkan is unavailable)
+AUTO_CAPTURE=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
 ```
 
-### Combat hit zones
+## Exporting & GitHub Pages
 
-Guards expose `HitZones/Head|Torso|Limbs` (`HitZone` areas on physics layer `hitboxes`). Weapons raycast/probe those areas:
-
-| Zone | Effect |
-|------|--------|
-| HEAD | Always lethal (one-shot) |
-| TORSO | Full weapon damage |
-| LIMBS | ~55% damage |
-
-### Art-pass hooks (placeholders only)
-
-- **Viewmodels:** `Player/Head/Camera3D/Viewmodels` (`ViewmodelRig`) with `PistolSlot`, `RifleSlot`, `BowSlot`, `KnifeSlot` — swap in real meshes later.
-- **Guards:** `Guard/Visual` (`GuardVisual` + `AnimationPlayer`) expects `idle` / `walk` / `alert` / `combat` / `death` — replace `PlaceholderMesh` with a character scene without changing AI.
-
-### Extending with more compounds
-
-1. Duplicate `scenes/levels/outpost.tscn` (or build a new greybox under `scripts/levels/`).
-2. Give the root `OutpostManager` a unique `outpost_id` / display name.
-3. Add patrol `Marker3D`s, guards with `patrol_path` + `alarm_path`, and an `AlarmPanel`.
-4. Register the id in `GameState.outposts` (or let the manager create it on first clear).
-5. Add a menu entry that `change_scene_to_file`s your new scene after loadout.
-
-Systems stay modular: AI listens to `NoiseBus`, persistence goes through `SaveManager`, weapons only care about `WeaponData` noise/damage.
-
-## Exporting
-
-Presets live in `export_presets.cfg` (including **Web** with `variant/thread_support=false` for GitHub Pages). Install matching **export templates** in the editor first.
-
-### Web / GitHub Pages
-
-Live game: **https://continuitydev.github.io/Farsigh/**
-
-Every push to `main` runs [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml): it downloads Godot 4.3 + export templates, exports a **no-threads** Web build (`variant/thread_support=false`), and publishes it into `docs/` (this matches the repo’s current Pages source: **Deploy from a branch → `main` → `/docs`**). The workflow also attempts `actions/upload-pages-artifact` + `actions/deploy-pages` for when Pages is switched to Actions.
-
-**Preferred (optional) owner setting:** Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**. Until that is set, branch `/docs` publishing is the path that works.
-
-Local Web export:
+Presets live in `export_presets.cfg` (including **Web** with `variant/thread_support=false` for GitHub Pages). Every push to `main` runs [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml) to export and publish the Web build to `docs/`.
 
 ```bash
 mkdir -p build/web
 godot --headless --path . --export-release "Web" build/web/index.html
-# Serve build/web over HTTP (not file://)
-```
-
-### Windows / Linux / macOS
-
-1. Project → Export → select **Windows Desktop**, **Linux/X11**, or **macOS**.
-2. Choose a path under `build/` (presets already point there).
-3. Export Project. Embed PCK is enabled for a single binary/app bundle.
-
-### Android (debug APK)
-
-1. Editor → Editor Settings → Export → Android: set **Debug Keystore** (Godot can create one) and JDK / SDK paths as required by your Godot version.
-2. Install Android build template / one-click install if prompted.
-3. Project → Export → **Android** → Export Project → `build/android/OutpostLiberation.debug.apk`.
-4. Install: `adb install -r build/android/OutpostLiberation.debug.apk`  
-   Or copy the APK to the device and open it (allow unknown sources).
-
-The project uses the **GL Compatibility** rendering method (OpenGL / OpenGL ES) so the same project runs on desktop GPUs without Vulkan and on phones. ETC2/ASTC-friendly import is enabled. Immersive mode is on in the Android preset.
-
-Preview touch controls on desktop: `TOUCH_UI=1 godot --path .`
-
-### iOS
-
-1. Export requires a Mac with Xcode and an Apple Developer team id in the iOS preset.
-2. Project → Export → **iOS** → export the Xcode project / IPA.
-3. Open in Xcode, set signing team, deploy to a device or Simulator.
-
-## Performance notes
-
-- GL Compatibility renderer, no MSAA, shadows off on the key light, primitive meshes only.
-- Avoid adding heavy GI / SSAO / glow when targeting phones.
-- Prefer one DirectionalLight + soft ambient; keep guard count modest per compound.
-
-## Screenshots
-
-Captured from a running Godot 4.3 session:
-
-| | |
-|--|--|
-| Main menu | ![Main menu](docs/screenshots/01_main_menu.png) |
-| Loadout select | ![Loadout](docs/screenshots/02_loadout.png) |
-| Outpost (PC HUD) | ![Outpost](docs/screenshots/03_outpost.png) |
-| Touch controls | ![Touch](docs/screenshots/04_touch_controls.png) |
-
-```bash
-# Optional automated captures (needs a display; use OpenGL if Vulkan is unavailable)
-AUTO_CAPTURE=1 godot --path . --resolution 1280x720 --rendering-driver opengl3
 ```
 
 ## License

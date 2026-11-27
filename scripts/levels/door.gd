@@ -35,9 +35,10 @@ func _build(width: float, height: float, color: Color) -> void:
 	var slab := ProcMesh.box_mesh(Vector3(width, height, 0.08), color, 0.78, 0.08)
 	ProcMesh.add_part(_pivot, slab, Vector3(width * 0.5, height * 0.5, 0.0))
 	# Recessed panel trim
-	var trim := ProcMesh.box_mesh(Vector3(width * 0.72, height * 0.36, 0.10), color.darkened(0.14))
-	ProcMesh.add_part(_pivot, trim, Vector3(width * 0.5, height * 0.68, 0.0))
-	ProcMesh.add_part(_pivot, trim, Vector3(width * 0.5, height * 0.25, 0.0))
+	var trim_top := ProcMesh.box_mesh(Vector3(width * 0.72, height * 0.36, 0.10), color.darkened(0.14))
+	ProcMesh.add_part(_pivot, trim_top, Vector3(width * 0.5, height * 0.68, 0.0))
+	var trim_bot := ProcMesh.box_mesh(Vector3(width * 0.72, height * 0.36, 0.10), color.darkened(0.14))
+	ProcMesh.add_part(_pivot, trim_bot, Vector3(width * 0.5, height * 0.25, 0.0))
 	# Brass / iron handle on both sides
 	var handle_col := Color(0.75, 0.64, 0.32)
 	ProcMesh.add_part(_pivot, ProcMesh.box_mesh(Vector3(0.14, 0.04, 0.16), handle_col, 0.3, 0.75), Vector3(width - 0.16, height * 0.46, 0.0))
