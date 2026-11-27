@@ -175,6 +175,11 @@ custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 text = "Resume"
 
+[node name="OutpostSelectBtn" type="Button" parent="Root/PausePanel/PauseVBox"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "Outpost Map"
+
 [node name="MenuBtn" type="Button" parent="Root/PausePanel/PauseVBox"]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
@@ -183,4 +188,5 @@ text = "Main Menu"
 [node name="TouchControls" parent="." instance=ExtResource("2")]
 
 [connection signal="pressed" from="Root/PausePanel/PauseVBox/ResumeBtn" to="." method="_on_resume_pressed"]
+[connection signal="pressed" from="Root/PausePanel/PauseVBox/OutpostSelectBtn" to="." method="_on_outpost_select_pressed"]
 [connection signal="pressed" from="Root/PausePanel/PauseVBox/MenuBtn" to="." method="_on_menu_pressed"]

@@ -1,34 +1,48 @@
 extends Node3D
 class_name OutpostManager
-## Tracks living guards, liberation, and liberated persistence for one compound.
+## Loads the selected outpost from OutpostCatalog, builds its geometry, spawns
+## guards/snipers/alarms/reinforcement points, and tracks per-outpost liberation.
 
 signal liberation_achieved
+
+const GUARD_SCENE: PackedScene = preload("res://scenes/enemies/guard.tscn")
+const ALARM_SCENE: PackedScene = preload("res://scenes/levels/alarm_panel.tscn")
+const OutpostCatalog = preload("res://scripts/levels/outpost_catalog.gd")
 
 @export var outpost_id: String = "compound_alpha"
 @export var outpost_display_name: String = "Hope County Compound"
 
 var _guards: Array[GuardAI] = []
+var _alarms: Array[Node3D] = []
 var liberated: bool = false
 
 
 func _ready() -> void:
 	add_to_group("outpost")
-	_setup_environment()
+	outpost_id = GameState.selected_outpost_id
+	var def := OutpostCatalog.get_outpost(outpost_id)
+	outpost_display_name = String(def.get("name", outpost_display_name))
+	_setup_environment(def)
+	var greybox := get_node_or_null("Greybox")
+	if greybox and greybox.has_method("build_outpost"):
+		greybox.build_outpost(outpost_id)
+	_position_player(def)
 	liberated = GameState.is_liberated(outpost_id)
+	_rebuild_outpost_entities(def)
 	call_deferred("_bind_guards")
 	if liberated:
 		call_deferred("_show_already_liberated")
 
 
-func _setup_environment() -> void:
+func _setup_environment(def: Dictionary) -> void:
 	var we := get_node_or_null("WorldEnvironment") as WorldEnvironment
 	if we == null:
 		return
 	var env := Environment.new()
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.24, 0.44, 0.70)
-	sky_mat.sky_horizon_color = Color(0.76, 0.71, 0.59)
+	sky_mat.sky_top_color = def.get("sky_top", Color(0.24, 0.44, 0.70))
+	sky_mat.sky_horizon_color = def.get("sky_horizon", Color(0.76, 0.71, 0.59))
 	sky_mat.ground_bottom_color = Color(0.18, 0.22, 0.16)
 	sky_mat.ground_horizon_color = Color(0.40, 0.44, 0.34)
 	sky_mat.sun_angle_max = 22.0
@@ -38,31 +52,107 @@ func _setup_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_sky_contribution = 0.65
 	env.ambient_light_color = Color(0.62, 0.64, 0.56)
-	env.ambient_light_energy = 0.65
+	env.ambient_light_energy = 0.68
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.64, 0.66, 0.62)
-	env.fog_density = 0.0045
+	env.fog_light_color = def.get("fog_color", Color(0.64, 0.66, 0.62))
+	env.fog_density = 0.0042
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	we.environment = env
 
 
+func _position_player(def: Dictionary) -> void:
+	var player := get_node_or_null("Player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = def.get("player_spawn", Vector3(0, 0.1, 30))
+
+
+func _rebuild_outpost_entities(def: Dictionary) -> void:
+	# Clear static scene placeholders (guards, alarms, reinforcement markers)
+	var guards_root := get_node_or_null("Guards") as Node3D
+	if guards_root == null:
+		guards_root = Node3D.new()
+		guards_root.name = "Guards"
+		add_child(guards_root)
+	for c in guards_root.get_children():
+		c.queue_free()
+
+	for old_name in ["AlarmPanel", "ReinforceA", "ReinforceB", "DynamicAlarms", "DynamicReinforce"]:
+		var old_n := get_node_or_null(old_name)
+		if old_n:
+			old_n.queue_free()
+
+	# Spawn reinforcement points
+	var reinf_root := Node3D.new()
+	reinf_root.name = "DynamicReinforce"
+	add_child(reinf_root)
+	var reinf_markers: Array[Marker3D] = []
+	var reinf_positions: Array = def.get("reinforce_points", [Vector3(20, 0, 20), Vector3(-20, 0, 18)])
+	for i in range(reinf_positions.size()):
+		var m := Marker3D.new()
+		m.name = "Reinforce_%d" % i
+		m.position = reinf_positions[i]
+		reinf_root.add_child(m)
+		reinf_markers.append(m)
+
+	# Spawn alarm panels
+	var alarms_root := Node3D.new()
+	alarms_root.name = "DynamicAlarms"
+	add_child(alarms_root)
+	_alarms.clear()
+	var alarm_positions: Array = def.get("alarms", [Vector3(1, 0, -11)])
+	for i in range(alarm_positions.size()):
+		var alarm := ALARM_SCENE.instantiate() as Node3D
+		alarm.name = "AlarmPanel_%d" % i
+		alarm.position = alarm_positions[i]
+		alarms_root.add_child(alarm)
+		var paths: Array[NodePath] = []
+		for rm in reinf_markers:
+			paths.append(alarm.get_path_to(rm))
+		if "reinforcement_points" in alarm:
+			alarm.set("reinforcement_points", paths)
+		_alarms.append(alarm)
+
+	if liberated:
+		return
+
+	# Spawn guards and snipers from outpost catalog
+	var guard_specs: Array = def.get("guards", [])
+	for i in range(guard_specs.size()):
+		var spec: Dictionary = guard_specs[i]
+		var g := GUARD_SCENE.instantiate() as GuardAI
+		g.name = "Guard_%d" % (i + 1)
+		g.position = spec.get("pos", Vector3(0, 0.1, 0))
+		g.is_sniper = bool(spec.get("sniper", false))
+		var pts: Array[Vector3] = []
+		for p in spec.get("patrol", []):
+			if p is Vector3:
+				pts.append(p)
+		g.setup_patrol_points(pts)
+		guards_root.add_child(g)
+		# Bind nearest alarm panel
+		if not _alarms.is_empty():
+			var best_alarm: Node3D = _alarms[0]
+			var best_d := g.position.distance_to(best_alarm.position)
+			for a in _alarms:
+				var d := g.position.distance_to(a.position)
+				if d < best_d:
+					best_d = d
+					best_alarm = a
+			g.alarm_path = g.get_path_to(best_alarm)
+
+
 func _bind_guards() -> void:
-	_guards.clear()
-	for n in get_tree().get_nodes_in_group("guards"):
-		if n is GuardAI and is_ancestor_of(n):
-			register_guard(n)
-		elif n is GuardAI:
-			# Guards may be children of this outpost
-			register_guard(n)
-	# Prefer only children under this node
 	_guards.clear()
 	_collect_guards(self)
 	_update_count()
+	var hud := get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("show_status") and not liberated:
+		hud.show_status("%s — %d hostiles" % [outpost_display_name, _guards.size()], 3.5)
 
 
 func _collect_guards(node: Node) -> void:
 	for c in node.get_children():
-		if c is GuardAI:
+		if c is GuardAI and not c.is_queued_for_deletion():
 			register_guard(c)
 		_collect_guards(c)
 
@@ -86,7 +176,7 @@ func _on_guard_died(g: GuardAI) -> void:
 func _update_count() -> void:
 	var alive := 0
 	for g in _guards:
-		if is_instance_valid(g) and g.is_alive():
+		if is_instance_valid(g) and not g.is_queued_for_deletion() and g.is_alive():
 			alive += 1
 	GameState.set_guards_remaining(alive, outpost_id)
 	var hud := get_tree().get_first_node_in_group("hud")
@@ -104,7 +194,6 @@ func _liberate() -> void:
 
 
 func _show_already_liberated() -> void:
-	# Clear remaining hostiles for a freed outpost revisit
 	for g in get_tree().get_nodes_in_group("guards"):
 		if g is GuardAI and is_ancestor_of(g):
 			g.queue_free()

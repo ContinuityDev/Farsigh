@@ -140,6 +140,16 @@ func _build_humanoid() -> void:
 	ProcMesh.add_part(rifle, ProcMesh.cylinder_mesh(0.014, 0.26, gun, 0.35, 0.7, 6), Vector3(0, 0.01, -0.40), Vector3(90, 0, 0))
 	ProcMesh.add_part(rifle, ProcMesh.box_mesh(Vector3(0.04, 0.14, 0.07), vest), Vector3(0, -0.09, -0.10), Vector3(12, 0, 0))
 	ProcMesh.add_part(rifle, ProcMesh.box_mesh(Vector3(0.05, 0.09, 0.20), boot), Vector3(0, -0.01, 0.24))
+	# Sniper optic + subtle scope glint (hidden unless sniper guard)
+	var sniper_kit := Node3D.new()
+	sniper_kit.name = "SniperKit"
+	sniper_kit.visible = false
+	ProcMesh.add_part(sniper_kit, ProcMesh.cylinder_mesh(0.022, 0.24, gun, 0.35, 0.65, 8), Vector3(0, 0.065, -0.08), Vector3(90, 0, 0))
+	ProcMesh.add_part(sniper_kit, ProcMesh.cylinder_mesh(0.014, 0.24, gun, 0.35, 0.7, 6), Vector3(0, 0.01, -0.60), Vector3(90, 0, 0))
+	var glint := ProcMesh.sphere_mesh(0.045, Color(1.0, 0.96, 0.75))
+	glint.material_override = ProcMesh.emissive(Color(1.0, 0.95, 0.7), 2.4)
+	ProcMesh.add_part(sniper_kit, glint, Vector3(0, 0.065, -0.22))
+	rifle.add_child(sniper_kit)
 
 	_rifle_flash = Node3D.new()
 	_rifle_flash.name = "MuzzleFlash"
@@ -324,6 +334,13 @@ func play_hit() -> void:
 		return
 	_oneshot_timer = 0.24
 	play(ANIM_HIT, 0.03)
+
+
+func set_sniper_look(enabled: bool) -> void:
+	if is_instance_valid(_right_arm):
+		var kit := _right_arm.get_node_or_null("GuardRifle/SniperKit") as Node3D
+		if is_instance_valid(kit):
+			kit.visible = enabled
 
 
 func set_placeholder_color(color: Color) -> void:

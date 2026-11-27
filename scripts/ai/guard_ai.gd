@@ -22,6 +22,7 @@ const MAX_HP := 100.0
 
 @export var patrol_path: NodePath
 @export var alarm_path: NodePath
+@export var is_sniper: bool = false
 
 var state: State = State.PATROL
 var hp: float = MAX_HP
@@ -51,10 +52,23 @@ func _ready() -> void:
 	collision_layer = 4
 	collision_mask = 1 | 2
 	NoiseBus.noise_emitted.connect(_on_noise)
-	if visual:
+	if is_instance_valid(visual):
 		visual.set_placeholder_color(Color(0.55, 0.25, 0.2))
-	_cache_patrol()
+		visual.set_sniper_look(is_sniper)
+	if _patrol_points.is_empty():
+		_cache_patrol()
 	_set_state(State.PATROL)
+
+
+func setup_patrol_points(points: Array[Vector3]) -> void:
+	_patrol_points = points.duplicate()
+	_patrol_index = 0
+
+
+func set_sniper(enabled: bool) -> void:
+	is_sniper = enabled
+	if is_instance_valid(visual):
+		visual.set_sniper_look(is_sniper)
 
 
 func _cache_patrol() -> void:
@@ -122,10 +136,11 @@ func _set_state(s: State) -> void:
 
 
 func _update_label() -> void:
-	if label:
+	if is_instance_valid(label):
+		var prefix := "SNIPER " if is_sniper else ""
 		var zone_suffix := (" [%s]" % _last_hit_zone) if _last_hit_zone != "" and state != State.DEAD else ""
-		label.text = State.keys()[state] + zone_suffix
-		label.modulate = Color(0.9, 0.85, 0.7)
+		label.text = prefix + State.keys()[state] + zone_suffix
+		label.modulate = Color(1.0, 0.85, 0.55) if is_sniper else Color(0.9, 0.85, 0.7)
 
 
 func _player_is_down(player: Node) -> bool:
@@ -149,7 +164,8 @@ func _update_vision(delta: float) -> void:
 	var to_player := target_pos - eye_pos
 	var dist := to_player.length()
 	var seen := false
-	if dist > 0.001 and dist < VISION_RANGE:
+	var v_range := VISION_RANGE * (1.65 if is_sniper else 1.0)
+	if dist > 0.001 and dist < v_range:
 		var forward := -global_transform.basis.z
 		var angle := rad_to_deg(forward.angle_to(to_player / dist))
 		if angle < VISION_ANGLE:
@@ -284,6 +300,11 @@ func _on_noise(pos: Vector3, loudness: float, _source: String) -> void:
 
 
 func _do_patrol(_delta: float) -> void:
+	if is_sniper:
+		velocity.x = 0
+		velocity.z = 0
+		rotate_y(_delta * 0.35)
+		return
 	if _patrol_points.is_empty():
 		return
 	var target := _patrol_points[_patrol_index]
@@ -294,10 +315,15 @@ func _do_patrol(_delta: float) -> void:
 
 func _do_investigate(delta: float) -> void:
 	_state_timer += delta
-	_move_toward(investigate_pos, MOVE_SPEED * 1.15)
-	if global_position.distance_to(investigate_pos) < 1.5:
-		# Look around
-		rotate_y(delta * 1.2)
+	if is_sniper:
+		velocity.x = 0
+		velocity.z = 0
+		_look_at_pos(investigate_pos)
+	else:
+		_move_toward(investigate_pos, MOVE_SPEED * 1.15)
+		if global_position.distance_to(investigate_pos) < 1.5:
+			# Look around
+			rotate_y(delta * 1.2)
 	if _state_timer > SUSPICIOUS_TIME:
 		if detection > 0.5:
 			_set_state(State.ALERT)
@@ -307,14 +333,22 @@ func _do_investigate(delta: float) -> void:
 
 func _do_search(delta: float) -> void:
 	_state_timer += delta
+	if is_sniper:
+		velocity.x = 0
+		velocity.z = 0
+		_look_at_pos(last_known_pos)
+		if _state_timer > SEARCH_TIME:
+			_set_state(State.PATROL)
+			detection = 0.2
+		return
 	# Try alarm once when first alerted
-	if not _alarm_used and not _going_to_alarm:
+	if not _alarm_used and not _going_to_alarm and not alarm_path.is_empty():
 		var alarm := get_node_or_null(alarm_path)
-		if alarm and alarm.has_method("is_disabled") and not alarm.is_disabled():
+		if is_instance_valid(alarm) and alarm.has_method("is_disabled") and not alarm.is_disabled():
 			_going_to_alarm = true
-	if _going_to_alarm and not _alarm_used:
+	if _going_to_alarm and not _alarm_used and not alarm_path.is_empty():
 		var alarm := get_node_or_null(alarm_path)
-		if alarm:
+		if is_instance_valid(alarm):
 			_move_toward(alarm.global_position, ALERT_SPEED)
 			if global_position.distance_to(alarm.global_position) < 1.8:
 				if alarm.has_method("trigger"):
@@ -339,8 +373,18 @@ func _do_combat(delta: float) -> void:
 		return
 	last_known_pos = player.global_position
 	var dist := global_position.distance_to(player.global_position)
+	# Snipers hold their overwatch perch and snipe at long range
+	if is_sniper:
+		velocity.x = 0
+		velocity.z = 0
+		_look_at_pos(player.global_position)
+		if _fire_cooldown <= 0.0 and dist < VISION_RANGE * 1.8 and _has_line_of_sight(player):
+			_fire_at(player)
+			_fire_cooldown = 1.15
+		_state_timer += delta
+		return
 	# Still try alarm if not used
-	if not _alarm_used:
+	if not _alarm_used and not alarm_path.is_empty():
 		var alarm := get_node_or_null(alarm_path)
 		if is_instance_valid(alarm) and alarm.has_method("is_disabled") and not alarm.is_disabled():
 			_move_toward(alarm.global_position, COMBAT_SPEED)
@@ -366,9 +410,9 @@ func _fire_at(player: Node3D) -> void:
 		return
 	if not is_instance_valid(player) or _player_is_down(player):
 		return
-	NoiseBus.emit_noise(global_position, 40.0, "guard_rifle")
+	NoiseBus.emit_noise(global_position, 55.0 if is_sniper else 40.0, "guard_sniper" if is_sniper else "guard_rifle")
 	if player.has_method("apply_damage"):
-		player.apply_damage(12.0, global_position, self)
+		player.apply_damage(22.0 if is_sniper else 12.0, global_position, self)
 	if is_instance_valid(visual):
 		visual.play_shoot()
 		visual.set_placeholder_color(Color(1, 0.4, 0.3))
