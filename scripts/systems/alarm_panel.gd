@@ -42,7 +42,7 @@ func trigger(_by: Node = null) -> void:
 	_update_visual()
 	_spawn_reinforcements()
 	var hud := get_tree().get_first_node_in_group("hud")
-	if hud and hud.has_method("show_status"):
+	if is_instance_valid(hud) and hud.has_method("show_status"):
 		hud.show_status("ALARM — reinforcements inbound!", 3.5)
 
 
@@ -62,23 +62,31 @@ func interact(player: Node) -> void:
 func _spawn_reinforcements() -> void:
 	if reinforcement_scene == null:
 		reinforcement_scene = preload("res://scenes/enemies/guard.tscn")
-	var outpost := get_tree().get_first_node_in_group("outpost")
+	var tree := get_tree()
+	if tree == null:
+		return
+	var outpost := tree.get_first_node_in_group("outpost")
+	var scene := tree.current_scene
 	for path in reinforcement_points:
 		if _spawned >= max_reinforcements:
 			break
 		var marker := get_node_or_null(path)
-		if marker == null:
+		if not is_instance_valid(marker):
 			continue
 		var g := reinforcement_scene.instantiate()
-		if outpost:
+		if is_instance_valid(outpost):
 			outpost.add_child(g)
+		elif is_instance_valid(scene):
+			scene.add_child(g)
 		else:
-			get_tree().current_scene.add_child(g)
-		g.global_position = marker.global_position
+			g.free()
+			continue
+		if g is Node3D and marker is Node3D:
+			(g as Node3D).global_position = (marker as Node3D).global_position
 		if g.has_method("_set_state"):
 			g._set_state(GuardAI.State.COMBAT)
 		_spawned += 1
-		if outpost and outpost.has_method("register_guard"):
+		if is_instance_valid(outpost) and outpost.has_method("register_guard"):
 			outpost.register_guard(g)
 
 

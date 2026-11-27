@@ -34,6 +34,7 @@ var _patrol_points: Array[Vector3] = []
 var _fire_cooldown: float = 0.0
 var _going_to_alarm: bool = false
 var _alarm_used: bool = false
+var _spotted_emitted: bool = false
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 @onready var vision_ray: RayCast3D = $VisionRay
@@ -111,7 +112,7 @@ func _set_state(s: State) -> void:
 			color = Color(0.9, 0.15, 0.1)
 		State.DEAD:
 			color = Color(0.2, 0.2, 0.2)
-	if visual:
+	if is_instance_valid(visual):
 		visual.set_placeholder_color(color)
 		visual.play_state(State.keys()[s])
 	state_changed.emit(State.keys()[s])
@@ -124,9 +125,13 @@ func _update_label() -> void:
 		label.modulate = Color(0.9, 0.85, 0.7)
 
 
+func _player_is_down(player: Node) -> bool:
+	return is_instance_valid(player) and bool(player.get("is_down"))
+
+
 func _update_vision(delta: float) -> void:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
-	if player == null:
+	if not is_instance_valid(player) or _player_is_down(player):
 		detection = maxf(0.0, detection - DETECTION_DECAY * delta)
 		_push_detection_to_player()
 		return
@@ -166,7 +171,9 @@ func _update_vision(delta: float) -> void:
 		last_known_pos = player.global_position
 		if detection >= 1.0:
 			_set_state(State.COMBAT)
-			GameState.player_spotted.emit()
+			if not _spotted_emitted:
+				_spotted_emitted = true
+				GameState.player_spotted.emit()
 		elif detection > 0.35 and state == State.PATROL:
 			investigate_pos = last_known_pos
 			_set_state(State.SUSPICIOUS)
@@ -178,7 +185,11 @@ func _update_vision(delta: float) -> void:
 
 
 func _has_line_of_sight(player: Node3D) -> bool:
+	if not is_instance_valid(player) or get_world_3d() == null:
+		return false
 	var space := get_world_3d().direct_space_state
+	if space == null:
+		return false
 	var from := global_position + Vector3.UP * 1.5
 	var to := player.global_position + Vector3.UP * 1.2
 	var query := PhysicsRayQueryParameters3D.create(from, to)
@@ -193,7 +204,9 @@ func _has_line_of_sight(player: Node3D) -> bool:
 
 func _push_detection_to_player() -> void:
 	var player := get_tree().get_first_node_in_group("player")
-	if player and player.has_method("notify_detection"):
+	if not is_instance_valid(player) or _player_is_down(player):
+		return
+	if player.has_method("notify_detection"):
 		# Use max detection among guards — outpost manager aggregates ideally;
 		# for prototype, each guard pushes; HUD keeps max for a short time.
 		player.notify_detection(detection)
@@ -307,7 +320,7 @@ func _do_search(delta: float) -> void:
 
 func _do_combat(delta: float) -> void:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
-	if player == null:
+	if not is_instance_valid(player) or _player_is_down(player):
 		_set_state(State.ALERT)
 		return
 	last_known_pos = player.global_position
@@ -315,10 +328,11 @@ func _do_combat(delta: float) -> void:
 	# Still try alarm if not used
 	if not _alarm_used:
 		var alarm := get_node_or_null(alarm_path)
-		if alarm and alarm.has_method("is_disabled") and not alarm.is_disabled():
+		if is_instance_valid(alarm) and alarm.has_method("is_disabled") and not alarm.is_disabled():
 			_move_toward(alarm.global_position, COMBAT_SPEED)
 			if global_position.distance_to(alarm.global_position) < 1.8:
-				alarm.trigger(self)
+				if alarm.has_method("trigger"):
+					alarm.trigger(self)
 				_alarm_used = true
 			return
 	if dist > 12.0:
@@ -334,15 +348,18 @@ func _do_combat(delta: float) -> void:
 
 
 func _fire_at(player: Node3D) -> void:
+	if not is_instance_valid(self) or state == State.DEAD:
+		return
+	if not is_instance_valid(player) or _player_is_down(player):
+		return
 	NoiseBus.emit_noise(global_position, 40.0, "guard_rifle")
 	if player.has_method("apply_damage"):
-		player.apply_damage(12.0)
-	if visual:
+		player.apply_damage(12.0, global_position, self)
+	if is_instance_valid(visual):
 		visual.set_placeholder_color(Color(1, 0.4, 0.3))
-		get_tree().create_timer(0.08).timeout.connect(func():
-			if state == State.COMBAT and visual:
-				visual.set_placeholder_color(Color(0.9, 0.15, 0.1))
-		)
+		var tree := get_tree()
+		if tree:
+			tree.create_timer(0.08).timeout.connect(_on_muzzle_flash_end)
 
 
 func _move_toward(target: Vector3, speed: float) -> void:
@@ -360,8 +377,20 @@ func _move_toward(target: Vector3, speed: float) -> void:
 
 func _look_at_pos(pos: Vector3) -> void:
 	var p := Vector3(pos.x, global_position.y, pos.z)
-	if p.distance_to(global_position) > 0.05:
-		look_at(p, Vector3.UP)
+	var flat := p - global_position
+	flat.y = 0.0
+	# look_at() errors (and can abort HTML5) if target is coincident or
+	# direction is parallel to the up vector.
+	if flat.length() < 0.05:
+		return
+	look_at(global_position + flat.normalized(), Vector3.UP)
+
+
+func _on_muzzle_flash_end() -> void:
+	if not is_instance_valid(self) or state != State.COMBAT:
+		return
+	if is_instance_valid(visual):
+		visual.set_placeholder_color(Color(0.9, 0.15, 0.1))
 
 
 func apply_damage(amount: float, hit_pos: Vector3 = Vector3.ZERO, source: Node = null, zone_name: String = "") -> void:
@@ -416,21 +445,32 @@ func melee_takedown(_player: Node3D) -> void:
 
 
 func _die(silent: bool) -> void:
+	if state == State.DEAD:
+		return
 	_set_state(State.DEAD)
 	velocity = Vector3.ZERO
 	died.emit(self)
-	# Spawn body
-	var body := _body_scene.instantiate()
-	get_tree().current_scene.add_child(body)
-	body.global_position = global_position + Vector3.UP * 0.2
-	if body.has_method("setup"):
-		body.setup(silent)
 	hide()
 	collision_layer = 0
 	collision_mask = 0
 	set_physics_process(false)
-	await get_tree().create_timer(0.05).timeout
-	queue_free()
+	var tree := get_tree()
+	if tree == null:
+		queue_free()
+		return
+	# Spawn body only while the level scene is still valid (web crashes if
+	# current_scene is mid-change after the player is dropped).
+	var scene := tree.current_scene
+	if is_instance_valid(scene) and _body_scene:
+		var body := _body_scene.instantiate()
+		scene.add_child(body)
+		if body is Node3D:
+			(body as Node3D).global_position = global_position + Vector3.UP * 0.2
+		if body.has_method("setup"):
+			body.setup(silent)
+	await tree.create_timer(0.05).timeout
+	if is_instance_valid(self):
+		queue_free()
 
 
 func is_alive() -> bool:

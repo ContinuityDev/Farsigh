@@ -34,6 +34,7 @@ var carried_body: Node3D = null
 var rock_count: int = 5
 var max_detection_seen: float = 0.0
 var hp: float = 100.0
+var is_down: bool = false
 var _capsule: CapsuleShape3D
 var _crouch_toggled: bool = false
 
@@ -73,7 +74,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if GameState.is_paused:
+	if GameState.is_paused or is_down:
 		return
 
 	# Touch look swipe + gamepad stick
@@ -252,19 +253,30 @@ func notify_detection(value: float) -> void:
 
 
 func apply_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO, _source: Node = null) -> void:
+	if is_down or amount <= 0.0:
+		return
 	hp = maxf(0.0, hp - amount)
 	var hud := get_tree().get_first_node_in_group("hud")
-	if hud and hud.has_method("show_status"):
+	if is_instance_valid(hud) and hud.has_method("show_status"):
 		hud.show_status("Taking fire! HP %d" % int(hp), 1.2)
 	if hp <= 0.0:
 		_on_player_down()
 
 
 func _on_player_down() -> void:
+	## Must be one-shot: multiple guards can shoot the same frame on web and
+	## concurrent change_scene_to_file calls will crash the HTML5 build.
+	if is_down:
+		return
+	is_down = true
+	set_physics_process(false)
+	collision_layer = 0
 	var hud := get_tree().get_first_node_in_group("hud")
-	if hud and hud.has_method("show_status"):
+	if is_instance_valid(hud) and hud.has_method("show_status"):
 		hud.show_status("You were dropped — returning to menu…", 2.5)
 	await get_tree().create_timer(2.0).timeout
+	if not is_inside_tree():
+		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
