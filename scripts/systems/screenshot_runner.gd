@@ -15,6 +15,14 @@ func _ready() -> void:
 	SaveManager.clear_save()
 	GameState.start_new_run()
 	GameState.mark_liberated("ranch_redbarn")
+	GameState.mark_liberated("compound_alpha")
+	GameState.mark_liberated("lumber_mill")
+	GameState.mark_liberated("river_dock")
+	GameState.add_currency(1200)
+	GameState.try_purchase("streak_recon")
+	GameState.try_purchase("streak_mortar")
+	GameState.set_equipped_streak(0, "recon_drone")
+	GameState.set_equipped_streak(1, "mortar")
 	GameState.set_full_loadout(
 		GameState.WeaponId.RIFLE,
 		GameState.WeaponId.PISTOL,
@@ -31,12 +39,19 @@ func _ready() -> void:
 	GameState.set_weapon_mod(GameState.WeaponId.BOW, "skin", "crimson")
 	GameState.select_outpost("lumber_mill")
 
-	# 1. Outpost / Map Select screen showing liberated status & tactical intel
+	# 1. Outpost / Map Select — difficulty tiers + hard compounds
 	get_tree().change_scene_to_file("res://scenes/ui/map_select.tscn")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().create_timer(0.7).timeout
 	await _snap("01_map_select")
+
+	# 1b. Shop / Armory with support charges
+	get_tree().change_scene_to_file("res://scenes/ui/shop.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.7).timeout
+	await _snap("01b_shop_armory")
 
 	# 2. Gunsmith & Loadout workbench with live 3D weapon preview + mods + stat bars
 	get_tree().change_scene_to_file("res://scenes/ui/loadout.tscn")
@@ -166,6 +181,28 @@ func _ready() -> void:
 		await get_tree().create_timer(0.55).timeout
 	await _snap("09_ads_holo")
 	TouchInput.release("aim")
+
+	# 10. Hard compound — Eden's Gate Fortress with layered defences
+	GameState.select_outpost("eden_fortress")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(60.0)
+	await get_tree().create_timer(0.6).timeout
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	if is_instance_valid(player):
+		player.global_position = Vector3(0.0, 1.5, 28.0)
+		player.look_at(Vector3(0.0, 2.0, -8.0), Vector3.UP)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("10_eden_fortress")
+
+	# 11. Binoculars tagging overlay
+	var bino := get_tree().get_first_node_in_group("binoculars")
+	if bino and bino.has_method("toggle"):
+		bino.toggle()
+		await get_tree().create_timer(0.5).timeout
+	await _snap("11_binoculars_tagging")
+	if bino and bino.has_method("toggle") and bool(bino.get("active")):
+		bino.toggle()
 
 	print("AUTO_CAPTURE complete")
 	await get_tree().create_timer(0.2).timeout

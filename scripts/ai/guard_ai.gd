@@ -100,7 +100,7 @@ func apply_spawn_spec(spec: Dictionary) -> void:
 	is_sniper = bool(spec.get("sniper", false))
 	is_sentry = bool(spec.get("sentry", false)) or role == "sentry"
 	is_heavy = bool(spec.get("heavy", false)) or role == "heavy"
-	is_officer = bool(spec.get("officer", false)) or role == "officer"
+	is_officer = bool(spec.get("officer", false)) or role == "officer" or role == "commander"
 	is_dog = bool(spec.get("dog", false)) or role == "dog"
 	chat_pair = String(spec.get("chat_pair", ""))
 	dog_id = String(spec.get("dog_id", ""))
@@ -129,6 +129,12 @@ func _apply_role_stats() -> void:
 	if is_officer:
 		_hearing_scale = 1.25
 		_move_mult = 1.08
+	if role == "commander":
+		max_hp = HEAVY_HP + 40.0
+		_hearing_scale = 1.4
+		_vision_mult = 1.35
+		_move_mult = 1.05
+		_body_armor = 0.65
 	if is_dog:
 		max_hp = DOG_HP
 		_hearing_scale = 1.85

@@ -119,11 +119,12 @@ func _refresh() -> void:
 		if deploy:
 			deploy.text = "Deploy Now"
 	detail_desc.text = String(def.get("description", ""))
-	detail_intel.text = "Garrison: %d Hostiles (%d Snipers, %d Heavies, %d Officers, %d Dogs)  |  Alarms: %d" % [
+	detail_intel.text = "Garrison: %d Hostiles (%d Snipers, %d Heavies, %d Officers, %d Commanders, %d Dogs)  |  Alarms: %d" % [
 		OutpostCatalog.guard_count(def),
 		OutpostCatalog.sniper_count(def),
 		OutpostCatalog.role_count(def, "heavy"),
 		OutpostCatalog.role_count(def, "officer"),
+		OutpostCatalog.role_count(def, "commander"),
 		OutpostCatalog.role_count(def, "dog"),
 		OutpostCatalog.alarm_count(def),
 	]

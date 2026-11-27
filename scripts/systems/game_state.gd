@@ -216,8 +216,8 @@ func owns_ability(id: String) -> bool:
 
 
 func owns_streak(id: String) -> bool:
-	## Unlocked once a charge has ever been bought (or still has charges).
-	return id in owned_streaks or get_streak_charges(id) > 0
+	## Unlocked only after purchasing at least once in the shop (never free).
+	return id in owned_streaks
 
 
 func get_streak_charges(id: String) -> int:

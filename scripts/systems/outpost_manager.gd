@@ -427,6 +427,11 @@ func _rebuild_outpost_entities_async(def: Dictionary, guard_scene: PackedScene, 
 		if "reinforcement_points" in alarm:
 			alarm.set("reinforcement_points", paths)
 		_alarms.append(alarm)
+	# Layered defences for hard compounds (cameras / searchlights / tripwires)
+	var old_sec := get_node_or_null("SecurityProps")
+	if old_sec:
+		old_sec.queue_free()
+	SecurityProps.spawn_all(self, def)
 	await get_tree().process_frame
 
 	# Always spawn full garrison (including replays of beaten compounds)

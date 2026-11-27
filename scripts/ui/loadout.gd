@@ -281,16 +281,20 @@ func _rebuild_weapon_list() -> void:
 		opt.set_item_metadata(0, "")
 		var sel_idx := 0
 		var idx := 1
+		var any_owned := false
 		for s in StreakCatalog.all_streaks():
 			var id := String(s["id"])
-			var ch := GameState.get_streak_charges(id)
-			if ch <= 0 and not GameState.owns_streak(id):
+			if not GameState.owns_streak(id):
 				continue
+			any_owned = true
+			var ch := GameState.get_streak_charges(id)
 			opt.add_item("%s (x%d)" % [String(s["name"]), ch], idx)
 			opt.set_item_metadata(idx, id)
 			if id == sid:
 				sel_idx = idx
 			idx += 1
+		if not any_owned:
+			opt.set_item_text(0, "— Locked — Buy in shop —")
 		opt.select(sel_idx)
 		opt.item_selected.connect(_on_streak_slot.bind(slot_i, opt))
 		row.add_child(opt)

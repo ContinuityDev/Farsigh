@@ -467,6 +467,12 @@ func apply_role_look(role: String, heavy: bool = false, officer: bool = false, d
 		if is_instance_valid(_pelvis):
 			_pelvis.scale = Vector3(1.12, 1.0, 1.1)
 		set_placeholder_color(Color(0.35, 0.28, 0.48))
+	elif role == "commander":
+		set_placeholder_color(Color(0.72, 0.18, 0.22))
+		if is_instance_valid(_head):
+			ProcMesh.add_part(_head, ProcMesh.box_mesh(Vector3(0.32, 0.08, 0.32), Color(0.92, 0.78, 0.22)), Vector3(0, 0.24, 0.02))
+		if is_instance_valid(_torso):
+			_torso.scale = Vector3(1.1, 1.05, 1.12)
 	elif officer:
 		set_placeholder_color(Color(0.82, 0.62, 0.18))
 		if is_instance_valid(_head):

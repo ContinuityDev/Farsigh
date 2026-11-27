@@ -10,16 +10,19 @@ On desktop browsers: click the game once to capture the mouse. On phones: touch 
 
 ## What's inside
 
-### 5 Far Cry 5–Inspired Outposts & Map Select
-- **Hope County Compound** (`compound_alpha`) — 12 hostiles (2 snipers, heavy sentry, officer, chat pair, dog + handler), 1 alarm. South approach stays lighter for stealth.
-- **Seed Family Ranch** (`ranch_redbarn`) — 14 hostiles (2 snipers, heavy, officer, interior barn patrol, dog + handler), 2 alarms.
-- **Baron Lumber Mill** (`lumber_mill`) — 15 hostiles (2 snipers, heavy, officer, interior saw-hall, dog + handler), 2 alarms.
-- **Whitetail Bait & Dock** (`river_dock`) — 14 hostiles (2 snipers, heavy on the pier, officer, boathouse interior, dog + handler), 1 alarm.
-- **Jacob's Ridge Bunker** (`hilltop_bunker`) — 17 hostiles (3 snipers, twin heavies, officer, basement + barracks interiors, dog + handler), 2 alarms.
-- Roles: **heavies** (tougher body HP/armor; headshots still one-shot), **officers** (faster alarms + extra reinforcements), **dogs** (fast bite, keen hearing) with **handlers**, idle **chat pairs**, rooftop/tower **snipers**, and multi-storey **interior** patrols.
-- AI LOD / tick throttling for far guards keeps mobile browser performance OK.
-- Staged outpost loading screen (progress + tips) builds environment → geometry → props → navmesh → guards → weapons → HUD, then spawns the player last. Detection / alarms / hearing stay frozen until load finishes plus a ~1.5s grace. Mobile web uses lightweight props and chunked mesh uploads so GL Compatibility doesn’t starve.
-- **Hope Dollars** shop, compound clear countdown + results, replay payouts, consumable support charges, free binoculars tagging.
+### 8 Outposts (Standard → Boss) & Map Select
+- **Hope County Compound** — Standard · 8 hostiles.
+- **Seed Family Ranch** — Standard · 10 hostiles.
+- **Baron Lumber Mill** — Standard · 10 hostiles.
+- **Whitetail Bait & Dock** — Standard · 10 hostiles.
+- **Jacob's Ridge Bunker** — Hard · 12 hostiles.
+- **Eden's Gate Fortress** — Extreme · 13 hostiles · cameras, searchlights, tripwires, keycard doors (unlocks after Compound + Ranch).
+- **Holland Valley Labour Camp** — Extreme · 12 hostiles · searchlights & cameras (unlocks after Mill + Dock).
+- **Joseph's Cathedral HQ** — Boss · 12 hostiles · elite commander (unlocks after Ridge).
+- Difficulty labels on Outpost Select; Hope Dollar clears scale with difficulty (Extreme/Boss pay more). Replay beaten compounds at 50% payout.
+- Roles: **heavies**, **officers**, **commanders**, **dogs** + **handlers**, rooftop **snipers**, multi-storey **interior** patrols.
+- AI LOD + staged loading screen keep mobile WebGL workable.
+- **Hope Dollars** shop: weapons, items, and **buyable consumable supports** (Recon Drone, Mortar, Fangs, EMP, Overwatch, Gunship). Charges save to profile; New Run starts at zero. Free binoculars tagging (+ Pro upgrade in shop).
 - Liberation saves per outpost (`user://outpost_save.json`) and resets on **New Run**.
 
 ### Multi-Storey Buildings & Runtime NavMesh
@@ -117,15 +120,15 @@ godot --headless --path . --export-release "Web" build/web/index.html
 
 Prototype code is free to use and extend for learning and game jams.
 
-## Garrison sizes (after ~25% cut)
+## Garrison sizes
 
-| Outpost | Hostiles |
-|---|---|
-| Hope County Compound | 9 |
-| Seed Family Ranch | 11 |
-| Baron Lumber Mill | 11 |
-| Whitetail Dock | 11 |
-| Jacob's Ridge Bunker | 13 |
-| Eden's Gate Fortress | 15 |
-| Labour Camp | 14 |
-| Joseph's Cathedral HQ | 14 |
+| Outpost | Hostiles | Difficulty |
+|---|---|---|
+| Hope County Compound | 8 | Standard |
+| Seed Family Ranch | 10 | Standard |
+| Baron Lumber Mill | 10 | Standard |
+| Whitetail Dock | 10 | Standard |
+| Jacob's Ridge Bunker | 12 | Hard |
+| Eden's Gate Fortress | 13 | Extreme (locked) |
+| Labour Camp | 12 | Extreme (locked) |
+| Joseph's Cathedral HQ | 12 | Boss (locked) |

@@ -109,7 +109,14 @@ func _update_tagging(delta: float) -> void:
 	var forward := -_cam.global_transform.basis.z
 	var need := _dwell_need()
 	var seen: Dictionary = {}
+	var targets: Array = []
 	for g in get_tree().get_nodes_in_group("guards"):
+		targets.append(g)
+	for c in get_tree().get_nodes_in_group("security_cameras"):
+		targets.append(c)
+	for a in get_tree().get_nodes_in_group("alarms"):
+		targets.append(a)
+	for g in targets:
 		if not is_instance_valid(g) or not (g is Node3D):
 			continue
 		if g.has_method("is_alive") and not g.is_alive():
@@ -141,15 +148,16 @@ func _update_tagging(delta: float) -> void:
 				n = n.get_parent()
 		if not ok:
 			continue
-		var id := g.get_instance_id()
-		seen[id] = true
-		_dwell[id] = float(_dwell.get(id, 0.0)) + delta
-		if float(_dwell[id]) >= need:
+		var iid: int = g.get_instance_id()
+		seen[iid] = true
+		_dwell[iid] = float(_dwell.get(iid, 0.0)) + delta
+		if float(_dwell[iid]) >= need:
 			_tag_node(g)
 	# Decay unseen
-	for id in _dwell.keys():
-		if not seen.has(id):
-			_dwell[id] = maxf(0.0, float(_dwell[id]) - delta * 2.0)
+	for iid2 in _dwell.keys():
+		var kid: int = int(iid2)
+		if not seen.has(kid):
+			_dwell[kid] = maxf(0.0, float(_dwell[kid]) - delta * 2.0)
 
 
 func _tag_node(g: Node) -> void:
@@ -185,6 +193,8 @@ func _role_icon(g: Node) -> String:
 			return "◎ H"
 		"officer":
 			return "◎ O"
+		"commander":
+			return "◎ BOSS"
 		"dog":
 			return "◎ D"
 		_:
