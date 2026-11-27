@@ -81,21 +81,32 @@ func _ensure_scope_overlay() -> void:
 	_scope_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_scope_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_scope_overlay.visible = false
-	# Dark vignette bars + crisp fine mil-dot sniper crosshair lines
+	# Soft circular-ish vignette ( Compatibility-safe ColorRects — no shader required).
+	# Outer frame stays dark; the open center must never be covered (that looked like a black sight).
 	for spec in [
-		[0.0, 0.0, 1.0, 0.14],
-		[0.0, 0.86, 1.0, 1.0],
-		[0.0, 0.14, 0.22, 0.86],
-		[0.78, 0.14, 1.0, 0.86],
+		[0.0, 0.0, 1.0, 0.12],
+		[0.0, 0.88, 1.0, 1.0],
+		[0.0, 0.12, 0.18, 0.88],
+		[0.82, 0.12, 1.0, 0.88],
 	]:
 		var bar := ColorRect.new()
-		bar.color = Color(0.02, 0.03, 0.02, 0.92)
+		bar.color = Color(0.01, 0.015, 0.02, 0.94)
 		bar.anchor_left = spec[0]
 		bar.anchor_top = spec[1]
 		bar.anchor_right = spec[2]
 		bar.anchor_bottom = spec[3]
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_scope_overlay.add_child(bar)
+	# Corner fill to round the aperture visually without covering the lens center
+	for corner in [[0.18, 0.12, 0.28, 0.22], [0.72, 0.12, 0.82, 0.22], [0.18, 0.78, 0.28, 0.88], [0.72, 0.78, 0.82, 0.88]]:
+		var c := ColorRect.new()
+		c.color = Color(0.01, 0.015, 0.02, 0.55)
+		c.anchor_left = corner[0]
+		c.anchor_top = corner[1]
+		c.anchor_right = corner[2]
+		c.anchor_bottom = corner[3]
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_scope_overlay.add_child(c)
 	var hline := ColorRect.new()
 	hline.color = Color(0.1, 0.1, 0.1, 0.9)
 	hline.anchor_left = 0.22
@@ -491,6 +502,10 @@ func _refresh_settings_ui() -> void:
 	var tap_btn := pause_panel.get_node_or_null("PauseVBox/TapToFireBtn") as Button
 	if is_instance_valid(tap_btn):
 		tap_btn.text = "Tap-to-Fire: %s" % ("On" if GameState.tap_to_fire else "Off")
+	var fs_btn := pause_panel.get_node_or_null("PauseVBox/FullscreenBtn") as Button
+	if is_instance_valid(fs_btn):
+		var on := WebDisplay.is_fullscreen() if WebDisplay else false
+		fs_btn.text = "Fullscreen: %s" % ("On" if on else "Off")
 
 
 func _ensure_settings_buttons() -> void:
@@ -518,6 +533,13 @@ func _ensure_settings_buttons() -> void:
 		tap.pressed.connect(_on_tap_to_fire_pressed)
 		vbox.add_child(tap)
 		vbox.move_child(tap, mini(5, vbox.get_child_count() - 1))
+	if vbox.get_node_or_null("FullscreenBtn") == null:
+		var fs := Button.new()
+		fs.name = "FullscreenBtn"
+		fs.custom_minimum_size = Vector2(0, 40)
+		fs.pressed.connect(_on_fullscreen_pressed)
+		vbox.add_child(fs)
+		vbox.move_child(fs, mini(6, vbox.get_child_count() - 1))
 	_refresh_settings_ui()
 
 
@@ -544,6 +566,13 @@ func _on_tap_to_fire_pressed() -> void:
 	GameState.set_tap_to_fire(not GameState.tap_to_fire)
 	_refresh_settings_ui()
 	show_status("Tap-to-Fire %s (look-pad tap)" % ("enabled" if GameState.tap_to_fire else "disabled"), 1.8)
+
+
+func _on_fullscreen_pressed() -> void:
+	if WebDisplay:
+		WebDisplay.toggle_fullscreen()
+	_refresh_settings_ui()
+	show_status("Fullscreen %s" % ("on" if WebDisplay and WebDisplay.is_fullscreen() else "off"), 1.2)
 
 
 func _on_resume_pressed() -> void:

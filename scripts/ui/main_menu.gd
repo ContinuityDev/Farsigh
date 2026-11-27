@@ -18,6 +18,7 @@ func _ready() -> void:
 	GameState.is_paused = false
 	continue_btn.disabled = not GameState.has_active_run
 	_ensure_shop_btn()
+	_ensure_fullscreen_btn()
 	_ensure_confirm_panel()
 	_refresh_status()
 	for b in [continue_btn, new_run_btn, quit_btn]:
@@ -26,6 +27,37 @@ func _ready() -> void:
 		quit_btn.visible = false
 		if subtitle:
 			subtitle.text = "Stealth compound assault — playable in your browser"
+
+
+func _ensure_fullscreen_btn() -> void:
+	var vbox := $Center/VBox
+	var fs := vbox.get_node_or_null("FullscreenBtn") as Button
+	if fs == null:
+		fs = Button.new()
+		fs.name = "FullscreenBtn"
+		fs.custom_minimum_size = Vector2(280, 56)
+		fs.add_theme_font_size_override("font_size", 20)
+		fs.pressed.connect(_on_fullscreen_pressed)
+		vbox.add_child(fs)
+		vbox.move_child(fs, quit_btn.get_index())
+	_refresh_fullscreen_btn(fs)
+
+
+func _refresh_fullscreen_btn(fs: Button = null) -> void:
+	if fs == null:
+		fs = $Center/VBox.get_node_or_null("FullscreenBtn") as Button
+	if not is_instance_valid(fs):
+		return
+	var on := false
+	if WebDisplay and WebDisplay.has_method("is_fullscreen"):
+		on = bool(WebDisplay.is_fullscreen())
+	fs.text = "Fullscreen: %s" % ("On" if on else "Off")
+
+
+func _on_fullscreen_pressed() -> void:
+	if WebDisplay and WebDisplay.has_method("toggle_fullscreen"):
+		WebDisplay.toggle_fullscreen()
+	_refresh_fullscreen_btn()
 
 
 func _ensure_shop_btn() -> void:

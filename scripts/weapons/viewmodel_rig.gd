@@ -547,36 +547,76 @@ func _attach_muzzle(root: Node3D, pos: Vector3, muzzle: String, radius: float, l
 	return pos.z
 
 
+func _tag_occlude(mi: MeshInstance3D) -> MeshInstance3D:
+	## Housing that would fill the camera on ADS — faded out when fully aimed.
+	if is_instance_valid(mi):
+		mi.set_meta("optic_occlude", true)
+	return mi
+
+
+func _glass_disc(radius: float, depth: float = 0.004) -> MeshInstance3D:
+	## Transparent lens plane (Compatibility-safe alpha). Keeps a see-through aperture.
+	var disc := ProcMesh.cylinder_mesh(radius, depth, Color(0.55, 0.75, 0.95, 0.18), 0.15, 0.0, 10)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.55, 0.78, 1.0, 0.16)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	disc.material_override = mat
+	return disc
+
+
 func _attach_optic(root: Node3D, pos: Vector3, optic: String, compact: bool) -> Vector3:
 	## Builds optic/iron sights and returns the local SightPoint used for ADS alignment.
+	## Critical: never put a solid mesh on the eye line — that rendered as a black wall on ADS
+	## under GL Compatibility (opaque cylinder filled the FOV).
 	var housing := Color(0.11, 0.12, 0.13)
 	var sight := pos + Vector3(0.0, 0.018, 0.0)
 	match optic:
 		"red_dot":
 			var s := 0.72 if compact else 1.0
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.034 * s, 0.010 * s, 0.055 * s), housing), pos)
-			ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.017 * s, 0.052 * s, housing, 0.45, 0.45, 10), pos + Vector3(0, 0.022 * s, 0), Vector3(90, 0, 0))
-			var dot := ProcMesh.sphere_mesh(0.0038 * s, Color(1.0, 0.18, 0.12))
-			dot.material_override = ProcMesh.emissive(Color(1.0, 0.2, 0.12), 2.5)
-			sight = pos + Vector3(0, 0.022 * s, -0.004)
-			ProcMesh.add_part(root, dot, sight)
+			# Rail mount only — open aperture, no solid tube through the eye.
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.034 * s, 0.010 * s, 0.055 * s), housing), pos))
+			# Thin square hood (open window) instead of a filled cylinder
+			var hood_y := 0.022 * s
+			var hood_h := 0.028 * s
+			var hood_w := 0.030 * s
+			var hood_d := 0.040 * s
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.004 * s, hood_h, hood_d), housing), pos + Vector3(-hood_w * 0.5, hood_y, 0)))
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.004 * s, hood_h, hood_d), housing), pos + Vector3(hood_w * 0.5, hood_y, 0)))
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(hood_w, 0.004 * s, hood_d), housing), pos + Vector3(0, hood_y + hood_h * 0.5, 0)))
+			# See-through glass + emissive reticle (never occluded)
+			sight = pos + Vector3(0, hood_y, -0.002)
+			ProcMesh.add_part(root, _glass_disc(0.012 * s), sight, Vector3(90, 0, 0), "OpticGlass")
+			var dot := ProcMesh.sphere_mesh(0.0036 * s, Color(1.0, 0.18, 0.12))
+			dot.material_override = ProcMesh.emissive(Color(1.0, 0.22, 0.12), 3.2)
+			dot.set_meta("optic_reticle", true)
+			ProcMesh.add_part(root, dot, sight, Vector3.ZERO, "OpticReticle")
 		"holo":
 			var s := 0.78 if compact else 1.0
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.042 * s, 0.012 * s, 0.072 * s), housing), pos)
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.008 * s, 0.036 * s, 0.062 * s), housing), pos + Vector3(-0.018 * s, 0.024 * s, 0))
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.008 * s, 0.036 * s, 0.062 * s), housing), pos + Vector3(0.018 * s, 0.024 * s, 0))
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.044 * s, 0.009 * s, 0.062 * s), housing), pos + Vector3(0, 0.042 * s, 0))
-			var ret := ProcMesh.sphere_mesh(0.0042 * s, Color(0.25, 1.0, 0.35))
-			ret.material_override = ProcMesh.emissive(Color(0.25, 1.0, 0.35), 2.5)
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.042 * s, 0.012 * s, 0.072 * s), housing), pos))
+			# Open window frame — hollow center so ADS looks through, not into black plastic
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.008 * s, 0.036 * s, 0.062 * s), housing), pos + Vector3(-0.018 * s, 0.024 * s, 0)))
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.008 * s, 0.036 * s, 0.062 * s), housing), pos + Vector3(0.018 * s, 0.024 * s, 0)))
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.044 * s, 0.009 * s, 0.062 * s), housing), pos + Vector3(0, 0.042 * s, 0)))
 			sight = pos + Vector3(0, 0.024 * s, -0.004)
-			ProcMesh.add_part(root, ret, sight)
+			ProcMesh.add_part(root, _glass_disc(0.014 * s), sight, Vector3(90, 0, 0), "OpticGlass")
+			var ret := ProcMesh.sphere_mesh(0.0040 * s, Color(0.25, 1.0, 0.35))
+			ret.material_override = ProcMesh.emissive(Color(0.3, 1.0, 0.4), 3.0)
+			ret.set_meta("optic_reticle", true)
+			ProcMesh.add_part(root, ret, sight, Vector3.ZERO, "OpticReticle")
 		"scope":
-			# Magnified sniper scope tube + objective bell + rings
-			ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.017, 0.24, housing, 0.38, 0.55, 10), pos + Vector3(0, 0.032, -0.03), Vector3(90, 0, 0))
-			ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.024, 0.075, housing, 0.38, 0.55, 10), pos + Vector3(0, 0.032, -0.15), Vector3(90, 0, 0))
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.028, 0.016), housing), pos + Vector3(0, 0.014, 0.03))
-			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.028, 0.016), housing), pos + Vector3(0, 0.014, -0.08))
+			# Hollow tube look: mounts + thin rings only; solid barrel marked occlude
+			# (sniper ADS hides the whole viewmodel under the 2D scope overlay anyway).
+			var tube := ProcMesh.cylinder_mesh(0.017, 0.24, housing, 0.38, 0.55, 10)
+			_tag_occlude(ProcMesh.add_part(root, tube, pos + Vector3(0, 0.032, -0.03), Vector3(90, 0, 0), "ScopeTube"))
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.024, 0.075, housing, 0.38, 0.55, 10), pos + Vector3(0, 0.032, -0.15), Vector3(90, 0, 0)))
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.028, 0.016), housing), pos + Vector3(0, 0.014, 0.03)))
+			_tag_occlude(ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.028, 0.016), housing), pos + Vector3(0, 0.014, -0.08)))
 			sight = pos + Vector3(0.0, 0.032, -0.03)
+			ProcMesh.add_part(root, _glass_disc(0.015), sight + Vector3(0, 0, 0.11), Vector3(90, 0, 0), "ScopeLensFront")
+			ProcMesh.add_part(root, _glass_disc(0.012), sight + Vector3(0, 0, -0.11), Vector3(90, 0, 0), "ScopeLensRear")
 		_:
 			# Iron sights: rear notch + glowing front post
 			var s := 0.78 if compact else 1.0
@@ -585,8 +625,9 @@ func _attach_optic(root: Node3D, pos: Vector3, optic: String, compact: bool) -> 
 			ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.006 * s, 0.016 * s, 0.010 * s), housing), pos + Vector3(0.010 * s, 0.016 * s, 0.04 * s))
 			var fs := ProcMesh.box_mesh(Vector3(0.005 * s, 0.016 * s, 0.010 * s), Color(0.2, 0.95, 0.45))
 			fs.material_override = ProcMesh.emissive(Color(0.25, 1.0, 0.45), 1.6)
+			fs.set_meta("optic_reticle", true)
 			sight = pos + Vector3(0, 0.016 * s, -0.08 if not compact else -0.05)
-			ProcMesh.add_part(root, fs, sight)
+			ProcMesh.add_part(root, fs, sight, Vector3.ZERO, "IronFront")
 	var marker := Marker3D.new()
 	marker.name = "SightPoint"
 	marker.position = sight
@@ -745,6 +786,7 @@ func _process(delta: float) -> void:
 
 	# Smooth hip -> ADS raise that centers the fitted SightPoint on screen centre
 	var ads := _aim_blend
+	_update_optic_occlusion(slot, ads)
 	if ads > 0.001 and not _carrying and _inspect_t <= 0.0:
 		var ads_pose := _ads_pose_for(_active_id, base_p, base_r)
 		offset_p += (ads_pose["pos"] - base_p) * ads
@@ -883,6 +925,22 @@ func _process(delta: float) -> void:
 
 	var show_arc := ads > 0.35 and _active_id in [GameState.WeaponId.FRAG, GameState.WeaponId.MOLOTOV, GameState.WeaponId.KNIFE]
 	_update_throw_arc(show_arc)
+
+
+func _update_optic_occlusion(slot: Node3D, ads: float) -> void:
+	## Fade housing that would sit on the eye line once fully ADS — keeps reticle/glass.
+	if not is_instance_valid(slot):
+		return
+	var hide_body := ads > 0.82
+	for n in slot.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if not is_instance_valid(mi):
+			continue
+		if mi.has_meta("optic_reticle"):
+			mi.visible = true
+			continue
+		if mi.has_meta("optic_occlude"):
+			mi.visible = not hide_body
 
 
 func _ads_pose_for(wid: GameState.WeaponId, _base_p: Vector3, _base_r: Vector3) -> Dictionary:

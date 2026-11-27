@@ -17,6 +17,7 @@ GameState="*res://scripts/systems/game_state.gd"
 NoiseBus="*res://scripts/systems/noise_bus.gd"
 SaveManager="*res://scripts/systems/save_manager.gd"
 TouchInput="*res://scripts/systems/touch_input.gd"
+WebDisplay="*res://scripts/systems/web_display.gd"
 ScreenshotRunner="*res://scripts/systems/screenshot_runner.gd"
 
 [display]

@@ -159,51 +159,47 @@ func _ready() -> void:
 	await get_tree().create_timer(0.45).timeout
 	await _snap("08_touch_controls")
 
-	# 9. ADS — holo (2x)
+	# 9. ADS sight gallery — iron / red_dot / holo (must not be a black wall)
 	TouchInput.force_touch_ui = false
 	if is_instance_valid(hud):
 		var tc = hud.get_node_or_null("TouchControls")
 		if is_instance_valid(tc):
 			tc.visible = false
-	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "optic", "holo")
-	GameState.set_full_loadout(
-		GameState.WeaponId.RIFLE,
-		GameState.WeaponId.PISTOL,
-		GameState.WeaponId.BOW,
-		GameState.WeaponId.MOLOTOV,
-		GameState.WeaponId.MACHETE
-	)
 	GameState.select_outpost("compound_alpha")
-	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
-	await get_tree().process_frame
-	await get_tree().process_frame
-	await get_tree().create_timer(1.0).timeout
-	player = get_tree().get_first_node_in_group("player") as Node3D
-	if is_instance_valid(player):
-		player.global_position = Vector3(2.0, 0.2, 18.0)
-		player.look_at(Vector3(0.0, 1.6, -8.0), Vector3.UP)
-		var wm = player.get_node_or_null("WeaponManager")
-		if is_instance_valid(wm):
-			wm.select_slot(0)
-		TouchInput.press("aim")
-		await get_tree().create_timer(0.7).timeout
-	await _snap("09_ads_holo")
-	TouchInput.release("aim")
-
-	# 9b. ADS — red dot (1.5x)
-	GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "optic", "red_dot")
-	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
-	await get_tree().process_frame
-	await get_tree().process_frame
-	await get_tree().create_timer(0.9).timeout
-	player = get_tree().get_first_node_in_group("player") as Node3D
-	if is_instance_valid(player):
-		player.global_position = Vector3(2.0, 0.2, 18.0)
-		player.look_at(Vector3(0.0, 1.6, -8.0), Vector3.UP)
-		TouchInput.press("aim")
-		await get_tree().create_timer(0.7).timeout
-	await _snap("12_ads_red_dot")
-	TouchInput.release("aim")
+	for optic_pair in [["iron", "17_ads_iron"], ["red_dot", "12_ads_red_dot"], ["holo", "09_ads_holo"]]:
+		GameState.set_weapon_mod(GameState.WeaponId.RIFLE, "optic", String(optic_pair[0]))
+		GameState.set_full_loadout(
+			GameState.WeaponId.RIFLE,
+			GameState.WeaponId.PISTOL,
+			GameState.WeaponId.BOW,
+			GameState.WeaponId.MOLOTOV,
+			GameState.WeaponId.MACHETE
+		)
+		GameState.begin_world_load()
+		get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+		await GameState.wait_world_ready(60.0)
+		await get_tree().create_timer(0.45).timeout
+		var oroot := get_tree().current_scene
+		if is_instance_valid(oroot):
+			var lo := oroot.get_node_or_null("LoadingOverlay")
+			if is_instance_valid(lo):
+				lo.visible = false
+		player = get_tree().get_first_node_in_group("player") as Node3D
+		if is_instance_valid(player):
+			player.global_position = Vector3(2.0, 0.2, 18.0)
+			player.rotation = Vector3.ZERO
+			if player.get("head") is Node3D:
+				(player.get("head") as Node3D).rotation = Vector3.ZERO
+			var to := Vector3(0.0, 1.6, -8.0) - player.global_position
+			player.rotation.y = atan2(-to.x, -to.z)
+			var wm = player.get_node_or_null("WeaponManager")
+			if is_instance_valid(wm):
+				wm.select_slot(0)
+			TouchInput.press("aim")
+			await get_tree().create_timer(0.8).timeout
+		await _snap(String(optic_pair[1]))
+		TouchInput.release("aim")
+		await get_tree().create_timer(0.15).timeout
 
 	# 9c. Sniper ADS 4x (default) then 8x
 	GameState.set_full_loadout(
