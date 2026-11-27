@@ -215,6 +215,29 @@ func weapon_name(id: WeaponId) -> String:
 	return "Unknown"
 
 
+func serialize_loadout() -> Dictionary:
+	return {
+		"selected_primary": int(selected_primary),
+		"selected_secondary": int(selected_secondary),
+		"selected_special": int(selected_special),
+		"selected_throwable": int(selected_throwable),
+		"selected_melee": int(selected_melee),
+		"weapon_mods": weapon_mods.duplicate(true),
+	}
+
+
+func deserialize_loadout(data: Dictionary) -> void:
+	selected_primary = int(data.get("selected_primary", selected_primary)) as WeaponId
+	selected_secondary = int(data.get("selected_secondary", selected_secondary)) as WeaponId
+	selected_special = int(data.get("selected_special", selected_special)) as WeaponId
+	selected_throwable = int(data.get("selected_throwable", selected_throwable)) as WeaponId
+	selected_melee = int(data.get("selected_melee", selected_melee)) as WeaponId
+	var loaded_mods = data.get("weapon_mods", {})
+	if loaded_mods is Dictionary:
+		weapon_mods = (loaded_mods as Dictionary).duplicate(true)
+	_ensure_defaults()
+
+
 func serialize() -> Dictionary:
 	return {
 		"has_active_run": has_active_run,

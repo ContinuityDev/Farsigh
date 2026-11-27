@@ -212,6 +212,13 @@ func _on_outpost_select_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/map_select.tscn")
 
 
+func _on_gunsmith_pressed() -> void:
+	GameState.is_paused = false
+	get_tree().paused = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	get_tree().change_scene_to_file("res://scenes/ui/loadout.tscn")
+
+
 func _on_menu_pressed() -> void:
 	GameState.is_paused = false
 	get_tree().paused = false

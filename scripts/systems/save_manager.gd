@@ -1,23 +1,39 @@
 extends Node
-## Disk persistence for run state and liberated outposts.
+## Disk persistence for campaign run progress (per-outpost liberation) and
+## persistent player loadout / Gunsmith customization between sessions.
 
 const SAVE_PATH := "user://outpost_save.json"
+const LOADOUT_PATH := "user://loadout_prefs.json"
 
 
 func save_game() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if file == null:
+	if file != null:
+		var payload := {
+			"version": 2,
+			"game": GameState.serialize(),
+		}
+		file.store_string(JSON.stringify(payload, "\t"))
+		file.close()
+	else:
 		push_warning("SaveManager: could not open save file for writing")
+	save_loadout()
+
+
+func save_loadout() -> void:
+	var file := FileAccess.open(LOADOUT_PATH, FileAccess.WRITE)
+	if file == null:
 		return
 	var payload := {
-		"version": 1,
-		"game": GameState.serialize(),
+		"version": 2,
+		"loadout": GameState.serialize_loadout(),
 	}
 	file.store_string(JSON.stringify(payload, "\t"))
 	file.close()
 
 
 func load_game() -> bool:
+	load_loadout()
 	if not FileAccess.file_exists(SAVE_PATH):
 		return false
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -30,6 +46,24 @@ func load_game() -> bool:
 		return false
 	var game: Dictionary = data.get("game", {})
 	GameState.deserialize(game)
+	# Re-apply dedicated loadout prefs if present so gunsmith customizations always persist
+	load_loadout()
+	return true
+
+
+func load_loadout() -> bool:
+	if not FileAccess.file_exists(LOADOUT_PATH):
+		return false
+	var file := FileAccess.open(LOADOUT_PATH, FileAccess.READ)
+	if file == null:
+		return false
+	var text := file.get_as_text()
+	file.close()
+	var data = JSON.parse_string(text)
+	if typeof(data) != TYPE_DICTIONARY:
+		return false
+	var lo: Dictionary = data.get("loadout", {})
+	GameState.deserialize_loadout(lo)
 	return true
 
 
