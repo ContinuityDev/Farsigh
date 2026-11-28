@@ -61,6 +61,8 @@ var _sprint_target: float = 0.0
 var _aim_blend: float = 0.0
 var _aim_target: float = 0.0
 var _ads_speed: float = 4.0
+var _left_local := Vector3.ZERO
+var _left_override := false
 var _breath_hold: float = 0.0
 var _sight_local: Dictionary = {}  # WeaponId -> Vector3 sight point in ModelRoot space
 var _throw_arc: MeshInstance3D = null
@@ -68,6 +70,9 @@ var _throw_arc_mat: StandardMaterial3D = null
 
 
 func _ready() -> void:
+	# Captures freeze the player with PROCESS_MODE_DISABLED. The arms still have
+	# to solve, or the hands stay where they were on the first frame.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var cam := get_parent() as Camera3D
 	if cam != null and cam.near > 0.02:
 		cam.near = 0.02
@@ -162,8 +167,12 @@ func rebuild_weapon(id: GameState.WeaponId, mods: Dictionary) -> void:
 	var slot: Node3D = _slots.get(id)
 	if not is_instance_valid(slot):
 		return
-	for c in slot.get_children():
-		c.queue_free()
+	# queue_free leaves the old ModelRoot in the tree for the rest of the frame,
+	# so the replacement gets renamed and later lookups miss it.
+	var stale := slot.get_children()
+	for c in stale:
+		slot.remove_child(c)
+		c.free()
 	var skin_key := String(mods.get("skin", "default"))
 	var pal: Dictionary = SKIN_PALETTES.get(skin_key, SKIN_PALETTES["default"])
 	var body_col: Color = pal["body"]
@@ -235,7 +244,7 @@ func _cc0_fit(id: GameState.WeaponId) -> Dictionary:
 	}
 	var rifle := {
 		"length": 0.68, "grip_x": 0.17, "grip_y": 0.62,
-		"sight_x": 0.40, "sight_y": 0.74, "muzzle_y": 0.55,
+		"sight_x": 0.26, "sight_y": 0.78, "muzzle_y": 0.55,
 		"mag_x": 0.38, "support_x": 0.60, "support_y": 0.70,
 		"two_hand": true, "compact": false,
 	}
@@ -476,7 +485,9 @@ func _arm_style(id: GameState.WeaponId) -> String:
 
 
 func _mount_arms(root: Node3D, grip: Vector3, support: Vector3, style: String, mag_pos: Vector3, charge: Vector3) -> void:
-	FpArms.attach(root, grip, support, style)
+	var skel := FpArms.attach(root)
+	root.set_meta("fp_skel", skel)
+	root.set_meta("fp_grip", grip)
 	root.set_meta("fp_support", support)
 	root.set_meta("fp_mag", mag_pos)
 	root.set_meta("fp_charge", charge)
@@ -1003,6 +1014,7 @@ func show_weapon(id: GameState.WeaponId, animate_swap: bool = true) -> void:
 	_reload_p = 0.0
 	_fire_t = 0.0
 	_inspect_t = 0.0
+	_left_override = false
 	_seat_mag()
 	var slot: Node3D = _slots.get(id)
 	if changing and is_instance_valid(slot):
@@ -1079,6 +1091,7 @@ func scrub_reload(p: float, kind: String = "mag", empty: bool = false) -> void:
 	_reload_t = (1.0 - _reload_p) * _reload_dur
 	var sample: Dictionary = FpReload.sample(_reload_kind, _reload_p, _reload_empty)
 	_drive_reload(str(sample["stage"]), float(sample["u"]))
+	_solve_view_arms(_aim_blend)
 
 
 func cancel_reload() -> void:
@@ -1131,6 +1144,28 @@ func set_vault_progress(p: float) -> void:
 func set_carrying_body(carrying: bool, dragging: bool = false) -> void:
 	_carrying = carrying
 	_dragging = dragging
+
+
+func snap_presentation(aiming: bool) -> void:
+	## Put the gun and the arms on the hip or ADS pose in one step. Captures
+	## freeze the player, which also freezes this node's _process.
+	_aim_target = 1.0 if aiming else 0.0
+	_aim_blend = _aim_target
+	var slot: Node3D = _slots.get(_active_id)
+	if not is_instance_valid(slot):
+		_solve_view_arms(_aim_blend)
+		return
+	var base_p: Vector3 = _base_pos.get(_active_id, Vector3(0.22, -0.18, -0.4))
+	var base_r: Vector3 = _base_rot.get(_active_id, Vector3.ZERO)
+	var pos := base_p
+	var rot := base_r
+	if aiming:
+		var ads_pose := _ads_pose_for(_active_id, base_p, base_r)
+		pos = ads_pose["pos"]
+		rot = ads_pose["rot"]
+	slot.position = pos
+	slot.rotation_degrees = rot
+	_solve_view_arms(_aim_blend)
 
 
 func set_aiming(aiming: bool, ads_time: float = 0.28, breath_hold: float = 0.0) -> void:
@@ -1349,6 +1384,7 @@ func _process(delta: float) -> void:
 
 	var show_arc := ads > 0.35 and _active_id in [GameState.WeaponId.FRAG, GameState.WeaponId.MOLOTOV, GameState.WeaponId.KNIFE]
 	_update_throw_arc(show_arc)
+	_solve_view_arms(ads)
 
 
 func _active_root() -> Node3D:
@@ -1362,14 +1398,13 @@ func _drive_reload(stage: String, u: float) -> void:
 	var root := _active_root()
 	if root == null:
 		return
-	var skel := root.find_child("Skeleton3D", true, false) as Skeleton3D
 	var support: Vector3 = root.get_meta("fp_support", Vector3.ZERO)
 	var well: Vector3 = root.get_meta("fp_mag", support)
 	var charge: Vector3 = root.get_meta("fp_charge", well + Vector3(0, 0.05, 0.12))
 	var low: Vector3 = well + Vector3(0.05, -0.18, 0.08)
 	var mag: Node3D = _magazines.get(_active_id)
 	if _reload_kind == "arrow":
-		_drive_arrow(stage, u, skel, support)
+		_drive_arrow(stage, u, support)
 		return
 	var feed := str(mag.get_meta("feed", "mag")) if is_instance_valid(mag) else "mag"
 	if feed == "shell" or _reload_kind == "shell":
@@ -1393,8 +1428,8 @@ func _drive_reload(stage: String, u: float) -> void:
 			hand = port.lerp(support, u)
 			mag_at = well
 			show = false
-		if skel != null:
-			FpArms.set_left(skel, hand)
+		_left_local = hand
+		_left_override = true
 		if is_instance_valid(mag):
 			mag.visible = show
 			mag.position = mag_at
@@ -1436,23 +1471,23 @@ func _drive_reload(stage: String, u: float) -> void:
 		var from: Vector3 = charge if _reload_empty else well
 		hand = from.lerp(support, u)
 		mag_at = well
-	if skel != null:
-		FpArms.set_left(skel, hand)
+	_left_local = hand
+	_left_override = true
 	if is_instance_valid(mag):
 		mag.visible = show
 		mag.position = mag_at
 
 
-func _drive_arrow(stage: String, u: float, skel: Skeleton3D, support: Vector3) -> void:
+func _drive_arrow(stage: String, u: float, support: Vector3) -> void:
 	var nock := Vector3(-0.022, 0.035, -0.04)
 	var reach := nock + Vector3(0.14, -0.1, 0.12)
-	if skel != null:
-		if stage == "reach":
-			FpArms.set_left(skel, support.lerp(reach, u))
-		elif stage == "nock":
-			FpArms.set_left(skel, reach.lerp(nock, u))
-		else:
-			FpArms.set_left(skel, nock.lerp(support, u))
+	_left_override = true
+	if stage == "reach":
+		_left_local = support.lerp(reach, u)
+	elif stage == "nock":
+		_left_local = reach.lerp(nock, u)
+	else:
+		_left_local = nock.lerp(support, u)
 	if not is_instance_valid(_bow_arrow):
 		return
 	_bow_arrow.visible = true
@@ -1507,12 +1542,25 @@ func _seat_mag() -> void:
 
 
 func _rest_left_hand() -> void:
+	_left_override = false
+
+
+func _solve_view_arms(ads: float) -> void:
 	var root := _active_root()
-	if root == null or not root.has_meta("fp_support"):
+	var slot: Node3D = _slots.get(_active_id)
+	if root == null or not is_instance_valid(slot) or not slot.visible or not root.has_meta("fp_grip"):
 		return
-	var skel := root.find_child("Skeleton3D", true, false) as Skeleton3D
-	if skel != null:
-		FpArms.set_left(skel, root.get_meta("fp_support"))
+	var skel: Skeleton3D = root.get_meta("fp_skel")
+	if skel == null or not is_instance_valid(skel):
+		return
+	var style := str(root.get_meta("fp_style", "rifle"))
+	var grip: Vector3 = root.get_meta("fp_grip")
+	var support: Vector3 = root.get_meta("fp_support")
+	var right_local := grip + FpArms.right_offset(style)
+	var left_point: Vector3 = _left_local if _left_override else support
+	var left_local := left_point + FpArms.left_offset(style)
+	var cam := get_parent() as Node3D
+	FpArms.solve(skel, root, cam if cam != null else self, right_local, left_local, ads, style)
 
 
 func _update_optic_occlusion(slot: Node3D, ads: float) -> void:
@@ -1559,29 +1607,32 @@ func _ads_pose_for(wid: GameState.WeaponId, _base_p: Vector3, _base_r: Vector3) 
 		_:
 			var sight: Vector3 = _sight_local.get(wid, Vector3(0.0, 0.06, 0.02))
 			# Per-weapon hold distance — far enough to avoid clipping hands/receiver
-			var hold_z := 0.55
+			var hold_z := 0.58
 			match wid:
 				GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL, GameState.WeaponId.TRANQ_PISTOL:
-					hold_z = 0.42
+					hold_z = 0.44
 				GameState.WeaponId.SMG:
-					hold_z = 0.50
-				GameState.WeaponId.SHOTGUN, GameState.WeaponId.LMG:
-					hold_z = 0.62
-				GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
-					hold_z = 0.55
-				GameState.WeaponId.CROSSBOW:
 					hold_z = 0.52
-				_:
+				GameState.WeaponId.SHOTGUN, GameState.WeaponId.LMG:
+					hold_z = 0.66
+				GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
+					hold_z = 0.62
+				GameState.WeaponId.CROSSBOW:
 					hold_z = 0.55
-			# Zero yaw/pitch so rear+front sit on screen centre; tiny pitch trim per family
-			var pitch_trim := 0.0
+				_:
+					hold_z = 0.58
+			# A small muzzle-down angle shows the rail without dropping the barrel out of view.
+			var pitch_trim := -6.0
 			match wid:
 				GameState.WeaponId.SHOTGUN:
-					pitch_trim = -0.4
+					pitch_trim = -3.0
 				GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL:
-					pitch_trim = 0.3
+					pitch_trim = -2.0
+				GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
+					pitch_trim = -1.0
+			var turned := Basis.from_euler(Vector3(deg_to_rad(pitch_trim), 0.0, 0.0)) * sight
 			return {
-				"pos": Vector3(-sight.x, -sight.y, -hold_z - sight.z),
+				"pos": Vector3(-turned.x, -turned.y, -hold_z - turned.z),
 				"rot": Vector3(pitch_trim, 0.0, 0.0),
 			}
 

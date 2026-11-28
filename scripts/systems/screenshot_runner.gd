@@ -635,6 +635,9 @@ func _snap_arms() -> void:
 		head.rotation = Vector3.ZERO
 	player.set_process(false)
 	player.set_physics_process(false)
+	# DISABLED on the player blocks the viewmodel, so the arm IK never reaches
+	# the pose the screenshot is about to hold. Inherit lets the rig keep solving.
+	player.process_mode = Node.PROCESS_MODE_INHERIT
 	var cam := player.get_node_or_null("Head/Camera3D") as Camera3D
 	if cam:
 		cam.fov = 70.0
@@ -777,6 +780,8 @@ func _arms_show(wm, vm, cam: Camera3D, spec: Dictionary, ads: bool) -> void:
 	if cam:
 		cam.fov = float(spec.get("aim", 70.0)) if ads else 70.0
 	await get_tree().create_timer(0.35).timeout
+	if is_instance_valid(vm) and vm.has_method("snap_presentation"):
+		vm.snap_presentation(ads)
 
 
 func _web_arms_view() -> void:
@@ -841,6 +846,7 @@ func _web_arms_view() -> void:
 		vm.scrub_reload(rp, kind, "empty=1" in q)
 	player.set_process(false)
 	player.set_physics_process(false)
+	player.process_mode = Node.PROCESS_MODE_INHERIT
 	var hud := get_tree().current_scene.get_node_or_null("HUD")
 	if is_instance_valid(hud) and hud.has_method("set_click_to_capture_hint"):
 		hud.set_click_to_capture_hint(false)

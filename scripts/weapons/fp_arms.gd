@@ -1,101 +1,113 @@
 class_name FpArms
 extends RefCounted
-## WRAD CC0 first-person arms, posed onto each gun. The source mesh is in its own
-## unit scale; attach() scales it so the wrist is about as wide as a magazine.
+## WRAD CC0 arms. Shoulders stay fixed in camera space. Two-bone IK puts the
+## hands on the gun every frame, including aim, sway, bob and reloads.
 
 
 const ARMS_SCENE := preload("res://assets/weapons/cc0/fps_arms.glb")
-## Mean radial thickness of the wrist in the source mesh.
-const SOURCE_WRIST_R := 0.30
+## One body for every gun. Matches the hip scale Hayden kept.
+const BODY_SCALE := 0.085
+
+# Camera space: +X right, +Y up, -Z forward. Shoulders sit just below the
+# frame so the upper arm leaves through the bottom corners.
+# Just off the bottom corners, and inside the real arm reach of the hip grip.
+const SHOULDER_R := Vector3(0.56, -0.38, -0.48)
+const SHOULDER_L := Vector3(-0.32, -0.40, -0.50)
+# Far enough from the lens that the sleeve isn't a wall, and just under the frame.
+const SHOULDER_R_ADS := Vector3(0.30, -0.34, -0.42)
+const SHOULDER_L_ADS := Vector3(-0.26, -0.32, -0.48)
 
 
-static func attach(parent: Node3D, grip: Vector3, support: Vector3, style: String) -> void:
+static func attach(host: Node3D) -> Skeleton3D:
 	var rig := ARMS_SCENE.instantiate()
 	rig.name = "FPArms"
-	parent.add_child(rig)
+	host.add_child(rig)
 	var skel := rig.find_child("Skeleton3D", true, false) as Skeleton3D
 	var mesh := rig.find_child("arms_mesh", true, false) as MeshInstance3D
 	if skel == null:
-		return
-	# Wrist diameter tracks the gun. Grip-to-support is the handguard span on long guns.
-	var span := grip.distance_to(support)
-	var wrist_d := clampf(span * 0.16, 0.034, 0.055)
-	if style == "pistol":
-		wrist_d = 0.032
-	elif style == "bow" or style == "melee" or style == "bat":
-		wrist_d = 0.036
-	var scale := wrist_d / (SOURCE_WRIST_R * 2.0)
+		return null
 	var arms := skel.get_parent() as Node3D
-	arms.scale = Vector3.ONE * scale
+	arms.scale = Vector3.ONE * BODY_SCALE
 	if mesh:
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mesh.extra_cull_margin = 8.0
 		mesh.custom_aabb = AABB(Vector3(-8, -8, -8), Vector3(16, 16, 16))
-	skel.set_meta("fp_scale", scale)
-	skel.set_meta("fp_style", style)
-	skel.set_meta("fp_grip", grip)
-	_pose(skel, grip, support, style)
+		# The sleeve faces the camera on one side of the bend and away on the
+		# other. Keep both so a tucked elbow never disappears.
+		for s in mesh.mesh.get_surface_count():
+			var mat := mesh.get_active_material(s)
+			if mat == null:
+				mat = mesh.mesh.surface_get_material(s)
+			if mat is BaseMaterial3D:
+				var copy := (mat as BaseMaterial3D).duplicate()
+				copy.cull_mode = BaseMaterial3D.CULL_DISABLED
+				mesh.set_surface_override_material(s, copy)
+	return skel
 
 
-static func set_left(skel: Skeleton3D, support: Vector3) -> void:
-	if skel == null or not skel.has_meta("fp_scale"):
+static func solve(skel: Skeleton3D, gun: Node3D, camera: Node3D, right_local: Vector3, left_local: Vector3, ads: float, style: String) -> void:
+	if skel == null or gun == null or camera == null:
 		return
-	var style := str(skel.get_meta("fp_style"))
+	var u := clampf(ads, 0.0, 1.0)
+	# The rig is a child of the gun, scaled by BODY_SCALE, so gun-local / scale
+	# is skeleton space. That is the space the skin was bound in.
+	var to_gun := gun.global_transform.affine_inverse()
+	var sh_r := (to_gun * (camera.global_transform * SHOULDER_R.lerp(SHOULDER_R_ADS, u))) / BODY_SCALE
+	var sh_l := (to_gun * (camera.global_transform * SHOULDER_L.lerp(SHOULDER_L_ADS, u))) / BODY_SCALE
+	var wr_r := right_local / BODY_SCALE
+	var wr_l := left_local / BODY_SCALE
+	var pole_basis := gun.global_transform.basis.orthonormalized().inverse() * camera.global_transform.basis
+	var pole_r: Vector3 = pole_basis * Vector3(1.15, -0.45, 0.05).lerp(Vector3(0.45, -1.3, 0.1), u)
+	var pole_l: Vector3 = pole_basis * Vector3(-1.15, -0.45, 0.1).lerp(Vector3(-0.45, -1.3, 0.1), u)
+	_pose_arm(skel, "r", sh_r, wr_r, _right_fingers(style), _right_palm(style), pole_r)
+	if style == "pistol":
+		_curl(skel, "r", 0.85, 1.45)
+	elif style == "melee" or style == "bat":
+		_curl(skel, "r", 1.1, 1.35)
+	else:
+		_curl(skel, "r", 0.32, 1.55)
 	if style == "throw":
+		_pose_arm(skel, "l", sh_l, sh_l + Vector3(-0.4, -2.2, 0.4), Vector3(0, -1, 0), Vector3(-1, 0, 0), pole_l)
+		_curl(skel, "l", 0.4, 0.5)
 		return
-	var scale := float(skel.get_meta("fp_scale"))
-	var grip: Vector3 = skel.get_meta("fp_grip")
-	_pose_arm(skel, "l", _left_wrist(support, style) / scale, _left_fingers(style), _left_palm(style), -1.0)
-	_curl(skel, "l", 0.9 if style != "pistol" else 0.5, 1.25)
-	# Right arm is left where attach() put it. Re-assert the grip so a reload can't drift it.
-	_pose_arm(skel, "r", _right_wrist(grip, style) / scale, _right_fingers(style), _right_palm(style), 1.0)
-	_curl(skel, "r", 1.0, 1.35 if style != "pistol" else 1.5)
+	_pose_arm(skel, "l", sh_l, wr_l, _left_fingers(style), _left_palm(style), pole_l)
+	_curl(skel, "l", 0.7 if style != "pistol" else 0.45, 1.35)
+	skel.force_update_all_bone_transforms()
 
 
-static func _pose(skel: Skeleton3D, grip: Vector3, support: Vector3, style: String) -> void:
-	var scale := float(skel.get_meta("fp_scale"))
-	_pose_arm(skel, "r", _right_wrist(grip, style) / scale, _right_fingers(style), _right_palm(style), 1.0)
-	_curl(skel, "r", 1.0 if style != "melee" and style != "bat" else 1.2, 1.35 if style != "pistol" else 1.5)
-	if style == "throw":
-		_park(skel, "l", Vector3(-2.0, -6.0, 2.0))
-		return
-	_pose_arm(skel, "l", _left_wrist(support, style) / scale, _left_fingers(style), _left_palm(style), -1.0)
-	_curl(skel, "l", 1.3, 1.7)
-
-
-static func _right_wrist(grip: Vector3, style: String) -> Vector3:
-	# Sit the wrist on the camera side of the grip, slightly right, so the palm
-	# wraps the grip instead of spawning inside the receiver.
+static func right_offset(style: String) -> Vector3:
 	if style == "melee" or style == "bat":
-		return grip + Vector3(0.02, 0.0, 0.03)
+		return Vector3(0.02, 0.0, 0.03)
 	if style == "pistol":
-		return grip + Vector3(0.04, -0.01, 0.03)
-	# Onto the grip from the camera side. +Z is toward the stock.
-	return grip + Vector3(0.0, 0.02, 0.045)
+		return Vector3(0.03, -0.02, 0.02)
+	# Camera side of the grip. Kept high enough that ADS doesn't drop the hand
+	# under the frame; the curl still closes below this point.
+	return Vector3(0.03, -0.01, 0.04)
 
 
-static func _left_wrist(support: Vector3, style: String) -> Vector3:
+static func left_offset(style: String) -> Vector3:
 	if style == "pistol":
-		return support + Vector3(0.0, -0.015, 0.03)
+		return Vector3(0.0, -0.012, 0.02)
 	if style == "bow":
-		return support + Vector3(-0.015, 0.0, 0.03)
+		return Vector3(-0.015, 0.0, 0.03)
 	if style == "melee" or style == "bat":
-		return support + Vector3(0.015, 0.0, 0.03)
-	# Palm under the handguard. The fingers point up onto the barrel.
-	return support + Vector3(0.0, -0.02, 0.012)
+		return Vector3(0.015, 0.0, 0.03)
+	return Vector3(0.0, -0.018, 0.01)
 
 
 static func _right_fingers(style: String) -> Vector3:
 	if style == "melee" or style == "bat":
 		return Vector3(-0.2, -0.15, -1.0)
-	# Into the grip: down and toward the muzzle.
-	return Vector3(0.05, -0.55, -1.0)
+	if style == "pistol":
+		return Vector3(0.1, -0.85, -0.4)
+	# Down the front of the grip, with a little reach toward the trigger guard.
+	return Vector3(0.05, -1.0, -0.42)
 
 
 static func _right_palm(style: String) -> Vector3:
 	if style == "pistol":
 		return Vector3(0.85, 0.1, 0.35)
-	return Vector3(1.0, 0.15, 0.0)
+	return Vector3(0.15, 0.25, -1.0)
 
 
 static func _left_fingers(style: String) -> Vector3:
@@ -103,7 +115,6 @@ static func _left_fingers(style: String) -> Vector3:
 		return Vector3(0.2, -0.2, -1.0)
 	if style == "pistol":
 		return Vector3(0.1, -0.8, -0.35)
-	# Up and over the handguard so the curled fingers close on the barrel.
 	return Vector3(-0.05, 1.0, -0.2)
 
 
@@ -113,7 +124,7 @@ static func _left_palm(style: String) -> Vector3:
 	return Vector3(-1.0, 0.15, 0.1)
 
 
-static func _pose_arm(skel: Skeleton3D, side: String, wrist: Vector3, finger_dir: Vector3, palm_dir: Vector3, pole_sign: float) -> void:
+static func _pose_arm(skel: Skeleton3D, side: String, shoulder: Vector3, wrist: Vector3, finger_dir: Vector3, palm_dir: Vector3, pole: Vector3) -> void:
 	var shoulder_b := skel.find_bone("shoulder." + side)
 	var upper := skel.find_bone("bicep." + side)
 	var fore := skel.find_bone("forearm." + side)
@@ -125,11 +136,7 @@ static func _pose_arm(skel: Skeleton3D, side: String, wrist: Vector3, finger_dir
 	var clav_len := 0.4
 	if shoulder_b >= 0:
 		clav_len = skel.get_bone_global_rest(shoulder_b).origin.distance_to(skel.get_bone_global_rest(upper).origin)
-	# Elbows sit below and outboard, and slightly away from the camera, so aiming
-	# down the barrel does not blow the forearms up into the lens.
-	var drop := Vector3(0.78 * pole_sign, -1.05, -0.42).normalized()
-	var shoulder := wrist + drop * (upper_len + fore_len) * 0.92
-	var pole := Vector3(pole_sign, -0.2, -0.65)
+	# Clamp to the real bone length. The elbow bends; the arm does not stretch.
 	var elbow := _elbow(shoulder, wrist, pole, upper_len, fore_len)
 	if shoulder_b >= 0:
 		var clav := shoulder - (elbow - shoulder).normalized() * clav_len
@@ -160,6 +167,8 @@ static func _hand_basis(skel: Skeleton3D, wrist_b: int, side: String, finger_dir
 	var up := fwd.cross(side_axis).normalized()
 	var local_b := Basis(side_axis, up, fwd)
 	var wz := finger_dir.normalized()
+	if wz.length_squared() < 0.0001:
+		wz = Vector3(0, -1, 0)
 	var wx := palm_dir - wz * palm_dir.dot(wz)
 	if wx.length_squared() < 0.0001:
 		wx = Vector3.UP.cross(wz)
@@ -197,15 +206,11 @@ static func _elbow(shoulder: Vector3, target: Vector3, pole: Vector3, upper_len:
 
 
 static func _curl(skel: Skeleton3D, side: String, index_amt: float, amt: float) -> void:
-	# Local pose rotations were not reaching the skin once the wrist had a global
-	# override. Chain the same override down each finger so the curl is visible.
 	skel.force_update_all_bone_transforms()
 	var wrist := skel.find_bone("wrist." + side)
 	if wrist < 0:
 		return
 	var wrist_g := skel.get_bone_global_pose(wrist)
-	# Right fingers close around local Z. The left hand needs both axes: its mirror
-	# sends a single-axis curl edge-on to the camera, which reads as an open palm.
 	for digit in ["index", "middle", "ring", "pinky"]:
 		var bend := index_amt if digit == "index" and side == "r" else amt
 		var parent_g := wrist_g
@@ -214,7 +219,7 @@ static func _curl(skel: Skeleton3D, side: String, index_amt: float, amt: float) 
 			var euler := Vector3(bend * falloff, 0.0, bend * falloff) if side == "l" else Vector3(0.0, 0.0, -bend * falloff)
 			parent_g = _bend_global(skel, "finger_%s%d.%s" % [digit, joint, side], parent_g, euler)
 	var thumb_g := wrist_g
-	var thumb_euler := Vector3(0.9, 0.0, 0.9) if side == "l" else Vector3(0.0, 0.0, -0.5)
+	var thumb_euler := Vector3(0.8, 0.0, 0.8) if side == "l" else Vector3(0.0, 0.0, -0.45)
 	thumb_g = _bend_global(skel, "finger_thumb1." + side, thumb_g, thumb_euler)
 	thumb_g = _bend_global(skel, "finger_thumb2." + side, thumb_g, thumb_euler * 0.7)
 	_bend_global(skel, "finger_thumb3." + side, thumb_g, thumb_euler * 0.45)
@@ -229,9 +234,3 @@ static func _bend_global(skel: Skeleton3D, bone_name: String, parent_g: Transfor
 	var global := parent_g * local
 	skel.set_bone_global_pose_override(idx, global, 1.0, true)
 	return global
-
-
-static func _park(skel: Skeleton3D, side: String, at: Vector3) -> void:
-	var upper := skel.find_bone("bicep." + side)
-	if upper >= 0:
-		skel.set_bone_global_pose_override(upper, Transform3D(Basis.IDENTITY, at), 1.0, true)
