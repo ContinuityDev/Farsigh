@@ -30,6 +30,8 @@ var _hidden_label: Label
 var _weapon_wheel: Control
 var _item_wheel: Control
 var _gadget_lethal_label: Label
+var _support_card: PanelContainer
+var _support_label: Label
 var _armour_bar: ProgressBar
 var _ally_label: Label
 
@@ -56,6 +58,7 @@ func _ready() -> void:
 	_ensure_hidden_indicator()
 	_ensure_weapon_wheels()
 	_ensure_gadget_lethal_hud()
+	_ensure_support_card()
 	_ensure_vitals_bars()
 	_ensure_ally_label()
 	if touch_controls:
@@ -456,14 +459,21 @@ func _ensure_streak_buttons() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	## Streak HUD buttons: ScreenTouch hit-test (same pattern as touch action buttons).
-	if GameState.is_paused or not TouchInput.is_touch_ui_desired():
+	## Slot buttons: touch taps, and mouse clicks when the pointer is not captured.
+	if GameState.is_paused or _streak_buttons.is_empty():
 		return
-	if not (event is InputEventScreenTouch and event.pressed):
+	var pos := Vector2(-9999, -9999)
+	if event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+		pos = (event as InputEventScreenTouch).position
+	elif event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			return
+		pos = mb.position
+	else:
 		return
-	if _streak_buttons.is_empty():
-		return
-	var pos: Vector2 = event.position
 	for i in range(_streak_buttons.size()):
 		var btn: Button = _streak_buttons[i]
 		if not is_instance_valid(btn) or btn.disabled or not btn.visible:
@@ -476,6 +486,7 @@ func _input(event: InputEvent) -> void:
 
 func refresh_streak_buttons() -> void:
 	if _streak_buttons.is_empty():
+		refresh_support_card()
 		return
 	var sm := get_tree().get_first_node_in_group("streak_manager")
 	var any_visible := false
@@ -484,8 +495,8 @@ func refresh_streak_buttons() -> void:
 		if i < GameState.equipped_streaks.size():
 			sid = String(GameState.equipped_streaks[i])
 		var btn: Button = _streak_buttons[i]
-		# Only show when a streak is equipped and owned (hide empty slots).
-		if sid == "" or not GameState.owns_streak(sid):
+		# Hide empty slots and spent charges. Owned-but-empty is not a button.
+		if sid == "" or GameState.get_streak_charges(sid) <= 0:
 			btn.visible = false
 			btn.disabled = true
 			continue
@@ -496,11 +507,13 @@ func refresh_streak_buttons() -> void:
 		var ready := charges > 0
 		if sm and sm.has_method("can_activate"):
 			ready = bool(sm.can_activate(i))
-		btn.text = "%s\nx%d" % [String(info.get("name", sid)), charges]
+		var selected := sid == GameState.ensure_selected_streak()
+		btn.text = "%s%s\nx%d" % ["▸ " if selected else "", String(info.get("name", sid)), charges]
 		btn.disabled = not ready
-		btn.modulate = Color(0.55, 0.95, 0.55) if ready else Color(0.85, 0.85, 0.85)
+		btn.modulate = Color(0.95, 0.78, 0.35) if selected else (Color(0.55, 0.95, 0.55) if ready else Color(0.85, 0.85, 0.85))
 	if is_instance_valid(_streak_row):
 		_streak_row.visible = any_visible
+	refresh_support_card()
 
 
 func _on_streak_pressed(slot: int) -> void:
@@ -874,6 +887,67 @@ func _ensure_weapon_wheels() -> void:
 		add_child(_item_wheel)
 
 
+func _ensure_support_card() -> void:
+	_support_card = get_node_or_null("Root/SupportCard") as PanelContainer
+	if _support_card == null:
+		_support_card = PanelContainer.new()
+		_support_card.name = "SupportCard"
+		_support_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.07, 0.08, 0.06, 0.86)
+		style.border_color = Color(0.93, 0.62, 0.18)
+		style.set_border_width_all(2)
+		style.set_corner_radius_all(4)
+		style.set_content_margin_all(8)
+		_support_card.add_theme_stylebox_override("panel", style)
+		_support_label = Label.new()
+		_support_label.name = "SupportLabel"
+		_support_label.add_theme_font_size_override("font_size", 15)
+		_support_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.72))
+		_support_card.add_child(_support_label)
+		$Root.add_child(_support_card)
+	else:
+		_support_label = _support_card.get_node_or_null("SupportLabel") as Label
+	_support_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	# Sit above the weapon/ammo card so the loadout readout stays readable.
+	_support_card.offset_left = 16
+	_support_card.offset_top = -304
+	_support_card.offset_right = 340
+	_support_card.offset_bottom = -214
+	_support_card.visible = false
+
+
+func _support_key_label() -> String:
+	if not InputMap.has_action("use_support"):
+		return "Y"
+	for ev in InputMap.action_get_events("use_support"):
+		if ev is InputEventKey:
+			var key := (ev as InputEventKey).physical_keycode
+			return OS.get_keycode_string(key)
+	return "Y"
+
+
+func refresh_support_card() -> void:
+	_ensure_support_card()
+	if not is_instance_valid(_support_card) or not is_instance_valid(_support_label):
+		return
+	var sid := GameState.ensure_selected_streak()
+	if sid == "" or GameState.total_streak_charges() <= 0:
+		_support_card.visible = false
+		return
+	var info := StreakCatalog.by_id(sid)
+	var charges := GameState.get_streak_charges(sid)
+	var key := _support_key_label()
+	var sm := get_tree().get_first_node_in_group("streak_manager")
+	var placing := sm != null and sm.has_method("is_placing") and bool(sm.is_placing())
+	_support_card.visible = true
+	if placing:
+		_support_label.text = "STRIKE  [%s]\n%s\nClick or press again to confirm" % [key, String(info.get("name", sid))]
+	else:
+		var aim := "  ·  aim first" if StreakCatalog.is_targeted(sid) else ""
+		_support_label.text = "SUPPORT  [%s]\n%s  ×%d%s\nTap to use  ·  hold for wheel" % [key, String(info.get("name", sid)), charges, aim]
+
+
 func _ensure_gadget_lethal_hud() -> void:
 	_gadget_lethal_label = get_node_or_null("Root/GadgetLethalLabel") as Label
 	if _gadget_lethal_label == null:
@@ -962,6 +1036,26 @@ func open_gadget_wheel() -> void:
 	_item_wheel.open_for("gadget", entries)
 
 
+func open_support_wheel() -> void:
+	_ensure_weapon_wheels()
+	if weapon_wheel_open():
+		return
+	var entries: Array = []
+	for s in StreakCatalog.all_streaks():
+		var sid := String(s["id"])
+		var cnt := GameState.get_streak_charges(sid)
+		if cnt <= 0:
+			continue
+		var wheel_name := String(s.get("short", s["name"]))
+		entries.append({"id": sid, "name": wheel_name, "count": cnt})
+	if entries.is_empty():
+		return
+	var sm := get_tree().get_first_node_in_group("streak_manager")
+	if sm and sm.has_method("is_placing") and bool(sm.is_placing()) and sm.has_method("cancel_place"):
+		sm.cancel_place()
+	_item_wheel.open_for("support", entries)
+
+
 func open_lethal_wheel() -> void:
 	_ensure_weapon_wheels()
 	if weapon_wheel_open():
@@ -1001,7 +1095,12 @@ func _on_item_wheel_picked(kind: String, id: String) -> void:
 		if is_instance_valid(player) and player.has_node("WeaponManager"):
 			player.get_node("WeaponManager").set_lethal(wid)
 		show_status("Lethal: %s" % GameState.lethal_display_name(wid), 1.4)
+	elif kind == "support":
+		GameState.select_streak(id)
+		var info := StreakCatalog.by_id(id)
+		show_status("Support: %s ×%d" % [String(info.get("name", id)), GameState.get_streak_charges(id)], 1.4)
 	refresh_gadget_lethal_hud()
+	refresh_streak_buttons()
 
 
 func refresh_gadget_lethal_hud() -> void:

@@ -38,6 +38,10 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_guards()
 		return
+	if OS.get_environment("SUPPORT_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_support()
+		return
 	if _web_wants_overlook():
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _web_overlook_view()
@@ -722,6 +726,93 @@ func _frame_shot(player: Node3D, eye: Vector3, focus: Vector3) -> void:
 		player.look_at(flat, Vector3.UP)
 	var to := focus - head.global_position
 	head.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+
+
+func _snap_support() -> void:
+	## Purchased support charges: HUD card, wheel, mobile button, mortar marker, then a real strike.
+	await get_tree().process_frame
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.add_currency(2000)
+	GameState.set_graphics_quality(2)
+	GameState.set_day_start_hour(14.0)
+	var buy_recon := GameState.try_purchase("streak_recon")
+	var buy_mortar := GameState.try_purchase("streak_mortar")
+	var buy_fangs := GameState.try_purchase("streak_fangs")
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.6).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(14.0)
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var hud := get_tree().get_first_node_in_group("hud")
+	var sm := get_tree().get_first_node_in_group("streak_manager")
+	GameState.select_streak("mortar")
+	if hud and hud.has_method("refresh_streak_buttons"):
+		hud.refresh_streak_buttons()
+	_frame_shot(player, Vector3(2.0, 2.4, 18.0), Vector3(2.0, 0.2, 10.0))
+	await get_tree().create_timer(0.25).timeout
+	await _snap("74_support_card")
+	var card_text := ""
+	if hud:
+		var card := hud.get_node_or_null("Root/SupportCard/SupportLabel") as Label
+		if card:
+			card_text = card.text
+	if hud and hud.has_method("open_support_wheel"):
+		hud.open_support_wheel()
+	await get_tree().process_frame
+	await _snap("75_support_wheel")
+	if hud and hud.has_method("close_item_wheel"):
+		hud.close_item_wheel(false)
+	TouchInput.force_touch_ui = true
+	await get_tree().create_timer(0.35).timeout
+	await _snap("77_support_touch")
+	TouchInput.force_touch_ui = false
+	GameState.select_streak("mortar")
+	var before := GameState.get_streak_charges("mortar")
+	var recon_before := GameState.get_streak_charges("recon_drone")
+	var recon_ok := false
+	if sm and sm.has_method("try_activate_id"):
+		recon_ok = bool(sm.try_activate_id("recon_drone"))
+	var recon_after := GameState.get_streak_charges("recon_drone")
+	if sm and sm.has_method("begin_place"):
+		sm.begin_place("mortar")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var marker := get_tree().current_scene.get_node_or_null("SupportAimMarker") as Node3D
+	var marker_was_up := is_instance_valid(marker) and marker.visible
+	await _snap("76_mortar_marker")
+	var fired := false
+	if sm and sm.has_method("confirm_place"):
+		fired = bool(sm.confirm_place())
+	var after := GameState.get_streak_charges("mortar")
+	await get_tree().process_frame
+	await _snap("78_mortar_fired")
+	var tagged := 0
+	for g in get_tree().get_nodes_in_group("guards"):
+		if is_instance_valid(g) and bool(g.get("tagged")):
+			tagged += 1
+	var pass_ok := (
+		buy_recon == ""
+		and buy_mortar == ""
+		and buy_fangs == ""
+		and card_text.find("SUPPORT") >= 0
+		and card_text.find("×") >= 0
+		and recon_ok
+		and recon_after == recon_before - 1
+		and tagged > 0
+		and marker_was_up
+		and is_instance_valid(marker)
+		and marker.visible == false
+		and fired
+		and after == before - 1
+	)
+	print("SUPPORT_SNAP card=", card_text.replace("\n", " | "))
+	print("SUPPORT_SNAP recon ", recon_before, "->", recon_after, " tagged=", tagged, " mortar ", before, "->", after, " fired=", fired)
+	print("SUPPORT_SNAP ", "PASS" if pass_ok else "FAIL")
+	get_tree().quit()
 
 
 func _snap_guards() -> void:

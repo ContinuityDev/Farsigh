@@ -48,6 +48,7 @@ var is_down: bool = false
 var _wheel_hold_t: float = 0.0
 var _gadget_hold_t: float = 0.0
 var _lethal_hold_t: float = 0.0
+var _support_hold_t: float = 0.0
 var _swap_press_t: float = 0.0
 const HOLD_WHEEL_SEC := 0.22
 var _capsule: CapsuleShape3D
@@ -527,7 +528,11 @@ func _update_footsteps(delta: float, moving: bool, sprinting: bool) -> void:
 
 
 func _handle_combat_input() -> void:
-	var can_fire := _capture_fire_suppress <= 0.0
+	var sm := get_tree().get_first_node_in_group("streak_manager")
+	var placing := sm != null and sm.has_method("is_placing") and bool(sm.is_placing())
+	if placing and TouchInput.is_action_just_pressed("fire") and sm.has_method("confirm_place"):
+		sm.confirm_place()
+	var can_fire := _capture_fire_suppress <= 0.0 and not placing
 	if can_fire and TouchInput.is_action_just_pressed("fire"):
 		weapons.try_fire()
 	elif can_fire and TouchInput.is_action_pressed("fire"):
@@ -561,6 +566,20 @@ func _handle_combat_input() -> void:
 		elif _gadget_hold_t > 0.0:
 			_use_gadget()
 		_gadget_hold_t = 0.0
+	if TouchInput.is_action_just_released("use_support"):
+		var hud_s := get_tree().get_first_node_in_group("hud")
+		var placing_now := sm != null and sm.has_method("is_placing") and bool(sm.is_placing())
+		if placing_now:
+			if _support_hold_t >= HOLD_WHEEL_SEC and sm.has_method("cancel_place"):
+				sm.cancel_place()
+			elif _support_hold_t > 0.0 and sm.has_method("confirm_place"):
+				sm.confirm_place()
+		elif _support_hold_t >= HOLD_WHEEL_SEC:
+			if hud_s and hud_s.has_method("close_item_wheel"):
+				hud_s.close_item_wheel(true)
+		elif _support_hold_t > 0.0 and sm and sm.has_method("request_use"):
+			sm.request_use()
+		_support_hold_t = 0.0
 	if TouchInput.is_action_just_released("weapon_wheel"):
 		var hud := get_tree().get_first_node_in_group("hud")
 		if _wheel_hold_t >= HOLD_WHEEL_SEC and hud and hud.has_method("close_weapon_wheel"):
@@ -599,6 +618,18 @@ func _tick_wheel_holds(delta: float) -> void:
 			var iw2 = hud.get_node_or_null("ItemMiniWheel")
 			if not (is_instance_valid(iw2) and bool(iw2.get("open"))):
 				hud.open_gadget_wheel()
+	# Support — tap Y uses the selected charge; hold opens the wheel.
+	# While a strike marker is up, a hold cancels instead of opening the wheel.
+	var support_sm := get_tree().get_first_node_in_group("streak_manager")
+	var support_placing := support_sm != null and support_sm.has_method("is_placing") and bool(support_sm.is_placing())
+	if TouchInput.is_action_pressed("use_support") and not support_placing:
+		_support_hold_t += delta
+		if _support_hold_t >= HOLD_WHEEL_SEC and hud and hud.has_method("open_support_wheel"):
+			var iw3 = hud.get_node_or_null("ItemMiniWheel")
+			if not (is_instance_valid(iw3) and bool(iw3.get("open"))):
+				hud.open_support_wheel()
+	elif TouchInput.is_action_pressed("use_support"):
+		_support_hold_t += delta
 
 
 func _use_lethal() -> void:

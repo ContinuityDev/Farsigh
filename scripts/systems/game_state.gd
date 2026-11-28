@@ -87,6 +87,7 @@ var owned_abilities: Array = []  # String shop ids
 var owned_streaks: Array = []  # String streak ids unlocked via first purchase
 var streak_charges: Dictionary = {}  # streak_id -> int charges owned
 var equipped_streaks: Array = ["", "", ""]  # up to 3 streak ids (must be owned)
+var selected_streak: String = ""  # the support the Y key / SUPPORT button fires
 var unlocked_mod_pack: bool = false
 var unlocked_skin_pack: bool = false
 ## Paid gunsmith attachments unlocked (shop ids like att_red_dot). Suppressor free.
@@ -244,6 +245,7 @@ func start_new_run() -> void:
 	owned_streaks.clear()
 	streak_charges.clear()
 	equipped_streaks = ["", "", ""]
+	selected_streak = ""
 	unlocked_mod_pack = false
 	unlocked_skin_pack = false
 	unlocked_attachments.clear()
@@ -284,6 +286,51 @@ func add_streak_charge(id: String, amount: int = 1) -> void:
 	streak_charges[id] = next
 	if id not in owned_streaks:
 		owned_streaks.append(id)
+	if selected_streak == "" or get_streak_charges(selected_streak) <= 0:
+		selected_streak = id
+	_equip_streak_if_open(id)
+
+
+func total_streak_charges() -> int:
+	var n := 0
+	for s in StreakCatalog.all_streaks():
+		n += get_streak_charges(String(s["id"]))
+	return n
+
+
+func ensure_selected_streak() -> String:
+	if selected_streak != "" and get_streak_charges(selected_streak) > 0:
+		_equip_streak_if_open(selected_streak)
+		return selected_streak
+	for sid in equipped_streaks:
+		var equipped_id := String(sid)
+		if equipped_id != "" and get_streak_charges(equipped_id) > 0:
+			selected_streak = equipped_id
+			return selected_streak
+	for s in StreakCatalog.all_streaks():
+		var catalog_id := String(s["id"])
+		if get_streak_charges(catalog_id) > 0:
+			selected_streak = catalog_id
+			_equip_streak_if_open(catalog_id)
+			return selected_streak
+	selected_streak = ""
+	return ""
+
+
+func select_streak(id: String) -> void:
+	if get_streak_charges(id) <= 0:
+		return
+	selected_streak = id
+	_equip_streak_if_open(id)
+
+
+func _equip_streak_if_open(id: String) -> void:
+	if id == "" or id in equipped_streaks:
+		return
+	for i in range(equipped_streaks.size()):
+		if String(equipped_streaks[i]) == "":
+			equipped_streaks[i] = id
+			return
 
 
 func consume_streak_charge(id: String) -> bool:
@@ -900,6 +947,7 @@ func serialize() -> Dictionary:
 		"owned_streaks": owned_streaks.duplicate(),
 		"streak_charges": streak_charges.duplicate(),
 		"equipped_streaks": equipped_streaks.duplicate(),
+		"selected_streak": selected_streak,
 		"unlocked_mod_pack": unlocked_mod_pack,
 		"unlocked_skin_pack": unlocked_skin_pack,
 		"unlocked_attachments": unlocked_attachments.duplicate(),
@@ -954,6 +1002,10 @@ func deserialize(data: Dictionary) -> void:
 		var sid := String(equipped_streaks[i])
 		if sid != "" and sid not in owned_streaks:
 			equipped_streaks[i] = ""
+	selected_streak = String(data.get("selected_streak", ""))
+	if selected_streak != "" and get_streak_charges(selected_streak) <= 0:
+		selected_streak = ""
+	ensure_selected_streak()
 	unlocked_mod_pack = bool(data.get("unlocked_mod_pack", false))
 	unlocked_skin_pack = bool(data.get("unlocked_skin_pack", false))
 	var ua = data.get("unlocked_attachments", [])

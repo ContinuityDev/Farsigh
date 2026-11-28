@@ -31,6 +31,7 @@ const CONTEXT_BUTTONS := [
 	["InteractBtn", "interact"],
 	["ThrowBtn", "use_lethal"],
 	["GadgetBtn", "use_gadget"],
+	["SupportBtn", "use_support"],
 	["ReloadBtn", "reload"],
 	["InspectBtn", "inspect_weapon"],
 	["BinoBtn", "binoculars"],
@@ -50,6 +51,7 @@ const CONTEXT_SLOTS := [
 	[-390.0, 160.0, -280.0, 230.0],
 	[-150.0, 240.0, -40.0, 310.0],
 	[-270.0, 240.0, -160.0, 310.0],
+	[-390.0, 240.0, -280.0, 310.0],
 ]
 
 @onready var root: Control = $Root
@@ -203,6 +205,7 @@ func _update_contextual_buttons() -> void:
 	if is_instance_valid(player) and player.has_method("total_gadget_count"):
 		gtot = int(player.total_gadget_count())
 	show["use_gadget"] = gtot > 0
+	show["use_support"] = GameState.total_streak_charges() > 0
 	# Reload — mag not full AND reserve ammo available
 	show["reload"] = is_instance_valid(wm) and wm.has_method("needs_reload") and bool(wm.needs_reload())
 	# Inspect — whenever a weapon is equipped (not empty-handed)
@@ -220,6 +223,11 @@ func _update_contextual_buttons() -> void:
 	var gadget_btn := root.get_node_or_null("GadgetBtn") as Button
 	if gadget_btn:
 		gadget_btn.text = "GADGET"
+	var support_btn := root.get_node_or_null("SupportBtn") as Button
+	if support_btn:
+		var sm := get_tree().get_first_node_in_group("streak_manager")
+		var placing := sm != null and sm.has_method("is_placing") and bool(sm.is_placing())
+		support_btn.text = "STRIKE" if placing else "SUPPORT"
 
 	# Apply visibility + release holds on buttons that disappear mid-press
 	var visible_ctx: Array = []

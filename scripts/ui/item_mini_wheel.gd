@@ -102,7 +102,11 @@ func _draw() -> void:
 		return
 	var c := _center
 	draw_circle(c, RADIUS + 22.0, Color(0.05, 0.06, 0.07, 0.75))
-	var title := "GADGETS" if kind == "gadget" else "LETHALS"
+	var title := "GADGETS"
+	if kind == "lethal":
+		title = "LETHALS"
+	elif kind == "support":
+		title = "SUPPORT"
 	draw_string(ThemeDB.fallback_font, c + Vector2(-36, 6), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.9, 0.85, 0.5))
 	for i in range(_entries.size()):
 		var e: Dictionary = _entries[i]
@@ -114,5 +118,5 @@ func _draw() -> void:
 		draw_arc(pos, 32.0 if selected else 26.0, 0.0, TAU, 28, col, 2.0, true)
 		var label := String(e.get("name", "?"))
 		var cnt := int(e.get("count", 0))
-		draw_string(ThemeDB.fallback_font, pos + Vector2(-30, 0), label, HORIZONTAL_ALIGNMENT_LEFT, 60, 11, col)
-		draw_string(ThemeDB.fallback_font, pos + Vector2(-8, 14), "×%d" % cnt, HORIZONTAL_ALIGNMENT_LEFT, 40, 12, Color(0.9, 0.9, 0.9))
+		draw_string(ThemeDB.fallback_font, pos + Vector2(-30, -6), label, HORIZONTAL_ALIGNMENT_CENTER, 60, 12, col)
+		draw_string(ThemeDB.fallback_font, pos + Vector2(-18, 12), "×%d" % cnt, HORIZONTAL_ALIGNMENT_CENTER, 36, 12, Color(0.95, 0.95, 0.95))

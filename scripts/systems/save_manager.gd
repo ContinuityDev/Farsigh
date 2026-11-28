@@ -80,6 +80,7 @@ func clear_save() -> void:
 	GameState.owned_streaks.clear()
 	GameState.streak_charges.clear()
 	GameState.equipped_streaks = ["", "", ""]
+	GameState.selected_streak = ""
 	GameState.unlocked_mod_pack = false
 	GameState.unlocked_skin_pack = false
 	GameState.outposts.clear()
