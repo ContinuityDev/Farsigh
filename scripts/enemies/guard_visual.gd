@@ -101,6 +101,11 @@ var _arm_lower := -1
 var _arm_hand := -1
 var _arm_upper_len := 0.25
 var _arm_lower_len := 0.24
+var _arm_upper_r := -1
+var _arm_lower_r := -1
+var _arm_hand_r := -1
+var _arm_upper_r_len := 0.25
+var _arm_lower_r_len := 0.24
 var _gear: Dictionary = {}
 var _attachments: Array[BoneAttachment3D] = []
 var _flash_timer := 0.0
@@ -143,8 +148,10 @@ func _process(delta: float) -> void:
 		_oneshot_timer = maxf(0.0, _oneshot_timer - delta)
 		if _oneshot_timer <= 0.0 and not _is_dead:
 			_travel("loco")
+	_pose_rifle_arms()
 	_sync_attachments()
 	_solve_left_hand()
+	_curl_grip_fingers()
 
 
 func _spawn_actor() -> void:
@@ -429,15 +436,16 @@ func _attach_rifle() -> void:
 	gun.name = "CC0Rifle"
 	_rifle.add_child(gun)
 	var bounds := _rifle_bounds(gun)
-	# Imported muzzle is +X and up is +Y. Hand +Y is out the fingers, hand +Z is up the back of the hand.
-	var length := 0.72
+	var length := 0.56
 	var scale := length / maxf(bounds.size.x, 0.001)
-	var basis := Basis(Vector3(0, 1, 0), Vector3(0, 0, 1), Vector3(1, 0, 0)).scaled(Vector3.ONE * scale)
-	var grip_pt := bounds.position + Vector3(bounds.size.x * 0.30, bounds.size.y * 0.22, bounds.size.z * 0.5)
-	var palm := Vector3(0.0, 0.05, 0.0)
+	# Muzzle (gun +X) follows hand +X. Gun up follows hand -Y, which the pose keeps world-up.
+	# Fingers (hand +Y) then point down the front of the grip.
+	var basis := Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, -1)).scaled(Vector3.ONE * scale)
+	var grip_pt := bounds.position + Vector3(bounds.size.x * 0.34, bounds.size.y * 0.22, bounds.size.z * 0.5)
+	var palm := Vector3(0.0, 0.055, 0.0)
 	gun.transform = Transform3D(basis, palm - basis * grip_pt)
 	_guard_gun_materials(gun)
-	var support := bounds.position + Vector3(bounds.size.x * 0.62, bounds.size.y * 0.50, bounds.size.z * 0.5)
+	var support := bounds.position + Vector3(bounds.size.x * 0.48, bounds.size.y * 0.48, bounds.size.z * 0.5)
 	var muzzle := bounds.position + Vector3(bounds.size.x * 0.98, bounds.size.y * 0.55, bounds.size.z * 0.5)
 	var grip := Marker3D.new()
 	grip.name = "LeftGrip"
@@ -476,6 +484,15 @@ func _attach_rifle() -> void:
 		var wrist: Vector3 = _skeleton.get_bone_global_rest(_arm_hand).origin
 		_arm_upper_len = shoulder.distance_to(elbow)
 		_arm_lower_len = elbow.distance_to(wrist)
+	_arm_upper_r = _skeleton.find_bone("upperarm_r")
+	_arm_lower_r = _skeleton.find_bone("lowerarm_r")
+	_arm_hand_r = _skeleton.find_bone("hand_r")
+	if _arm_upper_r >= 0 and _arm_lower_r >= 0 and _arm_hand_r >= 0:
+		var shoulder_r: Vector3 = _skeleton.get_bone_global_rest(_arm_upper_r).origin
+		var elbow_r: Vector3 = _skeleton.get_bone_global_rest(_arm_lower_r).origin
+		var wrist_r: Vector3 = _skeleton.get_bone_global_rest(_arm_hand_r).origin
+		_arm_upper_r_len = shoulder_r.distance_to(elbow_r)
+		_arm_lower_r_len = elbow_r.distance_to(wrist_r)
 
 
 func _rifle_bounds(node: Node3D) -> AABB:
@@ -564,6 +581,66 @@ func _sync_attachments() -> void:
 		att.transform = _skeleton.get_bone_global_pose(att.bone_idx)
 
 
+func _pose_rifle_arms() -> void:
+	## The free clips are pistol poses, which park the rifle overhead.
+	## Replace the right arm each frame with a shouldered aim or a low ready.
+	if not _hold_rifle or _is_dead or _skeleton == null:
+		return
+	if _arm_upper_r < 0 or _arm_lower_r < 0 or _arm_hand_r < 0:
+		return
+	var shouldered := clampf(_aim_weight, 0.0, 1.0)
+	if _tree_state == "shoot":
+		shouldered = 1.0
+	var shoulder: Vector3 = _skeleton.get_bone_global_pose(_arm_upper_r).origin
+	# Wrist positions. The stock sits back along the barrel from here, into the shoulder when aiming.
+	var aim_hand := Vector3(-0.08, 1.42, 0.18)
+	var low_hand := Vector3(-0.03, 1.18, 0.14)
+	var aim_barrel := Vector3(0.02, 0.03, 1.0)
+	var low_barrel := Vector3(0.10, -0.12, 0.98)
+	var hand_pos := low_hand.lerp(aim_hand, shouldered)
+	var barrel := low_barrel.lerp(aim_barrel, shouldered).normalized()
+	var reach := _arm_upper_r_len + _arm_lower_r_len - 0.02
+	var to_hand := hand_pos - shoulder
+	if to_hand.length() > reach:
+		hand_pos = shoulder + to_hand.normalized() * reach
+	var elbow := _elbow_point(shoulder, hand_pos, Vector3(-0.55, -1.0, 0.05), _arm_upper_r_len, _arm_lower_r_len)
+	var upper_basis := _basis_y_toward(_skeleton.get_bone_global_pose(_arm_upper_r).basis, shoulder, elbow)
+	var lower_basis := _basis_y_toward(_skeleton.get_bone_global_pose(_arm_lower_r).basis, elbow, hand_pos)
+	# Fingers (hand +Y) drape down the front of the grip. Curl pulls the tips back into it.
+	# Hand +X is the barrel, which is where the rifle mesh points its muzzle.
+	var x := barrel
+	var down := (-Vector3.UP - x * (-Vector3.UP).dot(x))
+	if down.length_squared() < 0.0004:
+		down = Vector3(0, 0, -1)
+	var y := down.normalized()
+	var z := x.cross(y).normalized()
+	y = z.cross(x).normalized()
+	_skeleton.set_bone_global_pose(_arm_upper_r, Transform3D(upper_basis, shoulder))
+	_skeleton.set_bone_global_pose(_arm_lower_r, Transform3D(lower_basis, elbow))
+	_skeleton.set_bone_global_pose(_arm_hand_r, Transform3D(Basis(x, y, z), hand_pos))
+
+
+func _curl_grip_fingers() -> void:
+	if not _hold_rifle or _is_dead or _skeleton == null:
+		return
+	for side in ["r", "l"]:
+		for digit in ["index", "middle", "ring", "pinky"]:
+			# Local +X closes both hands. The right index stays straighter on the trigger.
+			var bend := 1.05 if digit == "index" and side == "r" else 1.9
+			for joint in ["01", "02", "03"]:
+				_bend_finger("%s_%s_%s" % [digit, joint, side], bend)
+		for joint in ["01", "02"]:
+			_bend_finger("thumb_%s_%s" % [joint, side], 0.7)
+
+
+func _bend_finger(bone: String, amount: float) -> void:
+	var idx := _skeleton.find_bone(bone)
+	if idx < 0:
+		return
+	var rest := _skeleton.get_bone_rest(idx).basis.get_rotation_quaternion()
+	_skeleton.set_bone_pose_rotation(idx, rest * Quaternion.from_euler(Vector3(amount, 0.0, 0.0)))
+
+
 func _solve_left_hand() -> void:
 	if not _hold_rifle or _skeleton == null or _rifle == null:
 		return
@@ -572,21 +649,28 @@ func _solve_left_hand() -> void:
 	var grip := _rifle.get_node_or_null("LeftGrip") as Node3D
 	if grip == null:
 		return
-	var target: Vector3 = _skeleton.global_transform.affine_inverse() * grip.global_position
+	var on_gun: Vector3 = _skeleton.global_transform.affine_inverse() * grip.global_position
+	var barrel := Vector3(0, 0, 1)
+	if _arm_hand_r >= 0:
+		barrel = _skeleton.get_bone_global_pose(_arm_hand_r).basis.x
+	# Palm rests on top of the handguard. Fingers run forward along it.
+	var target := on_gun + Vector3(0.0, 0.04, 0.0) - barrel * 0.02
 	var shoulder_xf := _skeleton.get_bone_global_pose(_arm_upper)
-	var elbow_xf := _skeleton.get_bone_global_pose(_arm_lower)
-	var hand_xf := _skeleton.get_bone_global_pose(_arm_hand)
 	var shoulder: Vector3 = shoulder_xf.origin
-	var pole: Vector3 = elbow_xf.origin - shoulder
-	if pole.length_squared() < 0.0001:
-		pole = Vector3(0.2, -1.0, 0.1)
+	var pole := Vector3(0.45, -1.0, 0.1)
 	var elbow := _elbow_point(shoulder, target, pole, _arm_upper_len, _arm_lower_len)
 	var upper_basis := _basis_y_toward(shoulder_xf.basis, shoulder, elbow)
-	var lower_basis := _basis_y_toward(elbow_xf.basis, elbow, target)
-	var hand_basis := lower_basis * elbow_xf.basis.inverse() * hand_xf.basis
+	var lower_basis := _basis_y_toward(_skeleton.get_bone_global_pose(_arm_lower).basis, elbow, target)
+	var y := (barrel + Vector3(0, -0.35, 0)).normalized()
+	var x := (Vector3.UP - y * Vector3.UP.dot(y))
+	if x.length_squared() < 0.0004:
+		x = y.cross(Vector3.RIGHT)
+	x = x.normalized()
+	var z := x.cross(y).normalized()
+	y = z.cross(x).normalized()
 	_skeleton.set_bone_global_pose(_arm_upper, Transform3D(upper_basis, shoulder))
 	_skeleton.set_bone_global_pose(_arm_lower, Transform3D(lower_basis, elbow))
-	_skeleton.set_bone_global_pose(_arm_hand, Transform3D(hand_basis, target))
+	_skeleton.set_bone_global_pose(_arm_hand, Transform3D(Basis(x, y, z), target))
 
 
 func _elbow_point(shoulder: Vector3, target: Vector3, pole: Vector3, upper_len: float, lower_len: float) -> Vector3:

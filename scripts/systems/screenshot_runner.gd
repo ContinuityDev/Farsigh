@@ -492,20 +492,23 @@ func _snap_cc0() -> void:
 		vis.set_locomotion(false, false)
 	await get_tree().create_timer(0.35).timeout
 	# Actor faces -Z, so the camera sits on that side.
-	_frame_shot(player, guard.global_position + Vector3(0.85, 1.25, -2.15), guard.global_position + Vector3(0, 1.05, 0))
-	await _snap("105_guard_idle")
-	_frame_shot(player, guard.global_position + Vector3(0.15, 1.45, -1.15), guard.global_position + Vector3(0, 1.55, 0))
-	await _snap("106_guard_face")
-	if vis and vis.has_method("set_locomotion"):
-		vis.set_locomotion(false, true)
-	await get_tree().create_timer(0.25).timeout
-	_frame_shot(player, guard.global_position + Vector3(1.15, 1.2, -1.85), guard.global_position + Vector3(0, 1.05, 0))
-	await _snap("107_guard_aim")
+	_frame_shot(player, guard.global_position + Vector3(1.05, 1.2, -0.85), guard.global_position + Vector3(-0.02, 1.2, 0.1))
+	await _snap("125_guard_idle")
 	if vis and vis.has_method("set_locomotion"):
 		vis.set_locomotion(true, false)
-	await get_tree().create_timer(0.35).timeout
-	_frame_shot(player, guard.global_position + Vector3(1.6, 1.05, -1.35), guard.global_position + Vector3(0, 0.9, 0))
-	await _snap("108_guard_walk")
+	await get_tree().create_timer(0.3).timeout
+	_frame_shot(player, guard.global_position + Vector3(0.85, 1.25, -1.05), guard.global_position + Vector3(0.0, 1.18, 0.1))
+	await _snap("126_guard_patrol")
+	if vis and vis.has_method("set_locomotion"):
+		vis.set_locomotion(false, true)
+	await get_tree().create_timer(0.3).timeout
+	_frame_shot(player, guard.global_position + Vector3(1.15, 1.35, -0.75), guard.global_position + Vector3(-0.04, 1.35, 0.15))
+	await _snap("127_guard_aim")
+	if vis and vis.has_method("play_shoot"):
+		vis.play_shoot()
+	await get_tree().create_timer(0.12).timeout
+	_frame_shot(player, guard.global_position + Vector3(0.65, 1.4, -1.0), guard.global_position + Vector3(-0.02, 1.32, 0.18))
+	await _snap("128_guard_shoot")
 	# Firearms, from the player's own camera so the viewmodel is in frame.
 	if is_instance_valid(hud):
 		hud.visible = true
@@ -533,7 +536,7 @@ func _snap_cc0() -> void:
 	var head := player.get_node_or_null("Head") as Node3D
 	if head:
 		head.rotation = Vector3.ZERO
-	var shot_i := 109
+	var shot_i := 129
 	for spec in guns:
 		var wid: GameState.WeaponId = spec["id"]
 		GameState.selected_primary = wid
@@ -562,8 +565,17 @@ func _snap_cc0() -> void:
 		await _snap("%d_%s_ads" % [shot_i, spec["name"]])
 		shot_i += 1
 		if is_instance_valid(wm):
-			wm.viewmodel_rig.set_aiming(false, 0.15)
-		await get_tree().create_timer(0.1).timeout
+			wm.viewmodel_rig.set_aiming(false, 0.12)
+			wm.viewmodel_rig.set_sprinting(true)
+		await get_tree().create_timer(0.35).timeout
+		await _snap("%d_%s_sprint" % [shot_i, spec["name"]])
+		shot_i += 1
+		if is_instance_valid(wm):
+			wm.viewmodel_rig.set_sprinting(false)
+			wm.viewmodel_rig.play_reload(1.1)
+		await get_tree().create_timer(0.42).timeout
+		await _snap("%d_%s_reload" % [shot_i, spec["name"]])
+		shot_i += 1
 	print("CC0_SNAP complete")
 	get_tree().quit()
 

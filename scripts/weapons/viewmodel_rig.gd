@@ -81,13 +81,13 @@ func rebuild_all_async(host: Node) -> void:
 
 func _setup_poses() -> void:
 	_base_pos = {
-		GameState.WeaponId.PISTOL: Vector3(0.18, -0.14, -0.36),
-		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.18, -0.14, -0.37),
-		GameState.WeaponId.RIFLE: Vector3(0.20, -0.145, -0.42),
-		GameState.WeaponId.SMG: Vector3(0.19, -0.145, -0.40),
-		GameState.WeaponId.SHOTGUN: Vector3(0.20, -0.15, -0.44),
-		GameState.WeaponId.SNIPER: Vector3(0.21, -0.15, -0.46),
-		GameState.WeaponId.LMG: Vector3(0.22, -0.16, -0.44),
+		GameState.WeaponId.PISTOL: Vector3(0.13, -0.13, -0.34),
+		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.13, -0.13, -0.34),
+		GameState.WeaponId.RIFLE: Vector3(0.14, -0.15, -0.40),
+		GameState.WeaponId.SMG: Vector3(0.15, -0.155, -0.38),
+		GameState.WeaponId.SHOTGUN: Vector3(0.15, -0.16, -0.42),
+		GameState.WeaponId.SNIPER: Vector3(0.14, -0.15, -0.44),
+		GameState.WeaponId.LMG: Vector3(0.16, -0.16, -0.42),
 		GameState.WeaponId.BOW: Vector3(0.19, -0.13, -0.45),
 		GameState.WeaponId.CROSSBOW: Vector3(0.22, -0.20, -0.46),
 		GameState.WeaponId.KNIFE: Vector3(0.23, -0.19, -0.37),
@@ -97,13 +97,13 @@ func _setup_poses() -> void:
 		GameState.WeaponId.BAT: Vector3(0.26, -0.22, -0.42),
 	}
 	_base_rot = {
-		GameState.WeaponId.PISTOL: Vector3(0.0, 2.0, 0.0),
-		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.0, 2.5, 0.0),
-		GameState.WeaponId.RIFLE: Vector3(0.0, 2.5, 0.0),
-		GameState.WeaponId.SMG: Vector3(0.0, 3.0, 0.0),
-		GameState.WeaponId.SHOTGUN: Vector3(0.0, 2.5, 0.0),
-		GameState.WeaponId.SNIPER: Vector3(0.0, 2.0, 0.0),
-		GameState.WeaponId.LMG: Vector3(0.0, 3.0, 0.0),
+		GameState.WeaponId.PISTOL: Vector3(-3.0, 2.0, 0.0),
+		GameState.WeaponId.MACHINE_PISTOL: Vector3(-3.0, 2.5, 0.0),
+		GameState.WeaponId.RIFLE: Vector3(-4.0, 2.0, 0.0),
+		GameState.WeaponId.SMG: Vector3(-4.0, 2.5, 0.0),
+		GameState.WeaponId.SHOTGUN: Vector3(-3.5, 2.0, 0.0),
+		GameState.WeaponId.SNIPER: Vector3(-3.0, 1.5, 0.0),
+		GameState.WeaponId.LMG: Vector3(-4.0, 2.0, 0.0),
 		GameState.WeaponId.BOW: Vector3(0.0, 6.0, 16.0),
 		GameState.WeaponId.CROSSBOW: Vector3(0.0, 2.5, 0.0),
 		GameState.WeaponId.KNIFE: Vector3(-12.0, 14.0, -8.0),
@@ -211,45 +211,45 @@ func _cc0_file(id: GameState.WeaponId) -> String:
 func _cc0_fit(id: GameState.WeaponId) -> Dictionary:
 	## Fractions of the imported bounds. Muzzle is +X, up is +Y, stock is -X.
 	var pistol := {
-		"length": 0.22, "grip_x": 0.30, "grip_y": 0.28,
+		"length": 0.17, "grip_x": 0.30, "grip_y": 0.28,
 		"sight_x": 0.42, "sight_y": 0.78, "muzzle_y": 0.62,
-		"mag_x": 0.34, "support_x": 0.55, "two_hand": true, "compact": true,
+		"mag_x": 0.34, "support_x": 0.40, "two_hand": true, "compact": true,
 	}
 	var rifle := {
-		"length": 0.64, "grip_x": 0.30, "grip_y": 0.22,
+		"length": 0.46, "grip_x": 0.30, "grip_y": 0.22,
 		"sight_x": 0.40, "sight_y": 0.74, "muzzle_y": 0.55,
-		"mag_x": 0.40, "support_x": 0.62, "two_hand": true, "compact": false,
+		"mag_x": 0.40, "support_x": 0.72, "two_hand": true, "compact": false,
 	}
 	match id:
 		GameState.WeaponId.PISTOL, GameState.WeaponId.TRANQ_PISTOL, GameState.WeaponId.MACHINE_PISTOL:
 			return pistol
 		GameState.WeaponId.SMG:
 			return {
-				"length": 0.46, "grip_x": 0.32, "grip_y": 0.24,
+				"length": 0.34, "grip_x": 0.32, "grip_y": 0.24,
 				"sight_x": 0.40, "sight_y": 0.76, "muzzle_y": 0.58,
 				"mag_x": 0.40, "support_x": 0.62, "two_hand": true, "compact": true,
 			}
 		GameState.WeaponId.SHOTGUN:
 			return {
-				"length": 0.78, "grip_x": 0.34, "grip_y": 0.30,
+				"length": 0.54, "grip_x": 0.34, "grip_y": 0.30,
 				"sight_x": 0.46, "sight_y": 0.72, "muzzle_y": 0.55,
 				"mag_x": 0.48, "support_x": 0.62, "two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
 			return {
-				"length": 0.86, "grip_x": 0.32, "grip_y": 0.28,
+				"length": 0.58, "grip_x": 0.32, "grip_y": 0.28,
 				"sight_x": 0.40, "sight_y": 0.70, "muzzle_y": 0.52,
 				"mag_x": 0.40, "support_x": 0.58, "two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.LMG, GameState.WeaponId.FLAMETHROWER:
 			return {
-				"length": 0.76, "grip_x": 0.32, "grip_y": 0.24,
+				"length": 0.52, "grip_x": 0.32, "grip_y": 0.24,
 				"sight_x": 0.42, "sight_y": 0.72, "muzzle_y": 0.52,
 				"mag_x": 0.42, "support_x": 0.60, "two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.GRENADE_LAUNCHER:
 			return {
-				"length": 0.62, "grip_x": 0.46, "grip_y": 0.28,
+				"length": 0.46, "grip_x": 0.46, "grip_y": 0.28,
 				"sight_x": 0.50, "sight_y": 0.74, "muzzle_y": 0.55,
 				"mag_x": 0.50, "support_x": 0.66, "two_hand": true, "compact": false,
 			}
@@ -296,8 +296,7 @@ func _build_cc0_firearm(slot: Node3D, id: GameState.WeaponId, mods: Dictionary) 
 	var mag_h := 0.12 if String(mods.get("mag", "standard")) == "extended" else 0.07
 	ProcMesh.add_part(mag, ProcMesh.box_mesh(Vector3(0.028, mag_h, 0.04), Color(0.12, 0.12, 0.13), 0.55, 0.35), Vector3(0, -mag_h * 0.45, 0))
 	_magazines[id] = mag
-	# Socket sits in the palm, so bias it above the grip and the fist closes on the gun.
-	_attach_fps_arms(root, hold + Vector3(0.0, 0.055, 0.02), support + Vector3(0, 0.02, 0), bool(fit["two_hand"]))
+	_attach_gloved_hands(root, hold, support, bool(fit["two_hand"]), bool(fit["compact"]))
 	var flash := _make_muzzle_flash(0.05 if String(mods.get("muzzle", "none")) == "suppressor" else 0.08, Color(1.0, 0.85, 0.45, 0.88))
 	flash.position = Vector3(muzzle_local.x, muzzle_local.y, muzzle_z - 0.02)
 	root.add_child(flash)
@@ -348,77 +347,108 @@ func _finish_cc0_materials(node: Node) -> void:
 			mi.set_surface_override_material(i, sm)
 
 
-func _attach_fps_arms(root: Node3D, grip: Vector3, support: Vector3, two_hand: bool) -> void:
-	var packed := load(CC0_DIR + "fps_arms.glb") as PackedScene
-	if packed == null:
-		_fp_arms(root, grip, support, two_hand)
+var _glove_mat: StandardMaterial3D
+var _sleeve_mat: StandardMaterial3D
+var _cuff_mat: StandardMaterial3D
+var _wrist_mat: StandardMaterial3D
+
+
+func _ensure_hand_mats() -> void:
+	if _glove_mat != null:
 		return
-	var arms := packed.instantiate()
-	arms.name = "FPSArms"
-	arms.scale = Vector3.ONE * 0.09
-	root.add_child(arms)
-	var skel := arms.find_child("Skeleton3D", true, false) as Skeleton3D
-	if skel == null:
+	_glove_mat = StandardMaterial3D.new()
+	_glove_mat.albedo_color = Color(0.16, 0.155, 0.145)
+	_glove_mat.albedo_texture = _surface_tex("polymer")
+	_glove_mat.roughness = 0.74
+	_glove_mat.metallic = 0.02
+	_glove_mat.uv1_scale = Vector3(4.0, 4.0, 4.0)
+	_sleeve_mat = StandardMaterial3D.new()
+	_sleeve_mat.albedo_color = Color(0.78, 0.62, 0.48)
+	_sleeve_mat.albedo_texture = load("res://assets/textures/weapons/flannel.png") as Texture2D
+	_sleeve_mat.roughness = 0.86
+	_sleeve_mat.metallic = 0.0
+	_sleeve_mat.uv1_scale = Vector3(2.2, 3.4, 2.2)
+	_cuff_mat = StandardMaterial3D.new()
+	_cuff_mat.albedo_color = Color(0.14, 0.13, 0.12)
+	_cuff_mat.roughness = 0.8
+	_wrist_mat = StandardMaterial3D.new()
+	_wrist_mat.albedo_color = Color(0.72, 0.55, 0.42)
+	_wrist_mat.albedo_texture = _surface_tex("skin")
+	_wrist_mat.roughness = 0.62
+	_wrist_mat.uv1_scale = Vector3(2.0, 2.0, 2.0)
+
+
+func _attach_gloved_hands(root: Node3D, grip: Vector3, support: Vector3, two_hand: bool, compact: bool) -> void:
+	## Hands are children of the gun, so ADS, recoil, reload, and sprint carry them.
+	## Sleeves leave downward, out of the lens, instead of back into the camera.
+	_ensure_hand_mats()
+	# Palm on the right of the vertical grip. Fingers curl around the front. Index stays out for the trigger.
+	_wrap_hand(root, "RightGlove", grip + Vector3(0.0, -0.006, 0.004), Vector3.UP, Vector3(1.0, 0.0, 0.05), Vector3(0, 0, -1), Vector3(0.18, -1.0, 0.22), 0.016, 0.050, true)
+	if not two_hand:
 		return
-	_pose_fps_arms(skel, two_hand)
-	var socket := skel.find_bone("socket.r")
-	if socket < 0:
-		socket = skel.find_bone("wrist.r")
-	if socket < 0:
-		return
-	var socket_global: Vector3 = skel.global_transform * skel.get_bone_global_pose(socket).origin
-	arms.global_position += root.to_global(grip) - socket_global
-	var left_target := root.to_global(support + Vector3(0, -0.02, 0)) if two_hand else root.to_global(Vector3(-0.05, -0.95, 0.45))
-	_reach_left_hand(skel, left_target)
+	# Support hand under the handguard (or just ahead of a pistol's trigger guard).
+	# Palm on the left side of the handguard so the back of the hand faces the camera. Fingers curl over the top.
+	if compact:
+		# Support hand just ahead of the trigger guard, fingers over the frame.
+		_wrap_hand(root, "LeftGlove", support + Vector3(-0.004, -0.02, 0.01), Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(-0.15, -1.0, 0.16), 0.014, 0.036, false)
+	else:
+		# Back of the hand on top of the handguard, fingers draped over the left side.
+		_wrap_hand(root, "LeftGlove", support + Vector3(0.0, 0.012, 0.0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(-1, 0, 0), Vector3(-0.18, -1.0, 0.14), 0.015, 0.05, false)
 
 
-func _pose_fps_arms(skel: Skeleton3D, _two_hand: bool) -> void:
-	## Rest has the hands hanging below the shoulders. This pitch brings the
-	## hands up and forward so the shoulders sit behind the camera.
-	_offset_bone(skel, "shoulder.r", Vector3(0.8, 0.8, 0))
-	_offset_bone(skel, "shoulder.l", Vector3(0.8, -0.8, 0))
-	_offset_bone(skel, "wrist.r", Vector3(0.4, 0, 0))
-	_offset_bone(skel, "wrist.l", Vector3(0.4, 0, 0))
-	for i in skel.get_bone_count():
-		var bone := String(skel.get_bone_name(i))
-		if not bone.begins_with("finger"):
-			continue
-		if bone.find("thumb") >= 0:
-			_offset_bone(skel, bone, Vector3(-0.9, 0.35, 0))
-		else:
-			_offset_bone(skel, bone, Vector3(1.2, 0, 0))
+func _wrap_hand(parent: Node3D, hand_name: String, at: Vector3, axis: Vector3, palm: Vector3, around: Vector3, sleeve_dir: Vector3, radius: float, span: float, trigger: bool) -> void:
+	var hand := Node3D.new()
+	hand.name = hand_name
+	hand.position = at
+	parent.add_child(hand)
+	var axis_n := axis.normalized()
+	var palm_n := (palm - axis_n * palm.dot(axis_n)).normalized()
+	var around_n := (around - axis_n * around.dot(axis_n) - palm_n * around.dot(palm_n)).normalized()
+	# Palm pad on the near side of the grip.
+	_hand_capsule(hand, radius * 0.85, span * 0.92, palm_n * (radius + 0.004), axis_n, _glove_mat)
+	for i in 4:
+		var along := span * 0.36 - float(i) * (span / 3.0)
+		var is_trigger := trigger and i == 0
+		var curl := 0.85 if is_trigger else 3.3
+		var segs := 2 if is_trigger else 4
+		for s in segs:
+			var ang := lerpf(0.25, curl, float(s) / float(segs - 1))
+			var dir := (palm_n * cos(ang) + around_n * sin(ang)).normalized()
+			# Along the curl, so each segment continues the finger instead of sticking out.
+			var tangent := -palm_n * sin(ang) + around_n * cos(ang)
+			_hand_capsule(hand, 0.008, 0.016, dir * (radius + 0.007) + axis_n * along, tangent, _glove_mat)
+		_hand_sphere(hand, 0.0082, palm_n * (radius + 0.008) + axis_n * along, _glove_mat)
+	# Thumb laid across the top of the grip.
+	var thumb_dir := (palm_n * 0.15 + around_n * 0.25 + axis_n).normalized()
+	_hand_capsule(hand, 0.0076, 0.024, axis_n * (span * 0.52) + palm_n * (radius * 0.35), thumb_dir, _glove_mat)
+	_hand_sphere(hand, 0.0084, axis_n * (span * 0.52) + palm_n * (radius * 0.35) + thumb_dir * 0.014, _glove_mat)
+	# A band of skin, then the flannel sleeve heading down and out of frame.
+	var wrist := -axis_n * (span * 0.58)
+	_hand_capsule(hand, 0.011, 0.012, wrist, axis_n, _wrist_mat)
+	var sleeve := sleeve_dir.normalized()
+	_hand_capsule(hand, 0.013, 0.016, wrist + sleeve * 0.012, sleeve, _cuff_mat)
+	_hand_capsule(hand, 0.015, 0.09, wrist + sleeve * 0.052, sleeve, _sleeve_mat)
 
 
-func _reach_left_hand(skel: Skeleton3D, target_global: Vector3) -> void:
-	var socket := skel.find_bone("socket.l")
-	if socket < 0:
-		return
-	var base := Vector3(0.8, -0.8, 0.0)
-	var best_d := 999.0
-	var best_z := 0.0
-	var best_x := 0.0
-	for z_i in 7:
-		for x_i in 9:
-			var ez := -0.45 + float(z_i) * 0.15
-			var ex := -1.0 + float(x_i) * 0.25
-			_offset_bone(skel, "shoulder.l", base + Vector3(0, 0, ez))
-			_offset_bone(skel, "forearm.l", Vector3(ex, 0, 0))
-			var at: Vector3 = skel.global_transform * skel.get_bone_global_pose(socket).origin
-			var dist := at.distance_to(target_global)
-			if dist < best_d:
-				best_d = dist
-				best_z = ez
-				best_x = ex
-	_offset_bone(skel, "shoulder.l", base + Vector3(0, 0, best_z))
-	_offset_bone(skel, "forearm.l", Vector3(best_x, 0, 0))
+func _hand_capsule(parent: Node3D, radius: float, length: float, pos: Vector3, along: Vector3, mat: Material) -> void:
+	var mi := ProcMesh.cylinder_mesh(radius, length, Color.WHITE, 0.7, 0.0, 8)
+	mi.material_override = mat
+	var y := along.normalized()
+	var x := y.cross(Vector3.UP)
+	if x.length_squared() < 0.0004:
+		x = y.cross(Vector3.RIGHT)
+	x = x.normalized()
+	var z := x.cross(y).normalized()
+	mi.basis = Basis(x, y, z)
+	mi.position = pos
+	parent.add_child(mi)
 
 
-func _offset_bone(skel: Skeleton3D, bone: String, euler: Vector3) -> void:
-	var idx := skel.find_bone(bone)
-	if idx < 0:
-		return
-	var rest := skel.get_bone_rest(idx).basis.get_rotation_quaternion()
-	skel.set_bone_pose_rotation(idx, rest * Quaternion.from_euler(euler))
+func _hand_sphere(parent: Node3D, radius: float, pos: Vector3, mat: Material) -> void:
+	var mi := ProcMesh.sphere_mesh(radius, Color.WHITE, 0.7, 0.0)
+	mi.material_override = mat
+	mi.position = pos
+	parent.add_child(mi)
 
 
 func _mag_rest_y(wid: GameState.WeaponId, mag: Node3D) -> float:
