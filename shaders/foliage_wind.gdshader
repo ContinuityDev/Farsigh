@@ -4,6 +4,8 @@ render_mode cull_disabled, depth_draw_opaque, specular_disabled;
 // Vertex displacement only — no screen textures.
 
 uniform vec4 albedo : source_color = vec4(0.22, 0.38, 0.16, 1.0);
+uniform sampler2D albedo_tex : source_color, hint_default_white, filter_linear_mipmap;
+uniform float cutout : hint_range(0.0, 1.0) = 0.0;
 uniform float wind_strength : hint_range(0.0, 0.6) = 0.18;
 uniform float wind_speed : hint_range(0.0, 4.0) = 1.35;
 uniform float wind_scale : hint_range(0.1, 4.0) = 1.0;
@@ -26,9 +28,18 @@ void fragment() {
 	float ndotv = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
 	float wrap = pow(1.0 - ndotv, 1.6);
 	float ao = clamp(vert_h * 0.45 + 0.5, 0.45, 1.0);
-	ALBEDO = albedo.rgb * ao + albedo.rgb * wrap * 0.28;
+	vec3 tex_rgb = vec3(1.0);
+	float tex_a = 1.0;
+	if (cutout > 0.5) {
+		vec4 tex = texture(albedo_tex, UV);
+		tex_rgb = tex.rgb;
+		tex_a = tex.a;
+		ALPHA_SCISSOR_THRESHOLD = 0.4;
+	}
+	vec3 base = albedo.rgb * tex_rgb;
+	ALBEDO = base * ao + base * wrap * 0.28;
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
-	ALPHA = albedo.a;
-	EMISSION = albedo.rgb * wrap * 0.05;
+	ALPHA = tex_a * albedo.a;
+	EMISSION = base * wrap * 0.05;
 }

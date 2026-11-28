@@ -1,7 +1,7 @@
 [gd_scene load_steps=9 format=3 uid="uid://guard001"]
 
 [ext_resource type="Script" path="res://scripts/ai/guard_ai.gd" id="1"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/guard_visual.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://prefabs/characters/guard_humanoid.tscn" id="2"]
 [ext_resource type="Script" path="res://scripts/combat/hit_zone.gd" id="3"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]

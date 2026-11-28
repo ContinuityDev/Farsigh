@@ -30,6 +30,18 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_assets()
 		return
+	if OS.get_environment("OVERLOOK_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_overlook()
+		return
+	if OS.get_environment("GUARD_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_guards()
+		return
+	if _web_wants_overlook():
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _web_overlook_view()
+		return
 	if OS.get_environment("AUTO_CAPTURE") != "1":
 		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -658,6 +670,215 @@ func _note_fps(tag: String) -> void:
 	var fps := Performance.get_monitor(Performance.TIME_FPS)
 	var frame_ms := Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
 	print("FPS_NOTE %s fps=%.1f process_ms=%.2f quality=%s" % [tag, fps, frame_ms, GraphicsQuality.level_name() if GraphicsQuality else "?"])
+
+
+func _web_search() -> String:
+	if not OS.has_feature("web"):
+		return ""
+	var raw = JavaScriptBridge.eval("window.location.search", true)
+	return str(raw)
+
+
+func _web_wants_overlook() -> bool:
+	return "view=overlook" in _web_search()
+
+
+func _place_overlook(player: Node3D) -> void:
+	if not is_instance_valid(player):
+		return
+	# HQ roof nest, looking south over the yard, the gate, and the treeline.
+	player.global_position = Vector3(1.0, 7.05, -11.4)
+	player.look_at(Vector3(0.0, 1.3, 22.0), Vector3.UP)
+
+
+func _hide_viewmodel(player: Node3D) -> void:
+	if not is_instance_valid(player):
+		return
+	player.set_process(false)
+	player.set_physics_process(false)
+	var weapons := player.get_node_or_null("WeaponManager")
+	if is_instance_valid(weapons):
+		weapons.set_process(false)
+		weapons.set_physics_process(false)
+	var vm := player.get_node_or_null("Head/Camera3D/Viewmodels")
+	if is_instance_valid(vm):
+		vm.set_process(false)
+		vm.visible = false
+
+
+func _frame_shot(player: Node3D, eye: Vector3, focus: Vector3) -> void:
+	## Eye height is the camera (Head is 1.65 above the body). Pitch lives on Head.
+	if not is_instance_valid(player):
+		return
+	_hide_viewmodel(player)
+	player.global_position = Vector3(eye.x, eye.y - 1.65, eye.z)
+	var head := player.get_node_or_null("Head") as Node3D
+	if not is_instance_valid(head):
+		player.look_at(focus, Vector3.UP)
+		return
+	head.rotation = Vector3.ZERO
+	var flat := Vector3(focus.x, player.global_position.y, focus.z)
+	if flat.distance_squared_to(player.global_position) > 0.04:
+		player.look_at(flat, Vector3.UP)
+	var to := focus - head.global_position
+	head.rotation.x = atan2(to.y, Vector2(to.x, to.z).length())
+
+
+func _snap_guards() -> void:
+	await get_tree().process_frame
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(2)
+	GameState.set_day_start_hour(14.0)
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.5).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(14.0)
+	for existing in get_tree().get_nodes_in_group("guards"):
+		if existing is Node3D:
+			(existing as Node3D).visible = false
+		existing.set_process(false)
+		existing.set_physics_process(false)
+	var packed := load("res://scenes/enemies/guard.tscn") as PackedScene
+	var specs := [
+		{"role": "patrol", "label": "rifleman"},
+		{"role": "sniper", "sniper": true, "label": "sniper"},
+		{"role": "heavy", "heavy": true, "label": "heavy"},
+		{"role": "officer", "officer": true, "label": "officer"},
+		{"role": "handler", "label": "handler"},
+		{"role": "dog", "dog": true, "label": "dog"},
+	]
+	var spawned: Array[Node3D] = []
+	var root := get_tree().current_scene
+	for i in range(specs.size()):
+		var spec: Dictionary = specs[i]
+		var guard := packed.instantiate() as Node3D
+		guard.name = "Lineup_" + String(spec["label"])
+		guard.set("role", spec["role"])
+		guard.set("is_sniper", bool(spec.get("sniper", false)))
+		guard.set("is_heavy", bool(spec.get("heavy", false)))
+		guard.set("is_officer", bool(spec.get("officer", false)))
+		guard.set("is_dog", bool(spec.get("dog", false)))
+		guard.position = Vector3(-6.25 + float(i) * 2.5, 0.15, 4.0)
+		guard.rotation_degrees = Vector3(0, 180, 0)
+		root.add_child(guard)
+		spawned.append(guard)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for guard in spawned:
+		guard.set_physics_process(false)
+		guard.set_process(false)
+		var badge := guard.get_node_or_null("StateLabel") as Label3D
+		if is_instance_valid(badge):
+			badge.visible = false
+		var vis := guard.get_node_or_null("Visual")
+		if vis and vis.has_method("play"):
+			vis.play(&"idle", 0.0)
+	# Question mark and binocular tag sit above the rifleman's head.
+	var first := spawned[0]
+	first.set("detection", 0.55)
+	if first.has_method("set_tagged"):
+		first.call("set_tagged", true)
+	if first.has_method("_refresh_alert_meter"):
+		first.call("_refresh_alert_meter")
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var hud := get_tree().current_scene.get_node_or_null("HUD")
+	if is_instance_valid(hud):
+		hud.visible = false
+	_frame_shot(player, Vector3(0.0, 1.55, 9.2), Vector3(0.0, 1.05, 4.0))
+	await get_tree().create_timer(0.35).timeout
+	await _snap("60_guards_lineup")
+	var shots := ["61_rifleman", "62_sniper", "63_heavy", "64_officer", "65_handler", "66_dog"]
+	for i in range(spawned.size()):
+		var guard: Node3D = spawned[i]
+		var dog := String(specs[i]["role"]) == "dog"
+		var focus := guard.global_position + Vector3(0, 0.38 if dog else (1.45 if i == 0 else 1.15), 0)
+		var eye := guard.global_position + Vector3(0.35 if dog else -0.62, 0.62 if dog else (1.05 if i == 0 else 1.22), 1.05 if dog else (2.55 if i == 0 else 1.45))
+		_frame_shot(player, eye, focus)
+		await get_tree().create_timer(0.15).timeout
+		await _snap(shots[i])
+	# Same rifleman, aim and cover, so the skeletal clips are visible up close.
+	var rifleman := spawned[0]
+	var rifle_vis := rifleman.get_node_or_null("Visual")
+	var focus_r := rifleman.global_position + Vector3(0, 1.05, 0)
+	var eye_r := rifleman.global_position + Vector3(-0.7, 1.15, 1.45)
+	if rifle_vis and rifle_vis.has_method("play"):
+		rifle_vis.play(&"aim", 0.0)
+		_frame_shot(player, eye_r, focus_r)
+		await get_tree().create_timer(0.12).timeout
+		await _snap("67_rifleman_aim")
+		rifle_vis.play(&"cover", 0.0)
+		_frame_shot(player, eye_r + Vector3(0, -0.15, 0.1), focus_r + Vector3(0, -0.35, 0))
+		await get_tree().create_timer(0.12).timeout
+		await _snap("68_rifleman_cover")
+	print("GUARD_SNAP complete")
+	get_tree().quit()
+
+
+func _snap_overlook() -> void:
+	await get_tree().process_frame
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(2)
+	GameState.day_start_hour = 14.0
+	GameState.set_full_loadout(GameState.WeaponId.RIFLE, GameState.WeaponId.PISTOL, GameState.WeaponId.SHOTGUN, GameState.WeaponId.FRAG, GameState.WeaponId.MACHETE)
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.7).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(14.0)
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	_place_overlook(player)
+	await get_tree().create_timer(0.45).timeout
+	_note_fps("overlook_high")
+	await _snap("54_overlook_day")
+	if is_instance_valid(player):
+		player.global_position = Vector3(4.0, 1.45, 8.0)
+		player.look_at(Vector3(6.5, 0.7, 4.0), Vector3.UP)
+	await get_tree().create_timer(0.3).timeout
+	await _snap("55_bush_day")
+	GameState.set_graphics_quality(0)
+	GameState.day_start_hour = 14.0
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.6).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(14.0)
+	player = get_tree().get_first_node_in_group("player") as Node3D
+	_place_overlook(player)
+	await get_tree().create_timer(0.4).timeout
+	_note_fps("overlook_low")
+	await _snap("56_overlook_low")
+	print("OVERLOOK_SNAP complete quality=", GraphicsQuality.level_name() if GraphicsQuality else "?")
+	get_tree().quit()
+
+
+func _web_overlook_view() -> void:
+	## https://.../Farsigh/?view=overlook  places a daytime PC-quality camera on the HQ roof.
+	await get_tree().process_frame
+	await get_tree().create_timer(0.3).timeout
+	var low := "quality=low" in _web_search()
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(0 if low else 2)
+	GameState.set_day_start_hour(14.0)
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(120.0)
+	await get_tree().create_timer(0.8).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(14.0)
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	_place_overlook(player)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	print("WEB_OVERLOOK quality=", GraphicsQuality.level_name() if GraphicsQuality else "?")
 
 
 func _snap_assets() -> void:

@@ -1,13 +1,13 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/kenney/wall-low.glb" id="1_ywhmb"]
+[ext_resource type="PackedScene" path="res://assets/kenney/wall-low.glb" id="1_x82uv"]
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_gwdr4"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_1nr7q"]
 size = Vector3(2.2, 1.1, 0.65)
 
 [node name="JerseyBarrier" type="Node3D"]
 
-[node name="wall-low2" type="Node3D" parent="." instance=ExtResource("1_ywhmb")]
+[node name="wall-low2" type="Node3D" parent="." instance=ExtResource("1_x82uv")]
 transform = Transform3D(1.25, 0, 0, 0, 1.1, 0, 0, 0, 1.25, 0, 0, 0)
 
 [node name="@StaticBody3D@132" type="StaticBody3D" parent="."]
@@ -15,4 +15,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
 collision_mask = 0
 
 [node name="@CollisionShape3D@131" type="CollisionShape3D" parent="@StaticBody3D@132"]
-shape = SubResource("BoxShape3D_gwdr4")
+shape = SubResource("BoxShape3D_1nr7q")

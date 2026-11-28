@@ -350,6 +350,9 @@ static func _ceiling_lamp(parent: Node3D, pos: Vector3) -> void:
 
 static func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, collide: bool) -> void:
 	var mi := ProcMesh.box_mesh(size, color)
+	var styled := SurfaceLib.styled_box(color, size)
+	if styled != null:
+		mi.material_override = styled
 	mi.position = pos
 	parent.add_child(mi)
 	if collide:

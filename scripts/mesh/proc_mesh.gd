@@ -221,5 +221,36 @@ static func add_part(parent: Node3D, mesh_inst: MeshInstance3D, pos: Vector3 = V
 	return mesh_inst
 
 
+static func grass_blade_mesh() -> Mesh:
+	## Two crossed cards, base on the ground. Reads as a tuft instead of a cube.
+	if _mesh_cache.has("grass_blade"):
+		return _mesh_cache["grass_blade"]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var w := 0.11
+	var h := 0.66
+	_blade_quad(st, Vector3(-w, 0, 0), Vector3(w, 0, 0), Vector3(w, h, 0), Vector3(-w, h, 0))
+	_blade_quad(st, Vector3(0, 0, -w), Vector3(0, 0, w), Vector3(0, h, w), Vector3(0, h, -w))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache["grass_blade"] = mesh
+	return mesh
+
+
+static func _blade_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+	st.set_uv(Vector2(0, 1))
+	st.add_vertex(a)
+	st.set_uv(Vector2(1, 1))
+	st.add_vertex(b)
+	st.set_uv(Vector2(1, 0))
+	st.add_vertex(c)
+	st.set_uv(Vector2(0, 1))
+	st.add_vertex(a)
+	st.set_uv(Vector2(1, 0))
+	st.add_vertex(c)
+	st.set_uv(Vector2(0, 0))
+	st.add_vertex(d)
+
+
 static func cache_stats() -> Dictionary:
 	return {"materials": _mat_cache.size(), "meshes": _mesh_cache.size()}

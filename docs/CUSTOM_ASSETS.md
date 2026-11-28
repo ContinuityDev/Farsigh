@@ -8,7 +8,8 @@ Every reusable map piece is a Godot scene you can drag from the FileSystem dock 
 
 | Folder | What you drop |
 |---|---|
-| `res://prefabs/buildings/` | Shacks, HQ, garage, watchtower, fences, gate, silo, windmill, radar, light pole, floodlight, overlook nest |
+| `res://prefabs/buildings/` | Shacks, HQ, garage, watchtower, chain-link fence run, gate, silo, windmill, radar, light pole, floodlight, overlook nest |
+| `res://prefabs/characters/` | Guard humanoid. The militia mesh, gear, and clips are built when the scene runs |
 | `res://prefabs/props/` | Crate, sandbags, barrels, trucks, boulder, jersey barrier, hay bale, log pile, patrol boat |
 | `res://prefabs/foliage/` | Pine, bush cluster (with a hide zone), grass tuft |
 | `res://prefabs/gameplay/` | Guard spawn, patrol point, entrance, cover point |
@@ -27,7 +28,7 @@ BAKE_COMPOUNDS=1 godot --headless --path .
 1. Open the project in Godot 4.3.
 2. In the FileSystem dock, open `prefabs/` and the category you want.
 3. Drag the `.tscn` into an open compound scene, or copy and paste it.
-4. Move it. The root sits on the ground (pivot at the base, 1 unit = 1 metre). Scale the root if you need a bigger crate, tree, or boulder. Fences are a 4 m run; scale X to lengthen a militia wall, or duplicate the ranch-fence piece.
+4. Move it. The root sits on the ground (pivot at the base, 1 unit = 1 metre). Scale the root if you need a bigger crate, tree, or boulder. The chain-link fence is a 4 m run; scale X to lengthen it. Do not scale Y or it stops being a fence.
 5. Save the compound. The next time that outpost loads, the new piece is there.
 
 What happens on its own:

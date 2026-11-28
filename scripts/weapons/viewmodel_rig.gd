@@ -272,9 +272,10 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 	ProcMesh.add_part(root, _gun_box(Vector3(0.012, 0.018, 0.028), Color(0.28, 0.29, 0.30), 0.4, 0.6), Vector3(rw * 0.42, 0.028, -0.02))
 	ProcMesh.add_part(root, _gun_box(Vector3(0.006, 0.022, 0.04), Color(0.08, 0.08, 0.09), 0.55, 0.3), Vector3(rw * 0.48, 0.02, 0.02))
 
-	# Handguard & Barrel
+	# Handguard & Barrel — cylinder shroud plus a lower rail so it isn't one brick
 	var hg_z := -(rec_len * 0.5 + hg_len * 0.5)
-	ProcMesh.add_part(root, _gun_box(Vector3(rw * 0.9, rh * 0.78, hg_len), accent_col, 0.68, 0.22), Vector3(0, 0.016, hg_z))
+	ProcMesh.add_part(root, _gun_cyl(rw * 0.46, hg_len, accent_col, 0.62, 0.28, 8), Vector3(0, 0.02, hg_z), Vector3(90, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(rw * 0.72, rh * 0.28, hg_len * 0.92), accent_col.darkened(0.08), 0.7, 0.18), Vector3(0, -0.006, hg_z))
 	# Handguard vent slots (side detail)
 	ProcMesh.add_part(root, _gun_box(Vector3(0.004, rh * 0.35, hg_len * 0.55), polymer.darkened(0.2), 0.5, 0.4), Vector3(-rw * 0.48, 0.02, hg_z))
 	ProcMesh.add_part(root, _gun_box(Vector3(0.004, rh * 0.35, hg_len * 0.55), polymer.darkened(0.2), 0.5, 0.4), Vector3(rw * 0.48, 0.02, hg_z))
@@ -313,9 +314,12 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 		ProcMesh.add_part(mag, ProcMesh.box_mesh(Vector3(mw, mh, 0.052), polymer, 0.72, 0.18), Vector3(0, -(mh - 0.12) * 0.45, 0), Vector3(12, 0, 0))
 	_magazines[id] = mag
 
-	# Buttstock + Pistol Grip
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.044, 0.088, 0.22), accent_col, 0.78, 0.12), Vector3(0, -0.008, rec_len * 0.5 + 0.09))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.034, 0.095, 0.046), polymer, 0.85, 0.08), Vector3(0, -0.055, 0.085), Vector3(-18, 0, 0))
+	# Tapered stock, buttplate, and a swept grip. The old stock was one box.
+	ProcMesh.add_part(root, _gun_box(Vector3(0.034, 0.048, 0.16), accent_col, 0.7, 0.16), Vector3(0, 0.02, rec_len * 0.5 + 0.06), Vector3(-8, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.03, 0.07, 0.11), accent_col.darkened(0.06), 0.72, 0.14), Vector3(0, -0.02, rec_len * 0.5 + 0.14), Vector3(-16, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.038, 0.09, 0.022), polymer, 0.45, 0.35), Vector3(0, -0.012, rec_len * 0.5 + 0.2))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.028, 0.09, 0.04), polymer, 0.8, 0.1), Vector3(0, -0.05, 0.07), Vector3(-22, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.008, 0.03, 0.01), polymer, 0.4, 0.55), Vector3(0, 0.046, brl_z - brl_len * 0.28))
 
 	# Modular Gunsmith Attachments!
 	var muzzle_tip := brl_z - brl_len * 0.5

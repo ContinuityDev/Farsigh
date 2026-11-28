@@ -47,15 +47,23 @@ func _ready() -> void:
 	_mud_tex = load("res://assets/textures/ground/Ground048.png") as Texture2D
 	_gravel_tex = load("res://assets/textures/ground/Gravel020.png") as Texture2D
 	_path_tex = load("res://assets/textures/ground/Ground054.png") as Texture2D
-	# Default: High on desktop, Low on mobile / touch web
-	if OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios"):
-		level = LEVEL_LOW
-	elif OS.has_feature("web") and DisplayServer.is_touchscreen_available():
+	# Phones start on Low. Desktop, including desktop web, starts on High.
+	# A laptop that reports a touchscreen must not drop the PC default.
+	var phone := OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios")
+	if phone:
 		level = LEVEL_LOW
 	else:
 		level = LEVEL_HIGH
 	if GameState and "graphics_quality" in GameState:
-		level = clampi(int(GameState.graphics_quality), LEVEL_LOW, LEVEL_HIGH)
+		if phone:
+			level = clampi(int(GameState.graphics_quality), LEVEL_LOW, LEVEL_HIGH)
+		else:
+			# Saved Low from an old touchscreen heuristic should not stick on PC.
+			var saved := clampi(int(GameState.graphics_quality), LEVEL_LOW, LEVEL_HIGH)
+			level = LEVEL_HIGH if saved == LEVEL_LOW else saved
+			if GameState.graphics_quality != level:
+				GameState.graphics_quality = level
+	print("QUALITY_READY level=", level_name(), " phone=", phone)
 	call_deferred("_ensure_grade_overlay")
 	call_deferred("apply")
 
@@ -146,12 +154,33 @@ func apply() -> void:
 	quality_changed.emit(level)
 
 
-func make_foliage_material(color: Color) -> Material:
+func make_foliage_material(color: Color, tex: Texture2D = null) -> Material:
+	if tex != null:
+		# Leaf cards stay cut out on every preset. Wind sway is Med+.
+		if wants_wind() and _foliage_shader != null:
+			var cut := ShaderMaterial.new()
+			cut.shader = _foliage_shader
+			cut.set_shader_parameter("albedo", color)
+			cut.set_shader_parameter("albedo_tex", tex)
+			cut.set_shader_parameter("cutout", 1.0)
+			cut.set_shader_parameter("wind_strength", 0.12 if level == LEVEL_MED else 0.18)
+			cut.set_shader_parameter("wind_speed", 1.2)
+			return cut
+		var flat := StandardMaterial3D.new()
+		flat.albedo_color = color
+		flat.albedo_texture = tex
+		flat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		flat.alpha_scissor_threshold = 0.4
+		flat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		flat.roughness = 0.95
+		flat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		return flat
 	if not wants_wind() or _foliage_shader == null:
 		return ProcMesh.mat(color, 0.92, 0.0)
 	var mat := ShaderMaterial.new()
 	mat.shader = _foliage_shader
 	mat.set_shader_parameter("albedo", color)
+	mat.set_shader_parameter("cutout", 0.0)
 	mat.set_shader_parameter("wind_strength", 0.16 if level == LEVEL_MED else 0.22)
 	mat.set_shader_parameter("wind_speed", 1.2)
 	return mat
@@ -188,8 +217,9 @@ func make_terrain_material(path_bias: float = 0.18) -> Material:
 	mat.set_shader_parameter("gravel_tex", _gravel_tex)
 	mat.set_shader_parameter("path_tex", _path_tex)
 	mat.set_shader_parameter("path_amount", path_bias)
-	mat.set_shader_parameter("detail_strength", 0.0 if level == LEVEL_LOW else (0.16 if level == LEVEL_MED else 0.26))
-	mat.set_shader_parameter("uv_scale", 0.24)
+	# Low keeps a real tile. Detail is one extra sample, not a second shader.
+	mat.set_shader_parameter("detail_strength", 0.12 if level == LEVEL_LOW else (0.2 if level == LEVEL_MED else 0.28))
+	mat.set_shader_parameter("uv_scale", 0.52)
 	_terrain_cache[key] = mat
 	return mat
 
@@ -227,25 +257,27 @@ func apply_sky(env: Environment, hour: float, sun_elev: float) -> void:
 		var dusk := absf(sun_elev) < 0.28 and not night
 		sm.set_shader_parameter("star_strength", 0.85 if night else (0.15 if dusk else 0.0))
 		sm.set_shader_parameter("cloud_cover", 0.35 if night else 0.5)
+	var day := sun_elev > 0.12
 	if wants_bloom():
 		env.glow_enabled = true
-		env.glow_intensity = 0.45 if sun_elev > 0.2 else 0.7
-		env.glow_bloom = 0.12
-		env.glow_strength = 0.8
+		# Day bloom was blowing the yard out. Night bloom stays.
+		env.glow_intensity = 0.16 if day else 0.7
+		env.glow_bloom = 0.08 if day else 0.12
+		env.glow_strength = 0.55 if day else 0.8
 	else:
 		env.glow_enabled = false
-	# Depth haze on Med+, cheap exponential on Low. Height term keeps ground haze.
+	# Depth haze on Med+, cheap exponential on Low. Pull day fog back so the yard stays saturated.
 	env.fog_height = 5.5
-	env.fog_height_density = 0.05 if level == LEVEL_LOW else 0.09
+	env.fog_height_density = 0.04 if level == LEVEL_LOW else (0.05 if day else 0.09)
 	if level >= LEVEL_MED:
 		env.fog_mode = Environment.FOG_MODE_DEPTH
-		env.fog_depth_begin = 36.0 if level == LEVEL_MED else 42.0
-		env.fog_depth_end = 210.0
-		env.fog_depth_curve = 1.55
-	else:
+		env.fog_depth_begin = (70.0 if day else 36.0) if level == LEVEL_MED else (88.0 if day else 42.0)
+		env.fog_depth_end = 260.0 if day else 210.0
+		env.fog_depth_curve = 1.35 if day else 1.55
+	elif not day:
 		env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
 		env.fog_density = 0.0014
-		env.fog_light_color = Color(0.55, 0.62, 0.58)
+		env.fog_light_color = Color(0.08, 0.10, 0.16)
 	_apply_grade_for_hour(hour, sun_elev)
 
 
@@ -255,7 +287,8 @@ func _apply_grade_for_hour(hour: float, sun_elev: float) -> void:
 	var sm := _grade_rect.material as ShaderMaterial
 	if sm == null:
 		return
-	var tint := Color(0.78, 0.86, 0.95, 0.06)
+	# Day grade is a whisper of warmth. The old pale-blue wash was the daylight haze.
+	var tint := Color(1.0, 0.96, 0.88, 0.025)
 	if sun_elev < -0.05:
 		tint = Color(0.35, 0.42, 0.7, 0.16)
 	elif absf(sun_elev) < 0.28:
@@ -321,14 +354,8 @@ func _refresh_world_env() -> void:
 	var base := 0.0042
 	we.environment.fog_density = base * fog_density_scale()
 	we.environment.fog_enabled = true
-	match level:
-		LEVEL_LOW:
-			we.environment.tonemap_exposure = 1.0
-			we.environment.fog_density = 0.0014
-		LEVEL_MED:
-			we.environment.tonemap_exposure = 0.9
-		_:
-			we.environment.tonemap_exposure = 0.86
+	if level == LEVEL_LOW:
+		we.environment.fog_density = 0.0009
 
 
 func _retag_group_materials(group: String, enable: bool) -> void:
@@ -339,20 +366,31 @@ func _retag_group_materials(group: String, enable: bool) -> void:
 		elif n is MeshInstance3D or n is MultiMeshInstance3D:
 			var geo := n as GeometryInstance3D
 			if group == "foliage_wind":
-				if enable:
-					var col := Color(0.22, 0.38, 0.16)
-					if geo.material_override is StandardMaterial3D:
-						col = (geo.material_override as StandardMaterial3D).albedo_color
-					elif geo.material_override is ShaderMaterial:
-						var albedo = (geo.material_override as ShaderMaterial).get_shader_parameter("albedo")
-						if albedo is Color:
-							col = albedo
-					geo.material_override = make_foliage_material(col)
+				var col := Color(0.22, 0.38, 0.16)
+				var tex: Texture2D = null
+				if geo.material_override is StandardMaterial3D:
+					var std := geo.material_override as StandardMaterial3D
+					col = std.albedo_color
+					tex = std.albedo_texture
 				elif geo.material_override is ShaderMaterial:
-					var flat := Color(0.22, 0.38, 0.16)
-					var albedo_off = (geo.material_override as ShaderMaterial).get_shader_parameter("albedo")
-					if albedo_off is Color:
-						flat = albedo_off
-					geo.material_override = ProcMesh.mat(flat, 0.92, 0.0)
+					var sm := geo.material_override as ShaderMaterial
+					var albedo = sm.get_shader_parameter("albedo")
+					if albedo is Color:
+						col = albedo
+					var existing = sm.get_shader_parameter("albedo_tex")
+					if existing is Texture2D:
+						tex = existing
+					var cut = sm.get_shader_parameter("cutout")
+					var cut_v := 0.0
+					if cut is float or cut is int:
+						cut_v = float(cut)
+					if tex == null and cut_v > 0.5:
+						continue
+				if enable:
+					geo.material_override = make_foliage_material(col, tex)
+				elif tex != null:
+					geo.material_override = make_foliage_material(col, tex)
+				elif geo.material_override is ShaderMaterial:
+					geo.material_override = ProcMesh.mat(col, 0.92, 0.0)
 			elif group == "water_fx" and enable:
 				geo.material_override = make_water_material()

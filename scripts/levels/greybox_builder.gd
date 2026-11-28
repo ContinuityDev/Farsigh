@@ -243,12 +243,23 @@ func _collect_bakeable_meshes(node: Node, parent_xf: Transform3D, by_mat: Dictio
 					mat = mi.mesh.surface_get_material(0)
 				if mat == null:
 					mat = ProcMesh.mat(Color(0.5, 0.5, 0.5))
+				# Keep the terrain shader on its own mesh. Merging it dropped the
+				# world-space sample on web and the yard fell back to flat green.
+				if _is_terrain_material(mat):
+					continue
 				if not by_mat.has(mat):
 					by_mat[mat] = []
 				by_mat[mat].append({"mesh": mi.mesh, "xf": xf})
 				to_free.append(mi)
 			continue
 		_collect_bakeable_meshes(c, xf, by_mat, to_free)
+
+
+func _is_terrain_material(mat: Material) -> bool:
+	var sm := mat as ShaderMaterial
+	if sm == null or sm.shader == null:
+		return false
+	return String(sm.shader.resource_path).ends_with("terrain_splat.gdshader")
 
 
 func _run_stage(fn: Callable, label: String) -> String:
@@ -378,11 +389,9 @@ func _perimeter() -> void:
 	_gate_arch(Vector3(s, 0, 0), post_col, Color(0.35, 0.38, 0.42))
 	_entry_cover(Vector3(s + 3, 0, -4), Vector3(s + 3, 0, 4))
 
-	for p in [
-		Vector3(-s, 1.75, -s), Vector3(s, 1.75, -s), Vector3(-s, 1.75, s), Vector3(s, 1.75, s)
-	]:
-		_box(p, Vector3(1.15, 3.5, 1.15), Color(0.32, 0.33, 0.31))
-		_box(p + Vector3(0, 1.85, 0), Vector3(1.3, 0.2, 1.3), post_col, false)
+	# Wood posts at the corners. The old concrete towers read as perimeter walls.
+	for p in [Vector3(-s, 0, -s), Vector3(s, 0, -s), Vector3(-s, 0, s), Vector3(s, 0, s)]:
+		_wood_post(p, 2.25)
 
 
 func _gate_arch(center: Vector3, post_col: Color, sign_col: Color) -> void:
@@ -396,15 +405,68 @@ func _gate_arch(center: Vector3, post_col: Color, sign_col: Color) -> void:
 	ProcMesh.add_part(self, lamp, center + Vector3(0, 4.2, 0.22))
 
 
-func _fence_segment(base_center: Vector3, size: Vector3, wall_col: Color, post_col: Color) -> void:
-	# Prefab is 4m along X, 3m tall, 0.45m thick. Scale (and yaw) to the requested run.
+func _fence_segment(base_center: Vector3, size: Vector3, _wall_col: Color, _post_col: Color) -> void:
+	# Prefab is 4m of chain-link along X, about 2.2m tall. Scale length only — never stretch it into a solid wall.
 	var along_x := size.x >= size.z
-	var scl := Vector3(size.x / 4.0, size.y / 3.0, size.z / 0.45) if along_x else Vector3(size.z / 4.0, size.y / 3.0, size.x / 0.45)
+	var length := size.x if along_x else size.z
+	var scl := Vector3(length / 4.0, 1.0, 1.0)
 	if _try_place(PREFAB_FENCE, base_center, 0.0 if along_x else 90.0, scl):
 		return
-	_box(base_center + Vector3(0, size.y * 0.5, 0), size, wall_col, true)
-	var top_size := Vector3(size.x, 0.18, size.z + 0.12) if size.x >= size.z else Vector3(size.x + 0.12, 0.18, size.z)
-	_box(base_center + Vector3(0, size.y + 0.08, 0), top_size, post_col, false)
+	var holder := Node3D.new()
+	holder.name = "FenceRun"
+	holder.position = base_center
+	if not along_x:
+		holder.rotation_degrees.y = 90.0
+	add_child(holder)
+	_fill_chain_fence(holder, 4.0)
+
+
+func _wood_post(base: Vector3, height: float) -> void:
+	var post := ProcMesh.box_mesh(Vector3(0.22, height, 0.22), Color(0.40, 0.28, 0.16))
+	post.material_override = SurfaceLib.tinted("wood", Color(0.42, 0.30, 0.18), Vector3(1.0, 2.2, 1.0))
+	post.position = base + Vector3(0, height * 0.5, 0)
+	add_child(post)
+	_add_box_collider(post.position, Vector3(0.22, height, 0.22), 0.0)
+
+
+func _fill_chain_fence(holder: Node3D, length: float) -> void:
+	## Posts, two rails, and a see-through chain-link sheet. Collision stays so the yard is still bounded.
+	var post_h := 2.15
+	var wood := Color(0.43, 0.30, 0.17)
+	var wood_mat := SurfaceLib.tinted("wood", wood, Vector3(1.2, 2.0, 1.0))
+	for x in [-length * 0.5, 0.0, length * 0.5]:
+		var post := ProcMesh.box_mesh(Vector3(0.12, post_h, 0.12), wood)
+		post.material_override = wood_mat
+		post.position = Vector3(x, post_h * 0.5, 0)
+		holder.add_child(post)
+	var top := ProcMesh.box_mesh(Vector3(length, 0.07, 0.07), wood.darkened(0.08))
+	top.material_override = wood_mat
+	top.position = Vector3(0, post_h - 0.05, 0)
+	holder.add_child(top)
+	var mid := ProcMesh.box_mesh(Vector3(length, 0.05, 0.05), wood.darkened(0.15))
+	mid.material_override = wood_mat
+	mid.position = Vector3(0, 0.22, 0)
+	holder.add_child(mid)
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(length - 0.08, post_h - 0.28)
+	plane.orientation = PlaneMesh.FACE_Z
+	var sheet := MeshInstance3D.new()
+	sheet.name = "ChainLink"
+	sheet.mesh = plane
+	sheet.material_override = SurfaceLib.tinted("chain", Color(0.72, 0.75, 0.72), Vector3(length * 1.6, 3.2, 1.0))
+	sheet.position = Vector3(0, post_h * 0.52, 0)
+	sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(sheet)
+	var body := StaticBody3D.new()
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var cs := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(length, post_h, 0.12)
+	cs.shape = shape
+	body.add_child(cs)
+	body.position = Vector3(0, post_h * 0.5, 0)
+	holder.add_child(body)
 
 
 func _buildings() -> void:
@@ -1095,7 +1157,9 @@ func _crate(base_pos: Vector3, size: float, rot_y_deg: float) -> void:
 	holder.rotation_degrees.y = rot_y_deg
 	add_child(holder)
 
-	ProcMesh.add_part(holder, ProcMesh.box_mesh(Vector3(size * 0.92, size * 0.92, size * 0.92), wood))
+	var body := ProcMesh.box_mesh(Vector3(size * 0.92, size * 0.92, size * 0.92), wood)
+	body.material_override = SurfaceLib.tinted("wood", wood, Vector3(1.8, 1.8, 1.8))
+	ProcMesh.add_part(holder, body)
 	var bt := size * 0.11
 	ProcMesh.add_part(holder, ProcMesh.box_mesh(Vector3(size, bt, size), trim), Vector3(0, size * 0.45, 0))
 	ProcMesh.add_part(holder, ProcMesh.box_mesh(Vector3(size, bt, size), trim), Vector3(0, -size * 0.45, 0))
@@ -1389,15 +1453,9 @@ func _leaf_card_material(color: Color) -> Material:
 	var key := color.to_html(false)
 	if _leaf_mat_cache.has(key):
 		return _leaf_mat_cache[key]
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.albedo_texture = _leaf_texture()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-	mat.alpha_scissor_threshold = 0.45
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.roughness = 0.95
-	mat.metallic = 0.0
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	var mat := SurfaceLib.tinted("leaf", color, Vector3(1, 1, 1))
+	if mat.albedo_texture == null:
+		mat.albedo_texture = _leaf_texture()
 	_leaf_mat_cache[key] = mat
 	return mat
 
@@ -1417,35 +1475,27 @@ func _leafy_bush(parent: Node3D, local_pos: Vector3, scale: float, yaw_deg: floa
 	core.scale = Vector3(1.0, 0.75, 1.0)
 	core.add_to_group("foliage_wind", true)
 	ProcMesh.add_part(bush, core, Vector3(0, 0.38, 0))
-	var card_n := 2 if lightweight_props else 3
+	# Radial fan of smaller cards so the bush is a round shrub, not two green quads.
+	var card_n := 5
 	for i in range(card_n):
 		var col := mid if i % 2 == 0 else lite
 		if i == 0:
-			col = dark.lerp(mid, 0.55)
+			col = dark.lerp(mid, 0.45)
 		var plane := PlaneMesh.new()
-		plane.size = Vector2(1.25 + float(i) * 0.1, 1.15 + float(i % 2) * 0.1)
+		var tall := 0.95 if i < 4 else 0.62
+		plane.size = Vector2(0.85 + float(i % 3) * 0.08, tall)
 		plane.orientation = PlaneMesh.FACE_Z
 		var mi := MeshInstance3D.new()
 		mi.mesh = plane
 		mi.material_override = _leaf_card_material(col)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.add_to_group("foliage_wind", true)
-		mi.position = Vector3(float(i % 2) * 0.04 - 0.02, 0.58 + float(i) * 0.03, float(i) * 0.02)
-		mi.rotation_degrees = Vector3(float(i % 2) * 6.0 - 3.0, float(i) * (90.0 if card_n == 2 else 60.0) + float(i) * 7.0, float(i % 2) * 10.0 - 5.0)
+		var yaw := float(i) * 36.0
+		mi.position = Vector3(cos(deg_to_rad(yaw)) * 0.06, 0.5, sin(deg_to_rad(yaw)) * 0.06)
+		# Last card caps the top so the crown isn't a hole.
+		var tilt := 68.0 if i == card_n - 1 else (float(i % 2) * 8.0 - 4.0)
+		mi.rotation_degrees = Vector3(tilt, yaw, float(i % 2) * 6.0 - 3.0)
 		bush.add_child(mi)
-	# Extra side card for volume (desktop / high detail)
-	if not lightweight_props:
-		var outer := PlaneMesh.new()
-		outer.size = Vector2(1.05, 0.9)
-		outer.orientation = PlaneMesh.FACE_Z
-		var om := MeshInstance3D.new()
-		om.mesh = outer
-		om.material_override = _leaf_card_material(lite.darkened(0.05))
-		om.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		om.add_to_group("foliage_wind", true)
-		om.position = Vector3(0.12, 0.5, 0.06)
-		om.rotation_degrees = Vector3(8, 28, -8)
-		bush.add_child(om)
 
 
 func _scatter_grass_at(parent: Node3D, _world_center: Vector3, count: int, radius: float) -> void:
@@ -1457,9 +1507,7 @@ func _scatter_grass_at(parent: Node3D, _world_center: Vector3, count: int, radiu
 	mm.name = "ClusterGrass"
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	var blade := BoxMesh.new()
-	blade.size = Vector3(0.10, 0.62, 0.06)
-	multimesh.mesh = blade
+	multimesh.mesh = ProcMesh.grass_blade_mesh()
 	multimesh.instance_count = count
 	if GraphicsQuality:
 		mm.material_override = GraphicsQuality.make_foliage_material(tuft_col)
@@ -1476,7 +1524,7 @@ func _scatter_grass_at(parent: Node3D, _world_center: Vector3, count: int, radiu
 		var xf := Transform3D()
 		xf = xf.scaled(Vector3(1.0, h, 1.0))
 		xf = xf.rotated(Vector3.UP, ang)
-		xf.origin = Vector3(cos(ang) * r, 0.31 * h, sin(ang) * r)
+		xf.origin = Vector3(cos(ang) * r, 0.0, sin(ang) * r)
 		multimesh.set_instance_transform(i, xf)
 
 
@@ -1490,9 +1538,7 @@ func _scatter_grass(grass_spots: Array) -> void:
 	mm.name = "GrassMultiMesh"
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	var blade := BoxMesh.new()
-	blade.size = Vector3(0.14, 0.55, 0.08)
-	multimesh.mesh = blade
+	multimesh.mesh = ProcMesh.grass_blade_mesh()
 	multimesh.instance_count = count * (2 if lightweight_props else 3)
 	if GraphicsQuality:
 		mm.material_override = GraphicsQuality.make_foliage_material(tuft_col)
@@ -1513,7 +1559,7 @@ func _scatter_grass(grass_spots: Array) -> void:
 			var h := 0.85 + float((i + k) % 3) * 0.12
 			xf = xf.scaled(Vector3(1.0, h, 1.0))
 			xf = xf.rotated(Vector3.UP, deg_to_rad(yaw + float(k) * 35.0))
-			xf.origin = p + Vector3(ox, 0.28 * h, oz)
+			xf.origin = p + Vector3(ox, 0.0, oz)
 			multimesh.set_instance_transform(idx, xf)
 			idx += 1
 
@@ -1577,13 +1623,19 @@ func _box(pos: Vector3, size: Vector3, color: Color, collide: bool = true) -> vo
 	var mi := ProcMesh.box_mesh(size, color)
 	mi.position = pos
 	if GraphicsQuality and GraphicsQuality.wants_terrain_shader():
-		# Broad ground slabs get splat terrain; thin lanes read as dirt paths
+		# Broad ground slabs get splat terrain; thin lanes read as dirt paths.
+		# The yard pad (under 80m) carries more dirt so it is not one green field.
 		if size.y <= 1.2 and size.x >= 40.0 and size.z >= 40.0:
-			mi.material_override = GraphicsQuality.make_terrain_material(0.22)
+			var bias := 0.42 if size.x < 80.0 and size.z < 80.0 else 0.3
+			mi.material_override = GraphicsQuality.make_terrain_material(bias)
 		elif size.y <= 0.08 and (size.x >= 8.0 or size.z >= 8.0):
-			mi.material_override = GraphicsQuality.make_terrain_material(0.85)
+			mi.material_override = GraphicsQuality.make_terrain_material(0.92)
 			_path_strips.append({"pos": pos, "size": size})
-		elif size.y > 0.4 and size.x < 30.0 and GraphicsQuality.level >= GraphicsQuality.LEVEL_HIGH:
+	if mi.material_override == null or not _is_terrain_material(mi.material_override):
+		var styled := SurfaceLib.styled_box(color, size)
+		if styled != null:
+			mi.material_override = styled
+		elif GraphicsQuality and size.y > 0.4 and size.x < 30.0 and GraphicsQuality.level >= GraphicsQuality.LEVEL_HIGH:
 			mi.material_override = GraphicsQuality.make_surface_material(color, 0.78, 0.04)
 	add_child(mi)
 	if collide:
@@ -1788,12 +1840,11 @@ func _compound_floodlight(pos: Vector3) -> void:
 
 
 func _stage_treeline_border() -> void:
-	## Dense forest ring replaces any sense of map-edge walls. Soft bound is on the player.
-	## Keep compound fences; this is the OUTER play-area border.
+	## Forest and shrubs are the map border. The compound edge is chain-link, not a wall.
 	# Extend ground under the forest so the horizon isn't a hard cliff into void
 	_box(Vector3(0, -0.55, 0), Vector3(200, 0.9, 200), Color(0.18, 0.26, 0.15), true)
-	var tree_n := 24 if lightweight_props else 48
-	var shrub_n := 14 if lightweight_props else 28
+	var tree_n := 32 if lightweight_props else 52
+	var shrub_n := 18 if lightweight_props else 32
 	for i in range(tree_n):
 		var ang := float(i) * TAU / float(tree_n) + float(i % 5) * 0.035
 		var r := 64.0 + float(i % 5) * 2.8 + float((i * 7) % 5) * 0.55
@@ -1818,3 +1869,11 @@ func _stage_treeline_border() -> void:
 		_bush_cluster(Vector3(cos(ang3) * r4, 0, sin(ang3) * r4), 4, 2.2)
 		if i % 3 == 0:
 			_boulder(Vector3(cos(ang3) * (r4 - 2.0), 0.5, sin(ang3) * (r4 - 2.0)), 1.1)
+	# Shrubs and trees just outside the chain-link, so the border reads as woods.
+	var belt := 10 if lightweight_props else 16
+	for i in range(belt):
+		var ang4 := float(i) * TAU / float(belt) + 0.15
+		var rb := 36.0 + float(i % 3) * 1.4
+		_bush_cluster(Vector3(cos(ang4) * rb, 0, sin(ang4) * rb), 4, 2.0)
+		if i % 2 == 0:
+			_pine_tree(Vector3(cos(ang4 + 0.2) * (rb + 3.5), 0, sin(ang4 + 0.2) * (rb + 3.5)), 0.9)

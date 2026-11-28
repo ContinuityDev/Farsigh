@@ -80,6 +80,7 @@ var _death_kind: String = "body"  # body | head | back | explode
 var tagged: bool = false
 var _has_los: bool = false
 var _lost_los_t: float = 0.0
+var _cover_pose: String = ""
 var _cover_pos: Vector3 = Vector3.ZERO
 var _cover_refresh: float = 0.0
 var _peek_t: float = 0.0
@@ -279,9 +280,13 @@ func _physics_process(delta: float) -> void:
 			_tick_warn(delta)
 
 	move_and_slide()
+	if state != State.COMBAT:
+		_cover_pose = ""
 	if is_instance_valid(visual) and _lod_tier < 3:
 		var horiz := Vector2(velocity.x, velocity.z).length()
-		visual.set_locomotion(horiz > 0.25, state == State.ALERT or state == State.COMBAT, state == State.SUSPICIOUS)
+		if visual.has_method("set_cover_pose"):
+			visual.set_cover_pose(_cover_pose)
+		visual.set_locomotion(horiz > 0.25, state == State.COMBAT, state == State.SUSPICIOUS, state == State.ALERT)
 	if _lod_tier < 2:
 		_update_label()
 	elif is_instance_valid(label):
@@ -353,7 +358,7 @@ func _ensure_alert_meter() -> void:
 	_alert_icon.font_size = 64
 	_alert_icon.outline_size = 10
 	_alert_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_alert_icon.position = Vector3(0, 2.15, 0)
+	_alert_icon.position = Vector3(0, 2.35, 0)
 	_alert_icon.no_depth_test = true
 	_alert_icon.visible = false
 	add_child(_alert_icon)
@@ -889,6 +894,7 @@ func _fight_from_cover(delta: float, player: Node3D) -> void:
 		_cover_refresh = 4.5 if _combat_role == "hold" else 3.2
 	var at_cover := global_position.distance_to(_cover_pos) < 1.35
 	if not at_cover:
+		_cover_pose = ""
 		var spd := (ALERT_SPEED if _combat_role == "hold" else COMBAT_SPEED * 0.92) * _move_mult
 		if _lod_tier >= 2:
 			spd *= 0.85
@@ -898,6 +904,7 @@ func _fight_from_cover(delta: float, player: Node3D) -> void:
 	velocity.z = 0.0
 	_peek_t += delta
 	var peeking := _lod_tier >= 2 or fmod(_peek_t, 2.4) > 1.15
+	_cover_pose = "peek" if peeking else "cover"
 	var aim_at: Vector3 = player.global_position if _has_los else last_known_pos
 	if peeking:
 		_look_at_pos(aim_at)

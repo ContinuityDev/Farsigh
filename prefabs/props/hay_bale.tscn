@@ -1,23 +1,23 @@
 [gd_scene load_steps=6 format=3]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_d33de"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tkgjf"]
 specular_mode = 2
 albedo_color = Color(0.76, 0.62, 0.24, 1)
 roughness = 0.96
 
-[sub_resource type="BoxMesh" id="BoxMesh_voq36"]
+[sub_resource type="BoxMesh" id="BoxMesh_4amoo"]
 size = Vector3(1.55, 1.02, 1.05)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_313kj"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rgvih"]
 specular_mode = 2
 albedo_color = Color(0.38, 0.26, 0.14, 1)
 metallic = 0.05
 roughness = 0.82
 
-[sub_resource type="BoxMesh" id="BoxMesh_w0xe3"]
+[sub_resource type="BoxMesh" id="BoxMesh_yycgd"]
 size = Vector3(0.06, 1.05, 1.08)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_2vnj7"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_vl5os"]
 size = Vector3(1.55, 1.02, 1.05)
 
 [node name="HayBale" type="Node3D"]
@@ -26,25 +26,25 @@ size = Vector3(1.55, 1.02, 1.05)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.52, 0)
 
 [node name="@MeshInstance3D@134" type="MeshInstance3D" parent="@Node3D@133"]
-material_override = SubResource("StandardMaterial3D_d33de")
+material_override = SubResource("StandardMaterial3D_tkgjf")
 gi_mode = 0
-mesh = SubResource("BoxMesh_voq36")
+mesh = SubResource("BoxMesh_4amoo")
 
 [node name="@MeshInstance3D@135" type="MeshInstance3D" parent="@Node3D@133"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.38, 0, 0)
-material_override = SubResource("StandardMaterial3D_313kj")
+material_override = SubResource("StandardMaterial3D_rgvih")
 gi_mode = 0
-mesh = SubResource("BoxMesh_w0xe3")
+mesh = SubResource("BoxMesh_yycgd")
 
 [node name="@MeshInstance3D@136" type="MeshInstance3D" parent="@Node3D@133"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.38, 0, 0)
-material_override = SubResource("StandardMaterial3D_313kj")
+material_override = SubResource("StandardMaterial3D_rgvih")
 gi_mode = 0
-mesh = SubResource("BoxMesh_w0xe3")
+mesh = SubResource("BoxMesh_yycgd")
 
 [node name="@StaticBody3D@138" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.52, 0)
 collision_mask = 0
 
 [node name="@CollisionShape3D@137" type="CollisionShape3D" parent="@StaticBody3D@138"]
-shape = SubResource("BoxShape3D_2vnj7")
+shape = SubResource("BoxShape3D_vl5os")

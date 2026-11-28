@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tg3vd"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s05nu"]
 specular_mode = 2
 albedo_color = Color(1, 0.92, 0.7, 1)
 roughness = 0.4
@@ -8,15 +8,15 @@ emission_enabled = true
 emission = Color(1, 0.92, 0.7, 1)
 emission_energy_multiplier = 1.2
 
-[sub_resource type="BoxMesh" id="BoxMesh_o8o72"]
+[sub_resource type="BoxMesh" id="BoxMesh_ogdel"]
 size = Vector3(0.42, 0.22, 0.28)
 
 [node name="Floodlight" type="Node3D"]
 
-[node name="@MeshInstance3D@757" type="MeshInstance3D" parent="."]
-material_override = SubResource("StandardMaterial3D_tg3vd")
+[node name="@MeshInstance3D@765" type="MeshInstance3D" parent="."]
+material_override = SubResource("StandardMaterial3D_s05nu")
 gi_mode = 0
-mesh = SubResource("BoxMesh_o8o72")
+mesh = SubResource("BoxMesh_ogdel")
 
 [node name="CompoundLight" type="OmniLight3D" parent="." groups=["compound_lights"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
@@ -25,7 +25,7 @@ light_color = Color(1, 0.88, 0.65, 1)
 light_energy = 1.4
 omni_range = 14.0
 
-[node name="@SpotLight3D@758" type="SpotLight3D" parent="." groups=["compound_lights"]]
+[node name="@SpotLight3D@766" type="SpotLight3D" parent="." groups=["compound_lights"]]
 transform = Transform3D(1, 0, 0, 0, 0.258819, 0.965926, 0, -0.965926, 0.258819, 0, 0, 0)
 visible = false
 light_color = Color(1, 0.9, 0.7, 1)

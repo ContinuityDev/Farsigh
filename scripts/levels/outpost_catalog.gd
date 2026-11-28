@@ -21,7 +21,7 @@ static func all_outposts() -> Array[Dictionary]:
 			"difficulty_label": "Standard",
 			"layout": "compound_alpha",
 			"unlocks_after": [],
-			"description": "Walled supply yard with barracks, armory, 2-storey HQ, and timber watchtower.",
+			"description": "Fenced supply yard with barracks, armory, 2-storey HQ, and timber watchtower. Trees close the outer edge.",
 			"approaches": "South Gate, West Breach, North Service Gap, East Culvert",
 			"player_spawn": Vector3(0.0, 0.15, 38.0),
 			"sky_top": Color(0.24, 0.44, 0.70),

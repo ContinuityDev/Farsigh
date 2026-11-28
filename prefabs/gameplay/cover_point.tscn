@@ -1,10 +1,10 @@
 [gd_scene load_steps=3 format=3]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_32qvm"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ixf8t"]
 shading_mode = 0
 albedo_color = Color(0.95, 0.72, 0.15, 1)
 
-[sub_resource type="SphereMesh" id="SphereMesh_afoas"]
+[sub_resource type="SphereMesh" id="SphereMesh_rbuo1"]
 radius = 0.22
 height = 0.44
 
@@ -12,6 +12,6 @@ height = 0.44
 
 [node name="EditorGizmo" type="MeshInstance3D" parent="." groups=["editor_gizmo"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
-material_override = SubResource("StandardMaterial3D_32qvm")
+material_override = SubResource("StandardMaterial3D_ixf8t")
 cast_shadow = 0
-mesh = SubResource("SphereMesh_afoas")
+mesh = SubResource("SphereMesh_rbuo1")

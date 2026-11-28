@@ -1,61 +1,61 @@
 [gd_scene load_steps=6 format=3]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_q3fg5"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dt8es"]
 specular_mode = 2
 albedo_color = Color(0.414, 0.306, 0.189, 1)
 metallic = 0.05
 roughness = 0.82
 
-[sub_resource type="BoxMesh" id="BoxMesh_hcwgc"]
+[sub_resource type="BoxMesh" id="BoxMesh_5dndu"]
 size = Vector3(0.16, 1.35, 0.16)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_li3yq"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0u3er"]
 specular_mode = 2
 albedo_color = Color(0.46, 0.34, 0.21, 1)
 metallic = 0.05
 roughness = 0.82
 
-[sub_resource type="BoxMesh" id="BoxMesh_bt5xj"]
+[sub_resource type="BoxMesh" id="BoxMesh_t8nuc"]
 size = Vector3(4, 0.11, 0.1)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_sifb5"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_7ljm3"]
 size = Vector3(4, 1.35, 0.3)
 
 [node name="RanchFence" type="Node3D"]
 
-[node name="@MeshInstance3D@202" type="MeshInstance3D" parent="."]
+[node name="@MeshInstance3D@210" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.675, 0)
-material_override = SubResource("StandardMaterial3D_q3fg5")
+material_override = SubResource("StandardMaterial3D_dt8es")
 gi_mode = 0
-mesh = SubResource("BoxMesh_hcwgc")
+mesh = SubResource("BoxMesh_5dndu")
 
-[node name="@MeshInstance3D@203" type="MeshInstance3D" parent="."]
+[node name="@MeshInstance3D@211" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.675, 0)
-material_override = SubResource("StandardMaterial3D_q3fg5")
+material_override = SubResource("StandardMaterial3D_dt8es")
 gi_mode = 0
-mesh = SubResource("BoxMesh_hcwgc")
+mesh = SubResource("BoxMesh_5dndu")
 
-[node name="@MeshInstance3D@204" type="MeshInstance3D" parent="."]
+[node name="@MeshInstance3D@212" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 0)
-material_override = SubResource("StandardMaterial3D_li3yq")
+material_override = SubResource("StandardMaterial3D_0u3er")
 gi_mode = 0
-mesh = SubResource("BoxMesh_bt5xj")
+mesh = SubResource("BoxMesh_t8nuc")
 
-[node name="@MeshInstance3D@205" type="MeshInstance3D" parent="."]
+[node name="@MeshInstance3D@213" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
-material_override = SubResource("StandardMaterial3D_li3yq")
+material_override = SubResource("StandardMaterial3D_0u3er")
 gi_mode = 0
-mesh = SubResource("BoxMesh_bt5xj")
+mesh = SubResource("BoxMesh_t8nuc")
 
-[node name="@MeshInstance3D@206" type="MeshInstance3D" parent="."]
+[node name="@MeshInstance3D@214" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
-material_override = SubResource("StandardMaterial3D_li3yq")
+material_override = SubResource("StandardMaterial3D_0u3er")
 gi_mode = 0
-mesh = SubResource("BoxMesh_bt5xj")
+mesh = SubResource("BoxMesh_t8nuc")
 
-[node name="@StaticBody3D@208" type="StaticBody3D" parent="."]
+[node name="@StaticBody3D@216" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.675, 0)
 collision_mask = 0
 
-[node name="@CollisionShape3D@207" type="CollisionShape3D" parent="@StaticBody3D@208"]
-shape = SubResource("BoxShape3D_sifb5")
+[node name="@CollisionShape3D@215" type="CollisionShape3D" parent="@StaticBody3D@216"]
+shape = SubResource("BoxShape3D_7ljm3")

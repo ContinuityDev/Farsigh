@@ -1,25 +1,25 @@
 [gd_scene load_steps=6 format=3]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rpjtl"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1ldp7"]
 specular_mode = 2
 albedo_color = Color(0.36, 0.35, 0.32, 1)
 metallic = 0.02
 roughness = 0.92
 
-[sub_resource type="SphereMesh" id="SphereMesh_506a6"]
+[sub_resource type="SphereMesh" id="SphereMesh_23fj4"]
 radius = 0.85
 height = 1.7
 radial_segments = 8
 rings = 4
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_sx37y"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_2w6ah"]
 size = Vector3(1.445, 0.9775, 1.36)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6rvef"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_huyoi"]
 shading_mode = 0
 albedo_color = Color(0.95, 0.75, 0.15, 1)
 
-[sub_resource type="SphereMesh" id="SphereMesh_l67j1"]
+[sub_resource type="SphereMesh" id="SphereMesh_dwcmw"]
 radius = 0.18
 height = 0.36
 
@@ -27,21 +27,21 @@ height = 0.36
 
 [node name="@MeshInstance3D@128" type="MeshInstance3D" parent="."]
 transform = Transform3D(0.827777, 0.00408875, 0.561042, 0.136132, 0.968628, -0.207912, -0.544292, 0.24848, 0.801252, 0, 0, 0)
-material_override = SubResource("StandardMaterial3D_rpjtl")
+material_override = SubResource("StandardMaterial3D_1ldp7")
 gi_mode = 0
-mesh = SubResource("SphereMesh_506a6")
+mesh = SubResource("SphereMesh_23fj4")
 
 [node name="@StaticBody3D@130" type="StaticBody3D" parent="."]
 collision_mask = 0
 
 [node name="@CollisionShape3D@129" type="CollisionShape3D" parent="@StaticBody3D@130"]
-shape = SubResource("BoxShape3D_sx37y")
+shape = SubResource("BoxShape3D_2w6ah")
 
 [node name="CoverPoint" type="Marker3D" parent="." groups=["cover_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.65, 0, 0)
 
 [node name="CoverGizmo" type="MeshInstance3D" parent="CoverPoint" groups=["editor_gizmo"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
-material_override = SubResource("StandardMaterial3D_6rvef")
+material_override = SubResource("StandardMaterial3D_huyoi")
 cast_shadow = 0
-mesh = SubResource("SphereMesh_l67j1")
+mesh = SubResource("SphereMesh_dwcmw")

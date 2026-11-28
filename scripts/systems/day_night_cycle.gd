@@ -109,8 +109,9 @@ func _apply_visuals(force: bool) -> void:
 		var yaw := azim * 60.0
 		_sun.rotation_degrees = Vector3(pitch, yaw, 0.0)
 		if elev > 0.05:
-			_sun.light_energy = lerpf(0.22, 0.85, clampf(elev, 0.0, 1.0))
-			_sun.light_color = Color(1.0, 0.96, 0.88).lerp(Color(1.0, 0.55, 0.28), clampf(1.0 - elev * 1.6, 0.0, 1.0))
+			# Day sun stays warm but under the old 0.85, which clipped the yard to white.
+			_sun.light_energy = lerpf(0.16, 0.56, clampf(elev, 0.0, 1.0))
+			_sun.light_color = Color(1.0, 0.93, 0.78).lerp(Color(1.0, 0.55, 0.28), clampf(1.0 - elev * 1.6, 0.0, 1.0))
 			_sun.visible = true
 		else:
 			# Moon-ish cool dim light
@@ -126,8 +127,8 @@ func _apply_visuals(force: bool) -> void:
 			_sun.shadow_enabled = false
 
 	if is_instance_valid(_fill):
-		_fill.light_energy = 0.22 if not is_night() else 0.08
-		_fill.light_color = Color(0.75, 0.82, 0.95) if not is_night() else Color(0.35, 0.42, 0.7)
+		_fill.light_energy = 0.08 if not is_night() else 0.08
+		_fill.light_color = Color(0.92, 0.84, 0.68) if not is_night() else Color(0.35, 0.42, 0.7)
 
 	if is_instance_valid(_sky_mat):
 		if is_night():
@@ -150,19 +151,28 @@ func _apply_visuals(force: bool) -> void:
 			_env.ambient_light_color = Color(0.22, 0.28, 0.42)
 			_env.fog_light_color = Color(0.08, 0.10, 0.16)
 			_env.fog_density = 0.0048 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
+			_env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 			_env.tonemap_exposure = 0.92
+			_env.adjustment_enabled = false
 		elif is_dusk_or_dawn():
 			_env.ambient_light_energy = 0.32
 			_env.ambient_light_color = Color(0.72, 0.48, 0.32)
 			_env.fog_light_color = Color(0.62, 0.32, 0.18)
 			_env.fog_density = 0.0036 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
+			_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 			_env.tonemap_exposure = 0.9
+			_env.adjustment_enabled = false
 		else:
-			_env.ambient_light_energy = 0.38
-			_env.ambient_light_color = Color(0.55, 0.58, 0.52)
-			_env.fog_light_color = Color(0.50, 0.56, 0.50)
-			_env.fog_density = 0.0024 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
-			_env.tonemap_exposure = 0.86
+			_env.ambient_light_energy = 0.2
+			_env.ambient_light_color = Color(0.62, 0.56, 0.44)
+			_env.fog_light_color = Color(0.72, 0.70, 0.60)
+			_env.fog_density = 0.0011 * (GraphicsQuality.fog_density_scale() if GraphicsQuality else 1.0)
+			_env.tonemap_mode = Environment.TONE_MAPPER_ACES
+			_env.tonemap_exposure = 0.68
+			_env.adjustment_enabled = true
+			_env.adjustment_brightness = 0.98
+			_env.adjustment_contrast = 1.12
+			_env.adjustment_saturation = 1.28
 
 	if GraphicsQuality and is_instance_valid(_env):
 		GraphicsQuality.apply_sky(_env, hour, elev)

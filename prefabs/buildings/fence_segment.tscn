@@ -1,50 +1,87 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=10 format=3]
 
-[ext_resource type="Shader" path="res://shaders/surface_wear.gdshader" id="1_rr01g"]
+[ext_resource type="Texture2D" path="res://assets/textures/surfaces/wood.png" id="1_swyvf"]
+[ext_resource type="Texture2D" path="res://assets/textures/surfaces/chainlink.png" id="2_r5ueb"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_xc781"]
-render_priority = 0
-shader = ExtResource("1_rr01g")
-shader_parameter/albedo = Color(0.39, 0.4, 0.37, 1)
-shader_parameter/wear_col = null
-shader_parameter/roughness = 0.78
-shader_parameter/metallic = 0.04
-shader_parameter/wear = 0.45
-shader_parameter/rim_color = null
-shader_parameter/rim_strength = null
-
-[sub_resource type="BoxMesh" id="BoxMesh_h5aat"]
-size = Vector3(4, 3, 0.45)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_je121"]
-size = Vector3(4, 3, 0.45)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u51nt"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5t33o"]
 specular_mode = 2
-albedo_color = Color(0.24, 0.25, 0.23, 1)
-metallic = 0.05
-roughness = 0.82
+albedo_color = Color(0.4984, 0.384, 0.2696, 1)
+albedo_texture = ExtResource("1_swyvf")
+metallic = 0.02
+roughness = 0.86
+uv1_scale = Vector3(1.2, 2, 1)
 
-[sub_resource type="BoxMesh" id="BoxMesh_4s67v"]
-size = Vector3(4, 0.18, 0.57)
+[sub_resource type="BoxMesh" id="BoxMesh_0revg"]
+size = Vector3(0.12, 2.15, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hs5dx"]
+size = Vector3(4, 0.07, 0.07)
+
+[sub_resource type="BoxMesh" id="BoxMesh_e76uc"]
+size = Vector3(4, 0.05, 0.05)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rvit7"]
+transparency = 2
+alpha_scissor_threshold = 0.35
+alpha_antialiasing_mode = 0
+cull_mode = 2
+specular_mode = 2
+albedo_color = Color(0.7536, 0.78, 0.7536, 1)
+albedo_texture = ExtResource("2_r5ueb")
+metallic = 0.04
+roughness = 0.86
+uv1_scale = Vector3(6.4, 3.2, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_jrps6"]
+size = Vector2(3.92, 1.87)
+orientation = 2
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p34kf"]
+size = Vector3(4, 2.15, 0.12)
 
 [node name="FenceSegment" type="Node3D"]
 
-[node name="@MeshInstance3D@198" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
-material_override = SubResource("ShaderMaterial_xc781")
-gi_mode = 0
-mesh = SubResource("BoxMesh_h5aat")
+[node name="FenceRun" type="Node3D" parent="."]
 
-[node name="@StaticBody3D@200" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+[node name="@MeshInstance3D@203" type="MeshInstance3D" parent="FenceRun"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1.075, 0)
+material_override = SubResource("StandardMaterial3D_5t33o")
+gi_mode = 0
+mesh = SubResource("BoxMesh_0revg")
+
+[node name="@MeshInstance3D@204" type="MeshInstance3D" parent="FenceRun"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.075, 0)
+material_override = SubResource("StandardMaterial3D_5t33o")
+gi_mode = 0
+mesh = SubResource("BoxMesh_0revg")
+
+[node name="@MeshInstance3D@205" type="MeshInstance3D" parent="FenceRun"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.075, 0)
+material_override = SubResource("StandardMaterial3D_5t33o")
+gi_mode = 0
+mesh = SubResource("BoxMesh_0revg")
+
+[node name="@MeshInstance3D@206" type="MeshInstance3D" parent="FenceRun"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+material_override = SubResource("StandardMaterial3D_5t33o")
+gi_mode = 0
+mesh = SubResource("BoxMesh_hs5dx")
+
+[node name="@MeshInstance3D@207" type="MeshInstance3D" parent="FenceRun"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22, 0)
+material_override = SubResource("StandardMaterial3D_5t33o")
+gi_mode = 0
+mesh = SubResource("BoxMesh_e76uc")
+
+[node name="ChainLink" type="MeshInstance3D" parent="FenceRun"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.118, 0)
+material_override = SubResource("StandardMaterial3D_rvit7")
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_jrps6")
+
+[node name="@StaticBody3D@209" type="StaticBody3D" parent="FenceRun"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.075, 0)
 collision_mask = 0
 
-[node name="@CollisionShape3D@199" type="CollisionShape3D" parent="@StaticBody3D@200"]
-shape = SubResource("BoxShape3D_je121")
-
-[node name="@MeshInstance3D@201" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.08, 0)
-material_override = SubResource("StandardMaterial3D_u51nt")
-gi_mode = 0
-mesh = SubResource("BoxMesh_4s67v")
+[node name="@CollisionShape3D@208" type="CollisionShape3D" parent="FenceRun/@StaticBody3D@209"]
+shape = SubResource("BoxShape3D_p34kf")

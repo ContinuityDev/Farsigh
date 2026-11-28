@@ -1,16 +1,15 @@
 shader_type spatial;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
-// Tiled CC0 ground: grass, dirt, mud, gravel, worn path.
-// World-space UVs, height blend, macro warp and a detail octave so repeats stay quiet.
+// World-space ground. Two photo tiles plus a large painted patch mask so the
+// yard still reads as grass / dirt / path from the overlook, on every preset.
+// Kept to four samples so the Compatibility / WebGL shader actually compiles.
 
 uniform sampler2D grass_tex : source_color, repeat_enable, filter_linear_mipmap;
 uniform sampler2D dirt_tex : source_color, repeat_enable, filter_linear_mipmap;
-uniform sampler2D mud_tex : source_color, repeat_enable, filter_linear_mipmap;
-uniform sampler2D gravel_tex : source_color, repeat_enable, filter_linear_mipmap;
 uniform sampler2D path_tex : source_color, repeat_enable, filter_linear_mipmap;
-uniform float path_amount : hint_range(0.0, 1.0) = 0.2;
-uniform float detail_strength : hint_range(0.0, 0.5) = 0.22;
-uniform float uv_scale : hint_range(0.05, 1.0) = 0.24;
+uniform float path_amount : hint_range(0.0, 1.0) = 0.25;
+uniform float detail_strength : hint_range(0.0, 0.5) = 0.18;
+uniform float uv_scale : hint_range(0.05, 1.5) = 0.5;
 
 varying vec3 wpos;
 
@@ -38,54 +37,38 @@ void vertex() {
 }
 
 void fragment() {
-	float macro = noise(wpos.xz * 0.028);
-	float warp_n = noise(wpos.xz * 0.06 + 4.0);
-	vec2 warp = vec2(macro, warp_n) - 0.5;
-	vec2 uv = wpos.xz * uv_scale + warp * 0.42;
-	// Second octave, offset so the tile grid doesn't line up
-	vec2 uv_b = wpos.xz * uv_scale * 0.47 + vec2(19.2, 7.4) + warp * 0.2;
-
+	// Baked materials stored a small uv_scale. Floor it so tiles stay readable.
+	float scale = max(uv_scale, 0.5);
+	vec2 uv = wpos.xz * scale;
 	vec3 grass = texture(grass_tex, uv).rgb;
-	vec3 dirt = texture(dirt_tex, uv).rgb;
-	vec3 mud = texture(mud_tex, uv).rgb;
-	vec3 gravel = texture(gravel_tex, uv_b).rgb;
-	vec3 path = texture(path_tex, uv).rgb;
+	vec3 dirt = texture(dirt_tex, uv + vec2(3.1, 1.7)).rgb;
+	vec3 path = texture(path_tex, uv * 0.82 + vec2(8.0, 2.0)).rgb;
+	vec3 detail = texture(grass_tex, uv * 2.35 + vec2(1.3, 4.8)).rgb;
+	grass = mix(grass, detail, clamp(detail_strength, 0.0, 0.45));
 
-	grass = mix(grass, texture(grass_tex, uv * 3.6 + 2.0).rgb, detail_strength);
-	dirt = mix(dirt, texture(dirt_tex, uv * 3.2 + 5.0).rgb, detail_strength * 0.85);
-	path = mix(path, texture(path_tex, uv * 2.8).rgb, detail_strength * 0.7);
+	// 12–20 m patches. These survive mipmaps from the HQ roof.
+	float patch = noise(wpos.xz * 0.055);
+	float patch2 = noise(wpos.xz * 0.019 + 4.2);
+	float dirt_mask = smoothstep(0.34, 0.58, patch);
+	float bare_mask = smoothstep(0.55, 0.78, patch2);
+	float path_mask = clamp(path_amount, 0.0, 1.0);
 
-	float n = noise(wpos.xz * 0.09 + macro);
-	float n2 = noise(wpos.xz * 0.17 + 11.0);
-	float n3 = noise(wpos.xz * 0.045 + 2.0);
+	vec3 paint_grass = vec3(0.18, 0.36, 0.12);
+	vec3 paint_dirt = vec3(0.42, 0.29, 0.14);
+	vec3 paint_path = vec3(0.50, 0.38, 0.20);
+	vec3 paint = mix(paint_grass, paint_dirt, max(dirt_mask, bare_mask * 0.85));
+	paint = mix(paint, paint_path, path_mask);
 
-	float grass_w = 1.0;
-	float dirt_w = smoothstep(0.34, 0.72, n) * 0.95;
-	float mud_w = smoothstep(0.58, 0.88, n3) * 0.7;
-	float gravel_w = smoothstep(0.52, 0.84, n2) * 0.55;
-	float path_w = path_amount * smoothstep(0.28, 0.78, noise(wpos.xz * 0.31 + 1.3));
+	vec3 photos = mix(grass, dirt, max(dirt_mask, bare_mask));
+	photos = mix(photos, path, path_mask);
+	// Photo detail up close, painted regions from the roof if the tile mips out.
+	vec3 col = mix(paint, photos, 0.72);
 
-	// Height blend: heavier weights win, but the texture's own relief keeps the edge
-	float wg = grass_w * (luma(grass) + 0.25);
-	float wd = dirt_w * (luma(dirt) + 0.25);
-	float wm = mud_w * (luma(mud) + 0.22);
-	float wv = gravel_w * (luma(gravel) + 0.2);
-	float wp = path_w * (luma(path) + 0.28);
-	float mx = max(max(max(wg, wd), max(wm, wv)), wp);
-	float sharp = 0.16;
-	wg = max(wg - mx + sharp, 0.0);
-	wd = max(wd - mx + sharp, 0.0);
-	wm = max(wm - mx + sharp, 0.0);
-	wv = max(wv - mx + sharp, 0.0);
-	wp = max(wp - mx + sharp, 0.0);
-	float sumw = max(wg + wd + wm + wv + wp, 0.0001);
-	vec3 col = (grass * wg + dirt * wd + mud * wm + gravel * wv + path * wp) / sumw;
-
-	// Broad colour variation so a repeated tile doesn't read as a grid
-	col *= mix(0.86, 1.08, macro);
-	col *= mix(0.94, 1.04, noise(wpos.xz * 0.004));
+	float broad = noise(wpos.xz * 0.09 + 2.0);
+	col *= mix(0.78, 1.16, broad);
+	col *= mix(0.92, 1.06, patch);
 
 	ALBEDO = col;
-	ROUGHNESS = mix(0.92, 0.78, luma(col));
+	ROUGHNESS = mix(0.96, 0.74, luma(col));
 	METALLIC = 0.0;
 }

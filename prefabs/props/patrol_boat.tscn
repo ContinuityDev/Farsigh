@@ -1,49 +1,49 @@
 [gd_scene load_steps=11 format=3]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0axx1"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_x44t2"]
 specular_mode = 2
 albedo_color = Color(0.24, 0.3, 0.34, 1)
 metallic = 0.3
 roughness = 0.5
 
-[sub_resource type="BoxMesh" id="BoxMesh_hbku2"]
+[sub_resource type="BoxMesh" id="BoxMesh_8e1dv"]
 size = Vector3(2.4, 0.85, 6.4)
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_7es7t"]
+[sub_resource type="CylinderMesh" id="CylinderMesh_8v47k"]
 top_radius = 0.15
 bottom_radius = 1.3
 height = 1.8
 radial_segments = 6
 rings = 1
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e4v2l"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vip26"]
 specular_mode = 2
 albedo_color = Color(0.55, 0.56, 0.54, 1)
 metallic = 0.05
 roughness = 0.82
 
-[sub_resource type="BoxMesh" id="BoxMesh_vj2n4"]
+[sub_resource type="BoxMesh" id="BoxMesh_bpueo"]
 size = Vector3(2.2, 0.14, 5.8)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_d01g3"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_37b2r"]
 specular_mode = 2
 albedo_color = Color(0.76, 0.75, 0.72, 1)
 metallic = 0.05
 roughness = 0.82
 
-[sub_resource type="BoxMesh" id="BoxMesh_7ijhf"]
+[sub_resource type="BoxMesh" id="BoxMesh_kl73m"]
 size = Vector3(1.75, 1.35, 2.2)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_yoey4"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvglk"]
 specular_mode = 2
 albedo_color = Color(0.12, 0.19, 0.24, 1)
 metallic = 0.4
 roughness = 0.15
 
-[sub_resource type="BoxMesh" id="BoxMesh_vevmg"]
+[sub_resource type="BoxMesh" id="BoxMesh_nkwvl"]
 size = Vector3(1.82, 0.55, 1.8)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_qh1kp"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_tj3k5"]
 size = Vector3(2.5, 1.8, 6.8)
 
 [node name="PatrolBoat" type="Node3D"]
@@ -52,37 +52,37 @@ size = Vector3(2.5, 1.8, 6.8)
 
 [node name="@MeshInstance3D@155" type="MeshInstance3D" parent="@Node3D@154"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
-material_override = SubResource("StandardMaterial3D_0axx1")
+material_override = SubResource("StandardMaterial3D_x44t2")
 gi_mode = 0
-mesh = SubResource("BoxMesh_hbku2")
+mesh = SubResource("BoxMesh_8e1dv")
 
 [node name="@MeshInstance3D@156" type="MeshInstance3D" parent="@Node3D@154"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0.35, -3.9)
-material_override = SubResource("StandardMaterial3D_0axx1")
+material_override = SubResource("StandardMaterial3D_x44t2")
 gi_mode = 0
-mesh = SubResource("CylinderMesh_7es7t")
+mesh = SubResource("CylinderMesh_8v47k")
 
 [node name="@MeshInstance3D@157" type="MeshInstance3D" parent="@Node3D@154"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.72, 0.1)
-material_override = SubResource("StandardMaterial3D_e4v2l")
+material_override = SubResource("StandardMaterial3D_vip26")
 gi_mode = 0
-mesh = SubResource("BoxMesh_vj2n4")
+mesh = SubResource("BoxMesh_bpueo")
 
 [node name="@MeshInstance3D@158" type="MeshInstance3D" parent="@Node3D@154"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, -0.4)
-material_override = SubResource("StandardMaterial3D_d01g3")
+material_override = SubResource("StandardMaterial3D_37b2r")
 gi_mode = 0
-mesh = SubResource("BoxMesh_7ijhf")
+mesh = SubResource("BoxMesh_kl73m")
 
 [node name="@MeshInstance3D@159" type="MeshInstance3D" parent="@Node3D@154"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.68, -0.55)
-material_override = SubResource("StandardMaterial3D_yoey4")
+material_override = SubResource("StandardMaterial3D_uvglk")
 gi_mode = 0
-mesh = SubResource("BoxMesh_vevmg")
+mesh = SubResource("BoxMesh_nkwvl")
 
 [node name="@StaticBody3D@161" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 collision_mask = 0
 
 [node name="@CollisionShape3D@160" type="CollisionShape3D" parent="@StaticBody3D@161"]
-shape = SubResource("BoxShape3D_qh1kp")
+shape = SubResource("BoxShape3D_tj3k5")
