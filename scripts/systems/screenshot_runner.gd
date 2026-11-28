@@ -626,6 +626,8 @@ func _snap_arms() -> void:
 		var tc := hud.get_node_or_null("TouchControls")
 		if is_instance_valid(tc):
 			tc.visible = false
+		if hud.has_method("set_click_to_capture_hint"):
+			hud.set_click_to_capture_hint(false)
 	player.global_position = Vector3(2.0, 0.2, 18.0)
 	player.rotation = Vector3(0, PI, 0)
 	var head := player.get_node_or_null("Head") as Node3D
@@ -655,6 +657,36 @@ func _snap_arms() -> void:
 		{"id": GameState.WeaponId.MACHETE, "name": "machete", "optic": "iron", "aim": 58.0},
 		{"id": GameState.WeaponId.BAT, "name": "bat", "optic": "iron", "aim": 58.0},
 	]
+	var hud_now := get_tree().current_scene.get_node_or_null("HUD")
+	if is_instance_valid(hud_now) and hud_now.has_method("set_click_to_capture_hint"):
+		hud_now.set_click_to_capture_hint(false)
+	if OS.get_environment("ARMS_QUICK") == "1":
+		await _arms_show(wm, vm, cam, guns[0], false)
+		await _snap("q_rifle_hip")
+		await _arms_show(wm, vm, cam, guns[0], true)
+		await _snap("q_rifle_ads")
+		await _arms_show(wm, vm, cam, guns[0], false)
+		if is_instance_valid(vm) and vm.has_method("scrub_reload"):
+			vm.scrub_reload(0.36, "mag", false)
+		await get_tree().process_frame
+		await _snap("q_rifle_tac")
+		await _arms_show(wm, vm, cam, guns[2], false)
+		await _snap("q_shotgun_hip")
+		if is_instance_valid(vm) and vm.has_method("scrub_reload"):
+			vm.scrub_reload(0.40, "shell", true)
+		await get_tree().process_frame
+		await _snap("q_shotgun_shell")
+		await _arms_show(wm, vm, cam, guns[1], false)
+		await _snap("q_smg_hip")
+		await _arms_show(wm, vm, cam, guns[4], false)
+		await _snap("q_pistol_hip")
+		await _arms_show(wm, vm, cam, guns[3], false)
+		await _snap("q_sniper_hip")
+		await _arms_show(wm, vm, cam, guns[5], false)
+		await _snap("q_lmg_hip")
+		print("ARMS_QUICK complete")
+		get_tree().quit()
+		return
 	var n := 161
 	for spec in guns:
 		await _arms_show(wm, vm, cam, spec, false)
@@ -809,6 +841,9 @@ func _web_arms_view() -> void:
 		vm.scrub_reload(rp, kind, "empty=1" in q)
 	player.set_process(false)
 	player.set_physics_process(false)
+	var hud := get_tree().current_scene.get_node_or_null("HUD")
+	if is_instance_valid(hud) and hud.has_method("set_click_to_capture_hint"):
+		hud.set_click_to_capture_hint(false)
 	print("WEB_ARMS gun=", gun)
 	if not OS.has_feature("web"):
 		return

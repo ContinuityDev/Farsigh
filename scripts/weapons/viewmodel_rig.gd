@@ -95,37 +95,39 @@ func rebuild_all_async(host: Node) -> void:
 func _setup_poses() -> void:
 	# Hip pose sits in the lower-right third. Negative pitch points the muzzle down,
 	# positive yaw brings it toward the centre without crossing the crosshair.
+	# Yaw ~60° lays the barrel across the lower right so the length reads on screen.
+	# Positive yaw swings the -Z muzzle toward screen centre. Receiver stays low-right.
 	_base_pos = {
-		GameState.WeaponId.PISTOL: Vector3(0.18, -0.22, -0.50),
-		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.18, -0.22, -0.50),
-		GameState.WeaponId.RIFLE: Vector3(0.26, -0.28, -0.66),
-		GameState.WeaponId.SMG: Vector3(0.22, -0.26, -0.56),
-		GameState.WeaponId.SHOTGUN: Vector3(0.28, -0.28, -0.70),
-		GameState.WeaponId.SNIPER: Vector3(0.24, -0.27, -0.74),
-		GameState.WeaponId.LMG: Vector3(0.28, -0.30, -0.68),
-		GameState.WeaponId.BOW: Vector3(0.16, -0.20, -0.58),
-		GameState.WeaponId.CROSSBOW: Vector3(0.22, -0.24, -0.62),
-		GameState.WeaponId.KNIFE: Vector3(0.20, -0.20, -0.46),
-		GameState.WeaponId.FRAG: Vector3(0.18, -0.20, -0.46),
-		GameState.WeaponId.MOLOTOV: Vector3(0.18, -0.20, -0.48),
-		GameState.WeaponId.MACHETE: Vector3(0.22, -0.22, -0.50),
-		GameState.WeaponId.BAT: Vector3(0.22, -0.22, -0.52),
+		GameState.WeaponId.PISTOL: Vector3(0.18, -0.16, -0.40),
+		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.18, -0.16, -0.40),
+		GameState.WeaponId.RIFLE: Vector3(0.14, -0.20, -0.56),
+		GameState.WeaponId.SMG: Vector3(0.16, -0.18, -0.50),
+		GameState.WeaponId.SHOTGUN: Vector3(0.16, -0.22, -0.54),
+		GameState.WeaponId.SNIPER: Vector3(0.14, -0.20, -0.58),
+		GameState.WeaponId.LMG: Vector3(0.16, -0.22, -0.54),
+		GameState.WeaponId.BOW: Vector3(0.18, -0.16, -0.50),
+		GameState.WeaponId.CROSSBOW: Vector3(0.24, -0.18, -0.48),
+		GameState.WeaponId.KNIFE: Vector3(0.20, -0.16, -0.40),
+		GameState.WeaponId.FRAG: Vector3(0.18, -0.16, -0.40),
+		GameState.WeaponId.MOLOTOV: Vector3(0.18, -0.16, -0.42),
+		GameState.WeaponId.MACHETE: Vector3(0.22, -0.18, -0.44),
+		GameState.WeaponId.BAT: Vector3(0.22, -0.18, -0.46),
 	}
 	_base_rot = {
-		GameState.WeaponId.PISTOL: Vector3(-12.0, 8.0, 4.0),
-		GameState.WeaponId.MACHINE_PISTOL: Vector3(-12.0, 8.0, 4.0),
-		GameState.WeaponId.RIFLE: Vector3(-16.0, 12.0, 6.0),
-		GameState.WeaponId.SMG: Vector3(-14.0, 10.0, 5.0),
-		GameState.WeaponId.SHOTGUN: Vector3(-14.0, 10.0, 4.0),
-		GameState.WeaponId.SNIPER: Vector3(-12.0, 8.0, 3.0),
-		GameState.WeaponId.LMG: Vector3(-16.0, 11.0, 5.0),
-		GameState.WeaponId.BOW: Vector3(-4.0, 8.0, 8.0),
-		GameState.WeaponId.CROSSBOW: Vector3(-8.0, 6.0, 2.0),
-		GameState.WeaponId.KNIFE: Vector3(-18.0, 16.0, -8.0),
-		GameState.WeaponId.FRAG: Vector3(-6.0, 10.0, 4.0),
-		GameState.WeaponId.MOLOTOV: Vector3(-8.0, 8.0, 6.0),
-		GameState.WeaponId.MACHETE: Vector3(-20.0, 18.0, -8.0),
-		GameState.WeaponId.BAT: Vector3(-22.0, 12.0, -10.0),
+		GameState.WeaponId.PISTOL: Vector3(6.0, 40.0, 4.0),
+		GameState.WeaponId.MACHINE_PISTOL: Vector3(6.0, 40.0, 4.0),
+		GameState.WeaponId.RIFLE: Vector3(4.0, 44.0, 0.0),
+		GameState.WeaponId.SMG: Vector3(6.0, 46.0, 2.0),
+		GameState.WeaponId.SHOTGUN: Vector3(4.0, 42.0, 0.0),
+		GameState.WeaponId.SNIPER: Vector3(4.0, 40.0, 0.0),
+		GameState.WeaponId.LMG: Vector3(5.0, 44.0, 0.0),
+		GameState.WeaponId.BOW: Vector3(4.0, 28.0, 6.0),
+		GameState.WeaponId.CROSSBOW: Vector3(4.0, 40.0, 2.0),
+		GameState.WeaponId.KNIFE: Vector3(-8.0, 30.0, -8.0),
+		GameState.WeaponId.FRAG: Vector3(-4.0, 24.0, 6.0),
+		GameState.WeaponId.MOLOTOV: Vector3(-6.0, 22.0, 8.0),
+		GameState.WeaponId.MACHETE: Vector3(-10.0, 36.0, -6.0),
+		GameState.WeaponId.BAT: Vector3(-12.0, 28.0, -8.0),
 	}
 
 
@@ -226,47 +228,54 @@ func _cc0_file(id: GameState.WeaponId) -> String:
 func _cc0_fit(id: GameState.WeaponId) -> Dictionary:
 	## Fractions of the imported bounds. Muzzle is +X, up is +Y, stock is -X.
 	var pistol := {
-		"length": 0.16, "grip_x": 0.30, "grip_y": 0.28,
+		"length": 0.30, "grip_x": 0.16, "grip_y": 0.24,
 		"sight_x": 0.42, "sight_y": 0.78, "muzzle_y": 0.62,
-		"mag_x": 0.34, "support_x": 0.46, "two_hand": true, "compact": true,
+		"mag_x": 0.22, "support_x": 0.52, "support_y": 0.55,
+		"two_hand": true, "compact": true,
 	}
 	var rifle := {
-		"length": 0.30, "grip_x": 0.30, "grip_y": 0.22,
+		"length": 0.68, "grip_x": 0.17, "grip_y": 0.62,
 		"sight_x": 0.40, "sight_y": 0.74, "muzzle_y": 0.55,
-		"mag_x": 0.38, "support_x": 0.56, "two_hand": true, "compact": false,
+		"mag_x": 0.38, "support_x": 0.60, "support_y": 0.70,
+		"two_hand": true, "compact": false,
 	}
 	match id:
 		GameState.WeaponId.PISTOL, GameState.WeaponId.TRANQ_PISTOL, GameState.WeaponId.MACHINE_PISTOL:
 			return pistol
 		GameState.WeaponId.SMG:
 			return {
-				"length": 0.24, "grip_x": 0.32, "grip_y": 0.24,
+				"length": 0.52, "grip_x": 0.34, "grip_y": 0.66,
 				"sight_x": 0.40, "sight_y": 0.76, "muzzle_y": 0.58,
-				"mag_x": 0.38, "support_x": 0.54, "two_hand": true, "compact": true,
+				"mag_x": 0.50, "support_x": 0.68, "support_y": 0.74,
+				"two_hand": true, "compact": true,
 			}
 		GameState.WeaponId.SHOTGUN:
 			return {
-				"length": 0.36, "grip_x": 0.34, "grip_y": 0.30,
+				"length": 0.76, "grip_x": 0.38, "grip_y": 0.70,
 				"sight_x": 0.46, "sight_y": 0.72, "muzzle_y": 0.55,
-				"mag_x": 0.46, "support_x": 0.54, "two_hand": true, "compact": false,
+				"mag_x": 0.40, "support_x": 0.68, "support_y": 0.58,
+				"two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
 			return {
-				"length": 0.40, "grip_x": 0.32, "grip_y": 0.28,
+				"length": 0.80, "grip_x": 0.24, "grip_y": 0.58,
 				"sight_x": 0.40, "sight_y": 0.70, "muzzle_y": 0.52,
-				"mag_x": 0.38, "support_x": 0.52, "two_hand": true, "compact": false,
+				"mag_x": 0.36, "support_x": 0.55, "support_y": 0.66,
+				"two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.LMG, GameState.WeaponId.FLAMETHROWER:
 			return {
-				"length": 0.34, "grip_x": 0.32, "grip_y": 0.24,
+				"length": 0.76, "grip_x": 0.32, "grip_y": 0.60,
 				"sight_x": 0.42, "sight_y": 0.72, "muzzle_y": 0.52,
-				"mag_x": 0.40, "support_x": 0.54, "two_hand": true, "compact": false,
+				"mag_x": 0.47, "support_x": 0.62, "support_y": 0.66,
+				"two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.GRENADE_LAUNCHER:
 			return {
-				"length": 0.32, "grip_x": 0.46, "grip_y": 0.28,
+				"length": 0.74, "grip_x": 0.42, "grip_y": 0.36,
 				"sight_x": 0.50, "sight_y": 0.74, "muzzle_y": 0.55,
-				"mag_x": 0.48, "support_x": 0.58, "two_hand": true, "compact": false,
+				"mag_x": 0.48, "support_x": 0.72, "support_y": 0.58,
+				"two_hand": true, "compact": false,
 			}
 		_:
 			return rifle
@@ -283,8 +292,10 @@ func _build_cc0_firearm(slot: Node3D, id: GameState.WeaponId, mods: Dictionary) 
 	var gun := packed.instantiate()
 	gun.name = "CC0Gun"
 	root.add_child(gun)
-	var bounds := _local_aabb(gun)
 	var fit := _cc0_fit(id)
+	if id != GameState.WeaponId.SHOTGUN:
+		_strip_builtin_mag(gun, fit)
+	var bounds := _local_aabb(gun)
 	var length: float = fit["length"]
 	var scale := length / maxf(bounds.size.x, 0.001)
 	var basis := Basis(Vector3.UP, PI * 0.5).scaled(Vector3.ONE * scale)
@@ -294,8 +305,10 @@ func _build_cc0_firearm(slot: Node3D, id: GameState.WeaponId, mods: Dictionary) 
 	_finish_cc0_materials(gun)
 	var sight_local: Vector3 = gun.transform * _aabb_point(bounds, fit["sight_x"], fit["sight_y"])
 	var muzzle_local: Vector3 = gun.transform * _aabb_point(bounds, 1.0, fit["muzzle_y"])
-	var mag_local: Vector3 = gun.transform * _aabb_point(bounds, fit["mag_x"], 0.08)
-	var support: Vector3 = gun.transform * _aabb_point(bounds, fit["support_x"], fit["muzzle_y"])
+	var mag_local: Vector3 = gun.transform * _aabb_point(bounds, fit["mag_x"], 0.28)
+	# The handguard's underside sits near 70% of the mesh height. muzzle_y is the bore, which is empty air under the barrel.
+	var support_y := float(fit.get("support_y", 0.70))
+	var support: Vector3 = gun.transform * _aabb_point(bounds, fit["support_x"], support_y)
 	var optic := String(mods.get("optic", "iron"))
 	var compact: bool = fit["compact"]
 	_sight_local[id] = _attach_optic(root, sight_local, optic, compact, optic != "iron")
@@ -310,15 +323,21 @@ func _build_cc0_firearm(slot: Node3D, id: GameState.WeaponId, mods: Dictionary) 
 	root.add_child(mag)
 	if feed == "shell":
 		# A shotshell the support hand carries to the port. Hidden until a reload.
-		ProcMesh.add_part(mag, ProcMesh.cylinder_mesh(0.013, 0.058, Color(0.72, 0.32, 0.16), 0.55, 0.08, 8), Vector3.ZERO, Vector3(0, 0, 90))
-		ProcMesh.add_part(mag, ProcMesh.cylinder_mesh(0.014, 0.012, Color(0.82, 0.72, 0.28), 0.4, 0.2, 8), Vector3(0, 0, -0.02), Vector3(0, 0, 90))
+		var shell_r := clampf(length * 0.016, 0.012, 0.022)
+		var shell_l := clampf(length * 0.065, 0.05, 0.09)
+		ProcMesh.add_part(mag, ProcMesh.cylinder_mesh(shell_r, shell_l, Color(0.72, 0.32, 0.16), 0.55, 0.08, 8), Vector3.ZERO, Vector3(0, 0, 90))
+		ProcMesh.add_part(mag, ProcMesh.cylinder_mesh(shell_r * 1.05, shell_l * 0.22, Color(0.82, 0.72, 0.28), 0.4, 0.2, 8), Vector3(0, 0, -shell_l * 0.28), Vector3(0, 0, 90))
 		mag.visible = false
 	else:
-		var mag_h := 0.11 if String(mods.get("mag", "standard")) == "extended" else 0.08
-		ProcMesh.add_part(mag, ProcMesh.box_mesh(Vector3(0.034, mag_h, 0.05), Color(0.38, 0.36, 0.32), 0.55, 0.04), Vector3(0, -mag_h * 0.42, 0))
+		var mag_h := length * (0.26 if String(mods.get("mag", "standard")) == "extended" else 0.20)
+		var mag_w := length * 0.040
+		var mag_d := length * 0.055
+		ProcMesh.add_part(mag, ProcMesh.box_mesh(Vector3(mag_w, mag_h, mag_d), Color(0.38, 0.36, 0.32), 0.55, 0.04), Vector3(0, -mag_h * 0.42, 0))
 		mag.visible = true
 	_magazines[id] = mag
-	var charge := Vector3(0.0, 0.055, 0.14) if not compact else Vector3(0.0, 0.04, 0.05)
+	var charge := hold + Vector3(0.0, length * 0.07, length * 0.05)
+	if compact:
+		charge = hold + Vector3(0.0, length * 0.06, length * 0.04)
 	if id == GameState.WeaponId.SHOTGUN:
 		charge = mag_local + Vector3(0.02, 0.03, 0.02)
 	_mount_arms(root, hold, support, _arm_style(id), mag_local, charge)
@@ -326,6 +345,53 @@ func _build_cc0_firearm(slot: Node3D, id: GameState.WeaponId, mods: Dictionary) 
 	flash.position = Vector3(muzzle_local.x, muzzle_local.y, muzzle_z - 0.02)
 	root.add_child(flash)
 	_muzzle_flashes[id] = flash
+
+
+func _strip_builtin_mag(gun: Node3D, fit: Dictionary) -> void:
+	## The Quaternius mesh bakes its magazine into the same surfaces as the receiver.
+	## Drop triangles in the mag well so the separate Magazine node is the only one.
+	var mag_along := float(fit["mag_x"])
+	for mi in gun.find_children("*", "MeshInstance3D", true, false):
+		var src := (mi as MeshInstance3D).mesh
+		if src == null or src.has_meta("mag_stripped"):
+			continue
+		# The imported node rotates the mesh, so test the hanging mag in node space.
+		# The grip is the narrow drop just behind the mag; only the mag's X slice is removed.
+		var xform := (mi as MeshInstance3D).transform
+		var local_box: AABB = xform * (mi as MeshInstance3D).get_aabb()
+		var mag_x := local_box.position.x + local_box.size.x * mag_along
+		var half := local_box.size.x * 0.028
+		var y_cut := local_box.position.y + local_box.size.y * 0.48
+		var built := ArrayMesh.new()
+		var changed := false
+		for s in src.get_surface_count():
+			var arrays: Array = src.surface_get_arrays(s)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+			if indices.is_empty():
+				indices = PackedInt32Array()
+				for i in verts.size():
+					indices.append(i)
+			var keep := PackedInt32Array()
+			var t := 0
+			while t + 2 < indices.size():
+				var c: Vector3 = xform * ((verts[indices[t]] + verts[indices[t + 1]] + verts[indices[t + 2]]) / 3.0)
+				var in_mag := absf(c.x - mag_x) < half and c.y < y_cut
+				if in_mag:
+					changed = true
+				else:
+					keep.append(indices[t])
+					keep.append(indices[t + 1])
+					keep.append(indices[t + 2])
+				t += 3
+			arrays[Mesh.ARRAY_INDEX] = keep
+			built.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			var mat := (mi as MeshInstance3D).get_active_material(s)
+			if mat:
+				built.surface_set_material(built.get_surface_count() - 1, mat)
+		if changed:
+			built.set_meta("mag_stripped", true)
+			(mi as MeshInstance3D).mesh = built
 
 
 func _aabb_point(bounds: AABB, along_x: float, up_y: float) -> Vector3:
@@ -1296,7 +1362,7 @@ func _drive_reload(stage: String, u: float) -> void:
 	var root := _active_root()
 	if root == null:
 		return
-	var skel := root.get_node_or_null("FPArms") as Skeleton3D
+	var skel := root.find_child("Skeleton3D", true, false) as Skeleton3D
 	var support: Vector3 = root.get_meta("fp_support", Vector3.ZERO)
 	var well: Vector3 = root.get_meta("fp_mag", support)
 	var charge: Vector3 = root.get_meta("fp_charge", well + Vector3(0, 0.05, 0.12))
@@ -1444,7 +1510,7 @@ func _rest_left_hand() -> void:
 	var root := _active_root()
 	if root == null or not root.has_meta("fp_support"):
 		return
-	var skel := root.get_node_or_null("FPArms") as Skeleton3D
+	var skel := root.find_child("Skeleton3D", true, false) as Skeleton3D
 	if skel != null:
 		FpArms.set_left(skel, root.get_meta("fp_support"))
 
@@ -1493,20 +1559,20 @@ func _ads_pose_for(wid: GameState.WeaponId, _base_p: Vector3, _base_r: Vector3) 
 		_:
 			var sight: Vector3 = _sight_local.get(wid, Vector3(0.0, 0.06, 0.02))
 			# Per-weapon hold distance — far enough to avoid clipping hands/receiver
-			var hold_z := 0.52
+			var hold_z := 0.55
 			match wid:
 				GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL, GameState.WeaponId.TRANQ_PISTOL:
-					hold_z = 0.46
+					hold_z = 0.42
 				GameState.WeaponId.SMG:
 					hold_z = 0.50
 				GameState.WeaponId.SHOTGUN, GameState.WeaponId.LMG:
-					hold_z = 0.54
+					hold_z = 0.62
 				GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
-					hold_z = 0.44
+					hold_z = 0.55
 				GameState.WeaponId.CROSSBOW:
-					hold_z = 0.50
-				_:
 					hold_z = 0.52
+				_:
+					hold_z = 0.55
 			# Zero yaw/pitch so rear+front sit on screen centre; tiny pitch trim per family
 			var pitch_trim := 0.0
 			match wid:
