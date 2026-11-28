@@ -35,8 +35,18 @@ var _fire_dur: float = 0.18
 var _flash_t: float = 0.0
 var _reload_t: float = 0.0
 var _reload_dur: float = 1.4
+var _reload_p: float = 0.0
+var _reload_kind: String = "mag"
+var _reload_empty: bool = false
+var _reload_committed: bool = false
+var _reload_sfx: int = 0
+var _mag_drop: Node3D = null
 var _swap_t: float = 0.0
 var _swap_dur: float = 0.26
+var _holster_slot: Node3D = null
+var _holster_pos: Vector3 = Vector3.ZERO
+var _holster_rot: Vector3 = Vector3.ZERO
+var _draw_sounded: bool = false
 var _inspect_t: float = 0.0
 var _inspect_dur: float = 1.65
 var _takedown_t: float = 0.0
@@ -58,6 +68,9 @@ var _throw_arc_mat: StandardMaterial3D = null
 
 
 func _ready() -> void:
+	var cam := get_parent() as Camera3D
+	if cam != null and cam.near > 0.02:
+		cam.near = 0.02
 	_setup_poses()
 	_ensure_slots()
 	# During staged outpost load, OutpostManager rebuilds viewmodels in a later
@@ -80,37 +93,39 @@ func rebuild_all_async(host: Node) -> void:
 
 
 func _setup_poses() -> void:
+	# Hip pose sits in the lower-right third. Negative pitch points the muzzle down,
+	# positive yaw brings it toward the centre without crossing the crosshair.
 	_base_pos = {
-		GameState.WeaponId.PISTOL: Vector3(0.13, -0.13, -0.34),
-		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.13, -0.13, -0.34),
-		GameState.WeaponId.RIFLE: Vector3(0.14, -0.15, -0.40),
-		GameState.WeaponId.SMG: Vector3(0.15, -0.155, -0.38),
-		GameState.WeaponId.SHOTGUN: Vector3(0.15, -0.16, -0.42),
-		GameState.WeaponId.SNIPER: Vector3(0.14, -0.15, -0.44),
-		GameState.WeaponId.LMG: Vector3(0.16, -0.16, -0.42),
-		GameState.WeaponId.BOW: Vector3(0.19, -0.13, -0.45),
-		GameState.WeaponId.CROSSBOW: Vector3(0.22, -0.20, -0.46),
-		GameState.WeaponId.KNIFE: Vector3(0.23, -0.19, -0.37),
-		GameState.WeaponId.FRAG: Vector3(0.22, -0.19, -0.36),
-		GameState.WeaponId.MOLOTOV: Vector3(0.22, -0.19, -0.38),
-		GameState.WeaponId.MACHETE: Vector3(0.25, -0.20, -0.40),
-		GameState.WeaponId.BAT: Vector3(0.26, -0.22, -0.42),
+		GameState.WeaponId.PISTOL: Vector3(0.18, -0.22, -0.50),
+		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.18, -0.22, -0.50),
+		GameState.WeaponId.RIFLE: Vector3(0.26, -0.28, -0.66),
+		GameState.WeaponId.SMG: Vector3(0.22, -0.26, -0.56),
+		GameState.WeaponId.SHOTGUN: Vector3(0.28, -0.28, -0.70),
+		GameState.WeaponId.SNIPER: Vector3(0.24, -0.27, -0.74),
+		GameState.WeaponId.LMG: Vector3(0.28, -0.30, -0.68),
+		GameState.WeaponId.BOW: Vector3(0.16, -0.20, -0.58),
+		GameState.WeaponId.CROSSBOW: Vector3(0.22, -0.24, -0.62),
+		GameState.WeaponId.KNIFE: Vector3(0.20, -0.20, -0.46),
+		GameState.WeaponId.FRAG: Vector3(0.18, -0.20, -0.46),
+		GameState.WeaponId.MOLOTOV: Vector3(0.18, -0.20, -0.48),
+		GameState.WeaponId.MACHETE: Vector3(0.22, -0.22, -0.50),
+		GameState.WeaponId.BAT: Vector3(0.22, -0.22, -0.52),
 	}
 	_base_rot = {
-		GameState.WeaponId.PISTOL: Vector3(-3.0, 2.0, 0.0),
-		GameState.WeaponId.MACHINE_PISTOL: Vector3(-3.0, 2.5, 0.0),
-		GameState.WeaponId.RIFLE: Vector3(-4.0, 2.0, 0.0),
-		GameState.WeaponId.SMG: Vector3(-4.0, 2.5, 0.0),
-		GameState.WeaponId.SHOTGUN: Vector3(-3.5, 2.0, 0.0),
-		GameState.WeaponId.SNIPER: Vector3(-3.0, 1.5, 0.0),
-		GameState.WeaponId.LMG: Vector3(-4.0, 2.0, 0.0),
-		GameState.WeaponId.BOW: Vector3(0.0, 6.0, 16.0),
-		GameState.WeaponId.CROSSBOW: Vector3(0.0, 2.5, 0.0),
-		GameState.WeaponId.KNIFE: Vector3(-12.0, 14.0, -8.0),
-		GameState.WeaponId.FRAG: Vector3(0.0, 8.0, 0.0),
-		GameState.WeaponId.MOLOTOV: Vector3(-4.0, 6.0, 4.0),
-		GameState.WeaponId.MACHETE: Vector3(-16.0, 18.0, -10.0),
-		GameState.WeaponId.BAT: Vector3(-24.0, 14.0, -16.0),
+		GameState.WeaponId.PISTOL: Vector3(-12.0, 8.0, 4.0),
+		GameState.WeaponId.MACHINE_PISTOL: Vector3(-12.0, 8.0, 4.0),
+		GameState.WeaponId.RIFLE: Vector3(-16.0, 12.0, 6.0),
+		GameState.WeaponId.SMG: Vector3(-14.0, 10.0, 5.0),
+		GameState.WeaponId.SHOTGUN: Vector3(-14.0, 10.0, 4.0),
+		GameState.WeaponId.SNIPER: Vector3(-12.0, 8.0, 3.0),
+		GameState.WeaponId.LMG: Vector3(-16.0, 11.0, 5.0),
+		GameState.WeaponId.BOW: Vector3(-4.0, 8.0, 8.0),
+		GameState.WeaponId.CROSSBOW: Vector3(-8.0, 6.0, 2.0),
+		GameState.WeaponId.KNIFE: Vector3(-18.0, 16.0, -8.0),
+		GameState.WeaponId.FRAG: Vector3(-6.0, 10.0, 4.0),
+		GameState.WeaponId.MOLOTOV: Vector3(-8.0, 8.0, 6.0),
+		GameState.WeaponId.MACHETE: Vector3(-20.0, 18.0, -8.0),
+		GameState.WeaponId.BAT: Vector3(-22.0, 12.0, -10.0),
 	}
 
 
@@ -211,47 +226,47 @@ func _cc0_file(id: GameState.WeaponId) -> String:
 func _cc0_fit(id: GameState.WeaponId) -> Dictionary:
 	## Fractions of the imported bounds. Muzzle is +X, up is +Y, stock is -X.
 	var pistol := {
-		"length": 0.17, "grip_x": 0.30, "grip_y": 0.28,
+		"length": 0.16, "grip_x": 0.30, "grip_y": 0.28,
 		"sight_x": 0.42, "sight_y": 0.78, "muzzle_y": 0.62,
-		"mag_x": 0.34, "support_x": 0.40, "two_hand": true, "compact": true,
+		"mag_x": 0.34, "support_x": 0.46, "two_hand": true, "compact": true,
 	}
 	var rifle := {
-		"length": 0.46, "grip_x": 0.30, "grip_y": 0.22,
+		"length": 0.30, "grip_x": 0.30, "grip_y": 0.22,
 		"sight_x": 0.40, "sight_y": 0.74, "muzzle_y": 0.55,
-		"mag_x": 0.40, "support_x": 0.72, "two_hand": true, "compact": false,
+		"mag_x": 0.38, "support_x": 0.56, "two_hand": true, "compact": false,
 	}
 	match id:
 		GameState.WeaponId.PISTOL, GameState.WeaponId.TRANQ_PISTOL, GameState.WeaponId.MACHINE_PISTOL:
 			return pistol
 		GameState.WeaponId.SMG:
 			return {
-				"length": 0.34, "grip_x": 0.32, "grip_y": 0.24,
+				"length": 0.24, "grip_x": 0.32, "grip_y": 0.24,
 				"sight_x": 0.40, "sight_y": 0.76, "muzzle_y": 0.58,
-				"mag_x": 0.40, "support_x": 0.62, "two_hand": true, "compact": true,
+				"mag_x": 0.38, "support_x": 0.54, "two_hand": true, "compact": true,
 			}
 		GameState.WeaponId.SHOTGUN:
 			return {
-				"length": 0.54, "grip_x": 0.34, "grip_y": 0.30,
+				"length": 0.36, "grip_x": 0.34, "grip_y": 0.30,
 				"sight_x": 0.46, "sight_y": 0.72, "muzzle_y": 0.55,
-				"mag_x": 0.48, "support_x": 0.62, "two_hand": true, "compact": false,
+				"mag_x": 0.46, "support_x": 0.54, "two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
 			return {
-				"length": 0.58, "grip_x": 0.32, "grip_y": 0.28,
+				"length": 0.40, "grip_x": 0.32, "grip_y": 0.28,
 				"sight_x": 0.40, "sight_y": 0.70, "muzzle_y": 0.52,
-				"mag_x": 0.40, "support_x": 0.58, "two_hand": true, "compact": false,
+				"mag_x": 0.38, "support_x": 0.52, "two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.LMG, GameState.WeaponId.FLAMETHROWER:
 			return {
-				"length": 0.52, "grip_x": 0.32, "grip_y": 0.24,
+				"length": 0.34, "grip_x": 0.32, "grip_y": 0.24,
 				"sight_x": 0.42, "sight_y": 0.72, "muzzle_y": 0.52,
-				"mag_x": 0.42, "support_x": 0.60, "two_hand": true, "compact": false,
+				"mag_x": 0.40, "support_x": 0.54, "two_hand": true, "compact": false,
 			}
 		GameState.WeaponId.GRENADE_LAUNCHER:
 			return {
-				"length": 0.46, "grip_x": 0.46, "grip_y": 0.28,
+				"length": 0.32, "grip_x": 0.46, "grip_y": 0.28,
 				"sight_x": 0.50, "sight_y": 0.74, "muzzle_y": 0.55,
-				"mag_x": 0.50, "support_x": 0.66, "two_hand": true, "compact": false,
+				"mag_x": 0.48, "support_x": 0.58, "two_hand": true, "compact": false,
 			}
 		_:
 			return rifle
@@ -290,13 +305,23 @@ func _build_cc0_firearm(slot: Node3D, id: GameState.WeaponId, mods: Dictionary) 
 	mag.name = "Magazine"
 	mag.position = mag_local
 	mag.set_meta("rest_pos", mag_local)
-	mag.set_meta("drop_only", true)
-	mag.visible = false
+	var feed := "shell" if id == GameState.WeaponId.SHOTGUN else "mag"
+	mag.set_meta("feed", feed)
 	root.add_child(mag)
-	var mag_h := 0.12 if String(mods.get("mag", "standard")) == "extended" else 0.07
-	ProcMesh.add_part(mag, ProcMesh.box_mesh(Vector3(0.028, mag_h, 0.04), Color(0.12, 0.12, 0.13), 0.55, 0.35), Vector3(0, -mag_h * 0.45, 0))
+	if feed == "shell":
+		# A shotshell the support hand carries to the port. Hidden until a reload.
+		ProcMesh.add_part(mag, ProcMesh.cylinder_mesh(0.013, 0.058, Color(0.72, 0.32, 0.16), 0.55, 0.08, 8), Vector3.ZERO, Vector3(0, 0, 90))
+		ProcMesh.add_part(mag, ProcMesh.cylinder_mesh(0.014, 0.012, Color(0.82, 0.72, 0.28), 0.4, 0.2, 8), Vector3(0, 0, -0.02), Vector3(0, 0, 90))
+		mag.visible = false
+	else:
+		var mag_h := 0.11 if String(mods.get("mag", "standard")) == "extended" else 0.08
+		ProcMesh.add_part(mag, ProcMesh.box_mesh(Vector3(0.034, mag_h, 0.05), Color(0.38, 0.36, 0.32), 0.55, 0.04), Vector3(0, -mag_h * 0.42, 0))
+		mag.visible = true
 	_magazines[id] = mag
-	_attach_gloved_hands(root, hold, support, bool(fit["two_hand"]), bool(fit["compact"]))
+	var charge := Vector3(0.0, 0.055, 0.14) if not compact else Vector3(0.0, 0.04, 0.05)
+	if id == GameState.WeaponId.SHOTGUN:
+		charge = mag_local + Vector3(0.02, 0.03, 0.02)
+	_mount_arms(root, hold, support, _arm_style(id), mag_local, charge)
 	var flash := _make_muzzle_flash(0.05 if String(mods.get("muzzle", "none")) == "suppressor" else 0.08, Color(1.0, 0.85, 0.45, 0.88))
 	flash.position = Vector3(muzzle_local.x, muzzle_local.y, muzzle_z - 0.02)
 	root.add_child(flash)
@@ -325,183 +350,71 @@ func _local_aabb(node: Node3D) -> AABB:
 
 
 func _finish_cc0_materials(node: Node) -> void:
+	## Compatibility has no real reflections, so a dark metallic albedo reads as flat grey.
 	for n in node.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		if mi.mesh == null:
 			continue
 		for i in mi.mesh.get_surface_count():
-			var mat := mi.mesh.surface_get_material(i)
-			if not (mat is StandardMaterial3D):
-				continue
-			var sm := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
-			var label := sm.resource_name.to_lower()
-			if label.find("wood") >= 0:
+			var src := mi.get_active_material(i)
+			var sm := StandardMaterial3D.new()
+			var label := ""
+			var albedo := Color(0.55, 0.56, 0.58)
+			if src is StandardMaterial3D:
+				var old := src as StandardMaterial3D
+				label = old.resource_name.to_lower()
+				albedo = old.albedo_color
+				sm.albedo_texture = old.albedo_texture
+			var wood := label.find("wood") >= 0
+			var polymer := label.find("polymer") >= 0 or label.find("plastic") >= 0 or label.find("rubber") >= 0
+			if wood:
+				if albedo.get_luminance() < 0.35:
+					albedo = albedo.lerp(Color(0.62, 0.38, 0.18), 0.65)
+				if sm.albedo_texture == null:
+					sm.albedo_texture = _surface_tex("wood")
 				sm.metallic = 0.0
-				sm.roughness = 0.58
-			elif label.find("metal") >= 0 or label.find("main") >= 0:
-				sm.metallic = 0.72
-				sm.roughness = 0.34
+				sm.roughness = 0.62
+			elif polymer:
+				if albedo.get_luminance() < 0.22:
+					albedo = albedo.lerp(Color(0.30, 0.31, 0.32), 0.6)
+				if sm.albedo_texture == null:
+					sm.albedo_texture = _surface_tex("polymer")
+				sm.metallic = 0.04
+				sm.roughness = 0.55
 			else:
-				sm.metallic = 0.08
-				sm.roughness = 0.52
+				if albedo.get_luminance() < 0.42:
+					albedo = albedo.lerp(Color(0.62, 0.64, 0.66), 0.62)
+				if sm.albedo_texture == null:
+					sm.albedo_texture = _surface_tex("metal")
+				sm.metallic = 0.2
+				sm.roughness = 0.42
+			sm.albedo_color = albedo
+			sm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 			mi.set_surface_override_material(i, sm)
 
 
-var _glove_mat: StandardMaterial3D
-var _sleeve_mat: StandardMaterial3D
-var _cuff_mat: StandardMaterial3D
-var _wrist_mat: StandardMaterial3D
+func _arm_style(id: GameState.WeaponId) -> String:
+	match id:
+		GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL, GameState.WeaponId.TRANQ_PISTOL:
+			return "pistol"
+		GameState.WeaponId.BOW, GameState.WeaponId.HUNTER_BOW:
+			return "bow"
+		GameState.WeaponId.KNIFE, GameState.WeaponId.MACHETE:
+			return "melee"
+		GameState.WeaponId.BAT:
+			return "bat"
+		GameState.WeaponId.FRAG, GameState.WeaponId.MOLOTOV, GameState.WeaponId.C4, GameState.WeaponId.PROX_MINE, GameState.WeaponId.THROWING_AXE:
+			return "throw"
+		_:
+			return "rifle"
 
 
-func _ensure_hand_mats() -> void:
-	if _glove_mat != null:
-		return
-	_glove_mat = StandardMaterial3D.new()
-	_glove_mat.albedo_color = Color(0.16, 0.155, 0.145)
-	_glove_mat.albedo_texture = _surface_tex("polymer")
-	_glove_mat.roughness = 0.74
-	_glove_mat.metallic = 0.02
-	_glove_mat.uv1_scale = Vector3(4.0, 4.0, 4.0)
-	_sleeve_mat = StandardMaterial3D.new()
-	_sleeve_mat.albedo_color = Color(0.78, 0.62, 0.48)
-	_sleeve_mat.albedo_texture = load("res://assets/textures/weapons/flannel.png") as Texture2D
-	_sleeve_mat.roughness = 0.86
-	_sleeve_mat.metallic = 0.0
-	_sleeve_mat.uv1_scale = Vector3(2.2, 3.4, 2.2)
-	_cuff_mat = StandardMaterial3D.new()
-	_cuff_mat.albedo_color = Color(0.14, 0.13, 0.12)
-	_cuff_mat.roughness = 0.8
-	_wrist_mat = StandardMaterial3D.new()
-	_wrist_mat.albedo_color = Color(0.72, 0.55, 0.42)
-	_wrist_mat.albedo_texture = _surface_tex("skin")
-	_wrist_mat.roughness = 0.62
-	_wrist_mat.uv1_scale = Vector3(2.0, 2.0, 2.0)
-
-
-func _attach_gloved_hands(root: Node3D, grip: Vector3, support: Vector3, two_hand: bool, compact: bool) -> void:
-	## Hands are children of the gun, so ADS, recoil, reload, and sprint carry them.
-	## Sleeves leave downward, out of the lens, instead of back into the camera.
-	_ensure_hand_mats()
-	# Palm on the right of the vertical grip. Fingers curl around the front. Index stays out for the trigger.
-	_wrap_hand(root, "RightGlove", grip + Vector3(0.0, -0.006, 0.004), Vector3.UP, Vector3(1.0, 0.0, 0.05), Vector3(0, 0, -1), Vector3(0.18, -1.0, 0.22), 0.016, 0.050, true)
-	if not two_hand:
-		return
-	# Support hand under the handguard (or just ahead of a pistol's trigger guard).
-	# Palm on the left side of the handguard so the back of the hand faces the camera. Fingers curl over the top.
-	if compact:
-		# Support hand just ahead of the trigger guard, fingers over the frame.
-		_wrap_hand(root, "LeftGlove", support + Vector3(-0.004, -0.02, 0.01), Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(-0.15, -1.0, 0.16), 0.014, 0.036, false)
-	else:
-		# Back of the hand on top of the handguard, fingers draped over the left side.
-		_wrap_hand(root, "LeftGlove", support + Vector3(0.0, 0.012, 0.0), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(-1, 0, 0), Vector3(-0.18, -1.0, 0.14), 0.015, 0.05, false)
-
-
-func _wrap_hand(parent: Node3D, hand_name: String, at: Vector3, axis: Vector3, palm: Vector3, around: Vector3, sleeve_dir: Vector3, radius: float, span: float, trigger: bool) -> void:
-	var hand := Node3D.new()
-	hand.name = hand_name
-	hand.position = at
-	parent.add_child(hand)
-	var axis_n := axis.normalized()
-	var palm_n := (palm - axis_n * palm.dot(axis_n)).normalized()
-	var around_n := (around - axis_n * around.dot(axis_n) - palm_n * around.dot(palm_n)).normalized()
-	# Palm pad on the near side of the grip.
-	_hand_capsule(hand, radius * 0.85, span * 0.92, palm_n * (radius + 0.004), axis_n, _glove_mat)
-	for i in 4:
-		var along := span * 0.36 - float(i) * (span / 3.0)
-		var is_trigger := trigger and i == 0
-		var curl := 0.85 if is_trigger else 3.3
-		var segs := 2 if is_trigger else 4
-		for s in segs:
-			var ang := lerpf(0.25, curl, float(s) / float(segs - 1))
-			var dir := (palm_n * cos(ang) + around_n * sin(ang)).normalized()
-			# Along the curl, so each segment continues the finger instead of sticking out.
-			var tangent := -palm_n * sin(ang) + around_n * cos(ang)
-			_hand_capsule(hand, 0.008, 0.016, dir * (radius + 0.007) + axis_n * along, tangent, _glove_mat)
-		_hand_sphere(hand, 0.0082, palm_n * (radius + 0.008) + axis_n * along, _glove_mat)
-	# Thumb laid across the top of the grip.
-	var thumb_dir := (palm_n * 0.15 + around_n * 0.25 + axis_n).normalized()
-	_hand_capsule(hand, 0.0076, 0.024, axis_n * (span * 0.52) + palm_n * (radius * 0.35), thumb_dir, _glove_mat)
-	_hand_sphere(hand, 0.0084, axis_n * (span * 0.52) + palm_n * (radius * 0.35) + thumb_dir * 0.014, _glove_mat)
-	# A band of skin, then the flannel sleeve heading down and out of frame.
-	var wrist := -axis_n * (span * 0.58)
-	_hand_capsule(hand, 0.011, 0.012, wrist, axis_n, _wrist_mat)
-	var sleeve := sleeve_dir.normalized()
-	_hand_capsule(hand, 0.013, 0.016, wrist + sleeve * 0.012, sleeve, _cuff_mat)
-	_hand_capsule(hand, 0.015, 0.09, wrist + sleeve * 0.052, sleeve, _sleeve_mat)
-
-
-func _hand_capsule(parent: Node3D, radius: float, length: float, pos: Vector3, along: Vector3, mat: Material) -> void:
-	var mi := ProcMesh.cylinder_mesh(radius, length, Color.WHITE, 0.7, 0.0, 8)
-	mi.material_override = mat
-	var y := along.normalized()
-	var x := y.cross(Vector3.UP)
-	if x.length_squared() < 0.0004:
-		x = y.cross(Vector3.RIGHT)
-	x = x.normalized()
-	var z := x.cross(y).normalized()
-	mi.basis = Basis(x, y, z)
-	mi.position = pos
-	parent.add_child(mi)
-
-
-func _hand_sphere(parent: Node3D, radius: float, pos: Vector3, mat: Material) -> void:
-	var mi := ProcMesh.sphere_mesh(radius, Color.WHITE, 0.7, 0.0)
-	mi.material_override = mat
-	mi.position = pos
-	parent.add_child(mi)
-
-
-func _mag_rest_y(wid: GameState.WeaponId, mag: Node3D) -> float:
-	if is_instance_valid(mag) and mag.has_meta("rest_pos"):
-		return (mag.get_meta("rest_pos") as Vector3).y
-	if wid in [GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL, GameState.WeaponId.TRANQ_PISTOL]:
-		return -0.112
-	return -0.078
-
-
-# ============================================================================
-# PROCEDURAL MODULAR WEAPON BUILDERS
-# ============================================================================
-func _fp_arms(root: Node3D, grip: Vector3, support: Vector3, two_hand: bool) -> void:
-	## Right hand on the grip, left hand under the handguard. Forearms enter from the bottom of the frame.
-	var skin := Color(0.86, 0.64, 0.48)
-	var sleeve := Color(0.22, 0.28, 0.18)
-	var right := Node3D.new()
-	right.name = "RightHand"
-	right.position = grip
-	root.add_child(right)
-	_limb(right, _gun_box(Vector3(0.034, 0.046, 0.028), skin, 0.72, 0.02, "skin"), Vector3(0.012, -0.008, 0.008))
-	for i in 4:
-		var y := 0.016 - float(i) * 0.013
-		_limb(right, _gun_box(Vector3(0.02, 0.011, 0.012), skin, 0.72, 0.02, "skin"), Vector3(0.034, y, 0.004))
-		_limb(right, _gun_box(Vector3(0.014, 0.01, 0.012), skin, 0.7, 0.02, "skin"), Vector3(0.026, y - 0.012, 0.014))
-	_limb(right, _gun_box(Vector3(0.012, 0.01, 0.022), skin, 0.72, 0.02, "skin"), Vector3(0.006, 0.02, -0.01))
-	var forearm := _limb(right, _limb_capsule(0.013, 0.15, sleeve), Vector3(0.03, -0.08, 0.09))
-	forearm.rotation_degrees = Vector3(62, -20, 12)
-	if not two_hand:
-		return
-	var left := Node3D.new()
-	left.name = "LeftHand"
-	left.position = support
-	root.add_child(left)
-	_limb(left, _gun_box(Vector3(0.036, 0.016, 0.046), skin, 0.72, 0.02, "skin"), Vector3(-0.01, -0.022, 0))
-	for i in 4:
-		var z := -0.016 + float(i) * 0.012
-		_limb(left, _gun_box(Vector3(0.012, 0.012, 0.012), skin, 0.72, 0.02, "skin"), Vector3(-0.026, -0.01, z))
-		_limb(left, _gun_box(Vector3(0.01, 0.014, 0.01), skin, 0.7, 0.02, "skin"), Vector3(-0.02, 0.002, z))
-	_limb(left, _gun_box(Vector3(0.012, 0.01, 0.02), skin, 0.72, 0.02, "skin"), Vector3(0.012, -0.008, 0.016))
-	var larm := _limb(left, _limb_capsule(0.012, 0.14, sleeve), Vector3(-0.02, -0.08, 0.06))
-	larm.rotation_degrees = Vector3(70, 18, -6)
-
-
-func _limb(parent: Node3D, part: MeshInstance3D, pos: Vector3) -> MeshInstance3D:
-	return ProcMesh.add_part(parent, part, pos)
-
-
-func _limb_capsule(radius: float, height: float, color: Color) -> MeshInstance3D:
-	var mi := ProcMesh.capsule_mesh(radius, height, color, 0.7, 0.02)
-	mi.material_override = _surface_material(color, 0.7, 0.02, "skin")
-	return mi
+func _mount_arms(root: Node3D, grip: Vector3, support: Vector3, style: String, mag_pos: Vector3, charge: Vector3) -> void:
+	FpArms.attach(root, grip, support, style)
+	root.set_meta("fp_support", support)
+	root.set_meta("fp_mag", mag_pos)
+	root.set_meta("fp_charge", charge)
+	root.set_meta("fp_style", style)
 
 
 func _build_pistol(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accent_col: Color, mods: Dictionary, is_auto: bool) -> void:
@@ -543,7 +456,7 @@ func _build_pistol(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accen
 	_sight_local[wid] = _attach_optic(root, Vector3(0, 0.058, 0.01), String(mods.get("optic", "iron")), true)
 	_attach_underbarrel(root, Vector3(0, -0.020, -0.095), String(mods.get("underbarrel", "none")), true)
 
-	_fp_arms(root, Vector3(0.006, -0.05, 0.05), Vector3(0.01, -0.01, -0.06), not is_auto)
+	_mount_arms(root, Vector3(0.006, -0.05, 0.05), Vector3(0.01, -0.01, -0.06), "pistol", Vector3(0, -0.1, 0.05), Vector3(0, 0.04, 0.02))
 
 	var flash := _make_muzzle_flash(0.055 if String(mods.get("muzzle", "none")) == "suppressor" else 0.085, Color(1.0, 0.85, 0.45, 0.88))
 	flash.position = Vector3(0, 0.028, muzzle_z - 0.03)
@@ -661,7 +574,7 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 	_sight_local[id] = _attach_optic(root, Vector3(0, 0.015 + rh * 0.5 + 0.014, 0.01), chosen_optic, false)
 	_attach_underbarrel(root, Vector3(0, -0.025, hg_z), String(mods.get("underbarrel", "none")), false)
 
-	_fp_arms(root, Vector3(0.004, -0.04, 0.08), Vector3(0.0, 0.0, hg_z), true)
+	_mount_arms(root, Vector3(0.004, -0.04, 0.08), Vector3(0.0, 0.0, hg_z), "rifle", Vector3(0, -0.06, 0.04), Vector3(0.0, 0.05, 0.12))
 
 	var flash_sz := 0.06 if String(mods.get("muzzle", "none")) == "suppressor" else (0.14 if is_lmg or is_sniper else 0.11)
 	var flash := _make_muzzle_flash(flash_sz, Color(1.0, 0.78, 0.22, 0.95))
@@ -690,7 +603,7 @@ func _build_shotgun(slot: Node3D, body_col: Color, accent_col: Color, mods: Dict
 	_sight_local[GameState.WeaponId.SHOTGUN] = _attach_optic(root, Vector3(0, 0.056, 0.02), String(mods.get("optic", "iron")), false)
 	_attach_underbarrel(root, Vector3(0, -0.038, -0.26), String(mods.get("underbarrel", "none")), false)
 
-	_fp_arms(root, Vector3(0.006, -0.03, 0.12), Vector3(0.0, 0.0, -0.25), true)
+	_mount_arms(root, Vector3(0.006, -0.03, 0.12), Vector3(0.0, 0.0, -0.25), "rifle", Vector3(0, -0.04, 0.02), Vector3(0.02, 0.0, 0.0))
 
 	var flash := _make_muzzle_flash(0.15, Color(1.0, 0.72, 0.18, 0.95))
 	flash.position = Vector3(0, 0.034, tip - 0.04)
@@ -703,8 +616,6 @@ func _build_bow(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accent_c
 	var carbon := accent_col
 	var string_col := Color(0.84, 0.82, 0.76)
 	var shaft_col := Color(0.55, 0.38, 0.20)
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -741,15 +652,12 @@ func _build_bow(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accent_c
 	_bow_arrow.position = Vector3(-0.022, 0.035, -0.04)
 	root.add_child(_bow_arrow)
 
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.062, 0.074, 0.068), glove), Vector3(0.012, -0.025, 0.015))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.068, 0.066, 0.22), sleeve), Vector3(0.065, -0.095, 0.145), Vector3(-18, -16, 0))
+	_mount_arms(root, Vector3(0.01, -0.03, 0.02), Vector3(-0.01, 0.03, 0.14), "bow", Vector3.ZERO, Vector3(-0.02, 0.04, 0.12))
 
 
 func _build_crossbow(slot: Node3D, body_col: Color, accent_col: Color, mods: Dictionary) -> void:
 	var polymer := Color(0.11, 0.12, 0.13)
 	var string_col := Color(0.84, 0.82, 0.76)
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -771,8 +679,7 @@ func _build_crossbow(slot: Node3D, body_col: Color, accent_col: Color, mods: Dic
 	root.add_child(bolt)
 
 	_sight_local[GameState.WeaponId.CROSSBOW] = _attach_optic(root, Vector3(0, 0.048, 0.02), String(mods.get("optic", "red_dot")), false)
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.058, 0.068, 0.075), glove), Vector3(0.005, -0.055, 0.085))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.068, 0.068, 0.22), sleeve), Vector3(0.038, -0.105, 0.21), Vector3(-18, -8, 0))
+	_mount_arms(root, Vector3(0.0, -0.05, 0.08), Vector3(0.0, 0.02, -0.12), "rifle", Vector3(0, -0.02, 0.02), Vector3(0.0, 0.04, 0.02))
 
 
 func _build_arrow_mesh(shaft_col: Color, arrow_type: String) -> Node3D:
@@ -804,8 +711,6 @@ func _build_knife(slot: Node3D, body_col: Color) -> void:
 	var dark_steel := Color(0.32, 0.35, 0.39)
 	var brass := Color(0.62, 0.50, 0.24)
 	var handle := Color(0.24, 0.16, 0.10)
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -814,13 +719,10 @@ func _build_knife(slot: Node3D, body_col: Color) -> void:
 	ProcMesh.add_part(root, ProcMesh.cone_mesh(0.019, 0.001, 0.065, steel, 0.24, 0.85, 4), Vector3(0, 0.012, -0.218), Vector3(-90, 0, 45))
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.018, 0.068, 0.016), brass, 0.38, 0.72), Vector3(0, 0.010, -0.018))
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.022, 0.030, 0.115), handle, 0.88, 0.05), Vector3(0, 0.006, 0.046))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.060, 0.066, 0.088), glove), Vector3(0.008, -0.002, 0.055))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.068, 0.068, 0.24), sleeve), Vector3(0.055, -0.065, 0.185), Vector3(-16, -15, 0))
+	_mount_arms(root, Vector3(0.0, 0.0, 0.05), Vector3(0.0, 0.0, -0.02), "melee", Vector3.ZERO, Vector3.ZERO)
 
 
 func _build_frag(slot: Node3D) -> void:
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -828,13 +730,10 @@ func _build_frag(slot: Node3D) -> void:
 	ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.059, 0.016, Color(0.88, 0.76, 0.18), 0.5, 0.1, 10), Vector3(0, 0.022, -0.03))
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.028, 0.036, 0.028), Color(0.45, 0.46, 0.44), 0.4, 0.6), Vector3(0, 0.072, -0.03))
 	ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.018, 0.006, Color(0.76, 0.78, 0.80), 0.3, 0.8, 10), Vector3(-0.024, 0.075, -0.03), Vector3(90, 0, 0))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.066, 0.066, 0.082), glove), Vector3(0.018, -0.022, 0.02))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.070, 0.068, 0.22), sleeve), Vector3(0.06, -0.08, 0.16), Vector3(-18, -14, 0))
+	_mount_arms(root, Vector3(0.0, -0.01, 0.0), Vector3.ZERO, "throw", Vector3.ZERO, Vector3.ZERO)
 
 
 func _build_molotov(slot: Node3D) -> void:
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -844,16 +743,13 @@ func _build_molotov(slot: Node3D) -> void:
 	var flame := ProcMesh.cone_mesh(0.028, 0.004, 0.075, Color(1.0, 0.56, 0.10), 0.6, 0.0, 6)
 	flame.material_override = ProcMesh.emissive(Color(1.0, 0.52, 0.08), 2.8)
 	ProcMesh.add_part(root, flame, Vector3(0.015, 0.215, -0.04))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.066, 0.066, 0.082), glove), Vector3(0.016, -0.018, 0.01))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.070, 0.068, 0.22), sleeve), Vector3(0.06, -0.08, 0.16), Vector3(-18, -14, 0))
+	_mount_arms(root, Vector3(0.0, -0.01, -0.02), Vector3.ZERO, "throw", Vector3.ZERO, Vector3.ZERO)
 
 
 func _build_machete(slot: Node3D, body_col: Color) -> void:
 	var steel := Color(0.64, 0.67, 0.70) if body_col == SKIN_PALETTES["default"]["body"] else body_col.lightened(0.22)
 	var edge := Color(0.86, 0.89, 0.92)
 	var handle := Color(0.24, 0.15, 0.09)
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -861,15 +757,12 @@ func _build_machete(slot: Node3D, body_col: Color) -> void:
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.008, 0.056, 0.28), steel, 0.3, 0.78), Vector3(0, 0.025, -0.17))
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.006, 0.068, 0.14), edge, 0.2, 0.88), Vector3(0, 0.018, -0.35), Vector3(-12, 0, 0))
 	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.026, 0.036, 0.14), handle, 0.86, 0.05), Vector3(0, 0.004, 0.04))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.062, 0.068, 0.088), glove), Vector3(0.008, -0.002, 0.05))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.068, 0.068, 0.24), sleeve), Vector3(0.055, -0.065, 0.185), Vector3(-16, -15, 0))
+	_mount_arms(root, Vector3(0.0, 0.0, 0.04), Vector3(0.0, 0.02, -0.12), "melee", Vector3.ZERO, Vector3.ZERO)
 
 
 func _build_bat(slot: Node3D, body_col: Color, accent_col: Color) -> void:
 	var barrel_col := Color(0.74, 0.77, 0.80) if body_col == SKIN_PALETTES["default"]["body"] else body_col.lightened(0.18)
 	var grip := Color(0.14, 0.14, 0.15)
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -878,8 +771,7 @@ func _build_bat(slot: Node3D, body_col: Color, accent_col: Color) -> void:
 	ProcMesh.add_part(root, ProcMesh.cone_mesh(0.036, 0.017, 0.42, barrel_col, 0.24, 0.82, 10), Vector3(0, 0.0, -0.28), Vector3(90, 0, 0))
 	ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.037, 0.075, accent_col, 0.45, 0.35, 10), Vector3(0, 0.0, -0.36), Vector3(90, 0, 0))
 	ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.024, 0.018, grip, 0.8, 0.1, 8), Vector3(0, 0.0, 0.125), Vector3(90, 0, 0))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.062, 0.068, 0.090), glove), Vector3(0.008, -0.004, 0.04))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.068, 0.068, 0.24), sleeve), Vector3(0.055, -0.065, 0.18), Vector3(-16, -15, 0))
+	_mount_arms(root, Vector3(0.0, 0.0, 0.02), Vector3(0.0, 0.0, -0.16), "bat", Vector3.ZERO, Vector3.ZERO)
 
 
 # ============================================================================
@@ -1038,18 +930,36 @@ func hide_all() -> void:
 
 
 func show_weapon(id: GameState.WeaponId, animate_swap: bool = true) -> void:
+	var previous: Node3D = _slots.get(_active_id)
+	var changing := animate_swap and previous != null and _active_id != id and previous.visible
 	_active_id = id
-	hide_all()
+	_reload_t = 0.0
+	_reload_p = 0.0
+	_fire_t = 0.0
+	_inspect_t = 0.0
+	_seat_mag()
 	var slot: Node3D = _slots.get(id)
+	if changing and is_instance_valid(slot):
+		_holster_slot = previous
+		_holster_pos = previous.position
+		_holster_rot = previous.rotation_degrees
+		_swap_dur = 0.48
+		_swap_t = _swap_dur
+		_draw_sounded = false
+		slot.visible = false
+		Foley.play(self, "holster")
+		return
+	_holster_slot = null
+	hide_all()
 	if is_instance_valid(slot):
 		slot.visible = true
 		slot.position = _base_pos.get(id, Vector3(0.22, -0.18, -0.4))
 		slot.rotation_degrees = _base_rot.get(id, Vector3.ZERO)
-	_reload_t = 0.0
-	_fire_t = 0.0
-	_inspect_t = 0.0
 	if animate_swap:
+		_swap_dur = 0.28
 		_swap_t = _swap_dur
+		_draw_sounded = true
+		Foley.play(self, "draw")
 
 
 func set_sprinting(on: bool) -> void:
@@ -1080,10 +990,55 @@ func play_fire(id: GameState.WeaponId) -> void:
 		_flash_t = 0.08
 
 
-func play_reload(duration: float = 1.4) -> void:
-	_reload_dur = maxf(0.3, duration)
+func play_reload(duration: float = 1.4, kind: String = "mag", empty: bool = false) -> void:
+	_reload_dur = maxf(0.28, duration)
 	_reload_t = _reload_dur
+	_reload_p = 0.0
+	_reload_kind = kind
+	_reload_empty = empty
+	_reload_committed = false
+	_reload_sfx = 0
 	_inspect_t = 0.0
+	_clear_mag_drop()
+
+
+func scrub_reload(p: float, kind: String = "mag", empty: bool = false) -> void:
+	## Hold one reload frame. A long duration keeps _process from walking off it.
+	_reload_kind = kind
+	_reload_empty = empty
+	_reload_committed = false
+	_reload_sfx = 0
+	_reload_dur = 100.0
+	_reload_p = clampf(p, 0.0, 1.0)
+	_reload_t = (1.0 - _reload_p) * _reload_dur
+	var sample: Dictionary = FpReload.sample(_reload_kind, _reload_p, _reload_empty)
+	_drive_reload(str(sample["stage"]), float(sample["u"]))
+
+
+func cancel_reload() -> void:
+	_reload_t = 0.0
+	_reload_p = 0.0
+	_seat_mag()
+	_rest_left_hand()
+	_clear_mag_drop()
+
+
+func consume_reload_commit() -> bool:
+	## True once, at the frame the mag, shell, or arrow actually seats.
+	if _reload_committed:
+		return false
+	if _reload_p + 0.0001 < FpReload.commit_at(_reload_kind, _reload_empty):
+		return false
+	_reload_committed = true
+	return true
+
+
+func force_reload_commit() -> bool:
+	## The cycle ended before the seat frame was observed. Still commit once.
+	if _reload_committed:
+		return false
+	_reload_committed = true
+	return true
 
 
 func play_swap() -> void:
@@ -1138,9 +1093,34 @@ func _process(delta: float) -> void:
 	var sway_recover := 9.0 + _aim_blend * 6.0 + _breath_hold * 8.0
 	_sway = _sway.lerp(Vector2.ZERO, clampf(delta * sway_recover, 0.0, 1.0))
 	var slot: Node3D = _slots.get(_active_id)
-	if not is_instance_valid(slot) or not slot.visible:
+	if not is_instance_valid(slot):
 		_update_throw_arc(false)
 		return
+	if not slot.visible:
+		if is_instance_valid(_holster_slot) and _swap_t > 0.0:
+			_swap_t = maxf(0.0, _swap_t - delta)
+			var holster_span := _swap_dur * 0.46
+			if _swap_t > _swap_dur - holster_span:
+				var k := 1.0 - ((_swap_t - (_swap_dur - holster_span)) / maxf(0.001, holster_span))
+				k = clampf(k, 0.0, 1.0)
+				_holster_slot.visible = true
+				_holster_slot.position = _holster_pos + Vector3(0.05, -0.36, 0.05) * k
+				_holster_slot.rotation_degrees = _holster_rot + Vector3(46.0, 8.0, 16.0) * k
+				_update_throw_arc(false)
+				return
+			_holster_slot.visible = false
+			_holster_slot = null
+			slot.visible = true
+			if not _draw_sounded:
+				_draw_sounded = true
+				var rest_p: Vector3 = _base_pos.get(_active_id, Vector3(0.22, -0.18, -0.45))
+				var rest_r: Vector3 = _base_rot.get(_active_id, Vector3.ZERO)
+				slot.position = rest_p + Vector3(0.04, -0.34, 0.05)
+				slot.rotation_degrees = rest_r + Vector3(34.0, 6.0, 0.0)
+				Foley.play(self, "draw")
+		else:
+			_update_throw_arc(false)
+			return
 
 	if _flash_t > 0.0:
 		_flash_t -= delta
@@ -1181,12 +1161,14 @@ func _process(delta: float) -> void:
 	elif is_instance_valid(_bow_string):
 		_bow_string.position.z = move_toward(_bow_string.position.z, 0.0, delta * 4.0)
 
-	if _swap_t > 0.0:
+	if _swap_t > 0.0 and _holster_slot == null:
 		_swap_t = maxf(0.0, _swap_t - delta)
-		var u := _swap_t / _swap_dur
-		var ease_u := u * u
-		offset_p.y -= 0.24 * ease_u
-		offset_r.x -= 35.0 * ease_u
+		var draw_u := 1.0 - (_swap_t / maxf(0.05, _swap_dur * 0.54))
+		draw_u = clampf(draw_u, 0.0, 1.0)
+		var rise := 1.0 - draw_u
+		offset_p.y -= 0.34 * rise
+		offset_p.z += 0.04 * rise
+		offset_r.x -= 34.0 * rise
 
 	if _inspect_t > 0.0:
 		_inspect_t = maxf(0.0, _inspect_t - delta)
@@ -1279,25 +1261,18 @@ func _process(delta: float) -> void:
 
 	if _reload_t > 0.0:
 		_reload_t = maxf(0.0, _reload_t - delta)
-		var p := 1.0 - (_reload_t / maxf(0.01, _reload_dur))
-		var dip := sin(p * PI)
-		offset_p.y -= 0.12 * dip
-		offset_p.x -= 0.05 * dip
-		offset_r.z += 26.0 * dip
-		offset_r.x -= 14.0 * dip
-		var mag: Node3D = _magazines.get(_active_id)
-		if is_instance_valid(mag):
-			var mag_drop := sin(clampf((p - 0.15) / 0.7, 0.0, 1.0) * PI)
-			mag.position.y = _mag_rest_y(_active_id, mag) - 0.16 * mag_drop
-			if mag.has_meta("drop_only"):
-				mag.visible = mag_drop > 0.05
+		_reload_p = 1.0 - (_reload_t / maxf(0.01, _reload_dur))
+		var sample: Dictionary = FpReload.sample(_reload_kind, _reload_p, _reload_empty)
+		offset_p += sample["pos"]
+		offset_r += sample["rot"]
+		_drive_reload(str(sample["stage"]), float(sample["u"]))
+		_tick_mag_drop(delta)
 	else:
-		for wid in _magazines.keys():
-			var m: Node3D = _magazines[wid]
-			if is_instance_valid(m):
-				m.position.y = _mag_rest_y(wid, m)
-				if m.has_meta("drop_only"):
-					m.visible = false
+		if _reload_p > 0.0:
+			_reload_p = 0.0
+			_seat_mag()
+			_rest_left_hand()
+		_tick_mag_drop(delta)
 
 	var target_p := base_p + offset_p
 	var target_r := base_r + offset_r
@@ -1308,6 +1283,170 @@ func _process(delta: float) -> void:
 
 	var show_arc := ads > 0.35 and _active_id in [GameState.WeaponId.FRAG, GameState.WeaponId.MOLOTOV, GameState.WeaponId.KNIFE]
 	_update_throw_arc(show_arc)
+
+
+func _active_root() -> Node3D:
+	var slot: Node3D = _slots.get(_active_id)
+	if slot == null:
+		return null
+	return slot.get_node_or_null("ModelRoot") as Node3D
+
+
+func _drive_reload(stage: String, u: float) -> void:
+	var root := _active_root()
+	if root == null:
+		return
+	var skel := root.get_node_or_null("FPArms") as Skeleton3D
+	var support: Vector3 = root.get_meta("fp_support", Vector3.ZERO)
+	var well: Vector3 = root.get_meta("fp_mag", support)
+	var charge: Vector3 = root.get_meta("fp_charge", well + Vector3(0, 0.05, 0.12))
+	var low: Vector3 = well + Vector3(0.05, -0.18, 0.08)
+	var mag: Node3D = _magazines.get(_active_id)
+	if _reload_kind == "arrow":
+		_drive_arrow(stage, u, skel, support)
+		return
+	var feed := str(mag.get_meta("feed", "mag")) if is_instance_valid(mag) else "mag"
+	if feed == "shell" or _reload_kind == "shell":
+		var port: Vector3 = well + Vector3(0.035, 0.02, 0.0)
+		var pouch: Vector3 = port + Vector3(0.09, -0.14, 0.07)
+		var hand := support
+		var mag_at := port
+		var show := false
+		if stage == "to_port":
+			hand = support.lerp(port, u)
+			mag_at = pouch.lerp(port, u)
+			show = true
+		elif stage == "insert":
+			hand = port.lerp(port + Vector3(-0.01, 0.015, -0.01), u)
+			mag_at = port.lerp(port + Vector3(-0.012, 0.012, 0.0), u)
+			show = u < 0.82
+			if u > 0.35 and _reload_sfx < 1:
+				_reload_sfx = 1
+				Foley.play(self, "shell")
+		else:
+			hand = port.lerp(support, u)
+			mag_at = well
+			show = false
+		if skel != null:
+			FpArms.set_left(skel, hand)
+		if is_instance_valid(mag):
+			mag.visible = show
+			mag.position = mag_at
+		return
+	var hand := support
+	var mag_at := well
+	var show := true
+	if stage == "to_well":
+		hand = support.lerp(well, u)
+		mag_at = well
+	elif stage == "to_low":
+		hand = well.lerp(low, u)
+		# Pull the loose mag toward the camera so it clears the receiver.
+		mag_at = hand + Vector3(0.0, -0.02, 0.05)
+		if u > 0.2 and _reload_sfx < 1:
+			_reload_sfx = 1
+			Foley.play(self, "mag_out")
+	elif stage == "drop":
+		hand = low
+		if _mag_drop == null and is_instance_valid(mag):
+			_spawn_mag_drop(mag)
+		show = false
+		mag_at = low
+	elif stage == "to_seat":
+		hand = low.lerp(well, u)
+		mag_at = hand
+		show = true
+		if u > 0.8 and _reload_sfx < 2:
+			_reload_sfx = 2
+			Foley.play(self, "mag_in")
+	elif stage == "charge":
+		var haul := sin(clampf(u, 0.0, 1.0) * PI)
+		hand = well.lerp(charge, minf(1.0, u * 1.35)) + Vector3(0.0, 0.012, 0.055) * haul
+		mag_at = well
+		if u > 0.28 and _reload_sfx < 3:
+			_reload_sfx = 3
+			Foley.play(self, "bolt")
+	else:
+		var from: Vector3 = charge if _reload_empty else well
+		hand = from.lerp(support, u)
+		mag_at = well
+	if skel != null:
+		FpArms.set_left(skel, hand)
+	if is_instance_valid(mag):
+		mag.visible = show
+		mag.position = mag_at
+
+
+func _drive_arrow(stage: String, u: float, skel: Skeleton3D, support: Vector3) -> void:
+	var nock := Vector3(-0.022, 0.035, -0.04)
+	var reach := nock + Vector3(0.14, -0.1, 0.12)
+	if skel != null:
+		if stage == "reach":
+			FpArms.set_left(skel, support.lerp(reach, u))
+		elif stage == "nock":
+			FpArms.set_left(skel, reach.lerp(nock, u))
+		else:
+			FpArms.set_left(skel, nock.lerp(support, u))
+	if not is_instance_valid(_bow_arrow):
+		return
+	_bow_arrow.visible = true
+	if stage == "reach":
+		_bow_arrow.position = reach
+	elif stage == "nock":
+		_bow_arrow.position = reach.lerp(nock, u)
+		if u > 0.72 and _reload_sfx < 1:
+			_reload_sfx = 1
+			Foley.play(self, "nock")
+	else:
+		_bow_arrow.position = nock
+
+
+func _spawn_mag_drop(mag: Node3D) -> void:
+	_clear_mag_drop()
+	var drop := mag.duplicate() as Node3D
+	drop.name = "MagDrop"
+	mag.get_parent().add_child(drop)
+	drop.global_transform = mag.global_transform
+	drop.visible = true
+	drop.set_meta("fall", 0.0)
+	_mag_drop = drop
+
+
+func _tick_mag_drop(delta: float) -> void:
+	if not is_instance_valid(_mag_drop):
+		_mag_drop = null
+		return
+	var fall := float(_mag_drop.get_meta("fall", 0.0)) + delta
+	_mag_drop.set_meta("fall", fall)
+	_mag_drop.position += Vector3(0.02, -0.7, 0.05) * delta
+	_mag_drop.rotation_degrees.x += 220.0 * delta
+	if fall > 0.48:
+		_mag_drop.queue_free()
+		_mag_drop = null
+
+
+func _clear_mag_drop() -> void:
+	if is_instance_valid(_mag_drop):
+		_mag_drop.queue_free()
+	_mag_drop = null
+
+
+func _seat_mag() -> void:
+	var mag: Node3D = _magazines.get(_active_id)
+	if not is_instance_valid(mag):
+		return
+	if mag.has_meta("rest_pos"):
+		mag.position = mag.get_meta("rest_pos")
+	mag.visible = str(mag.get_meta("feed", "mag")) != "shell"
+
+
+func _rest_left_hand() -> void:
+	var root := _active_root()
+	if root == null or not root.has_meta("fp_support"):
+		return
+	var skel := root.get_node_or_null("FPArms") as Skeleton3D
+	if skel != null:
+		FpArms.set_left(skel, root.get_meta("fp_support"))
 
 
 func _update_optic_occlusion(slot: Node3D, ads: float) -> void:

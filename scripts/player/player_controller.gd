@@ -885,7 +885,7 @@ func notify_detection(value: float) -> void:
 
 
 func apply_damage(amount: float, _hit_pos: Vector3 = Vector3.ZERO, _source: Node = null) -> void:
-	if is_down or amount <= 0.0:
+	if is_down or amount <= 0.0 or has_meta("capture_lock"):
 		return
 	var dmg := amount * GameState.armour_damage_mult()
 	if armour > 0.0:

@@ -50,6 +50,14 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_cc0()
 		return
+	if OS.get_environment("ARMS_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_arms()
+		return
+	if _web_wants_arms():
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _web_arms_view()
+		return
 	if _web_wants_overlook():
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _web_overlook_view()
@@ -580,6 +588,271 @@ func _snap_cc0() -> void:
 	get_tree().quit()
 
 
+func _resize_snap(w: int, h: int) -> void:
+	DisplayServer.window_set_size(Vector2i(w, h))
+	var win := get_tree().root
+	win.size = Vector2i(w, h)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _snap_arms() -> void:
+	## Player-camera shots at the live hip FOV, then ADS FOV, then reload frames.
+	await get_tree().process_frame
+	await _resize_snap(1024, 576)
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(2)
+	GameState.set_day_start_hour(15.0)
+	GameState.set_full_loadout(GameState.WeaponId.RIFLE, GameState.WeaponId.PISTOL, GameState.WeaponId.SHOTGUN, GameState.WeaponId.FRAG, GameState.WeaponId.MACHETE)
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.5).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(15.0)
+	var overlay := get_tree().current_scene.get_node_or_null("LoadingOverlay")
+	if is_instance_valid(overlay):
+		overlay.visible = false
+	for existing in get_tree().get_nodes_in_group("guards"):
+		if existing is Node3D:
+			(existing as Node3D).visible = false
+		existing.set_process(false)
+		existing.set_physics_process(false)
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var hud := get_tree().current_scene.get_node_or_null("HUD")
+	if is_instance_valid(hud):
+		var tc := hud.get_node_or_null("TouchControls")
+		if is_instance_valid(tc):
+			tc.visible = false
+	player.global_position = Vector3(2.0, 0.2, 18.0)
+	player.rotation = Vector3(0, PI, 0)
+	var head := player.get_node_or_null("Head") as Node3D
+	if head:
+		head.rotation = Vector3.ZERO
+	player.set_process(false)
+	player.set_physics_process(false)
+	var cam := player.get_node_or_null("Head/Camera3D") as Camera3D
+	if cam:
+		cam.fov = 70.0
+	var vm := player.get_node_or_null("Head/Camera3D/Viewmodels")
+	var wm = player.get_node_or_null("WeaponManager")
+	if is_instance_valid(wm):
+		wm.set_process(false)
+	if is_instance_valid(vm):
+		vm.visible = true
+		vm.set_process(true)
+	var guns := [
+		{"id": GameState.WeaponId.RIFLE, "name": "rifle", "optic": "iron", "aim": 56.0},
+		{"id": GameState.WeaponId.SMG, "name": "smg", "optic": "iron", "aim": 52.0},
+		{"id": GameState.WeaponId.SHOTGUN, "name": "shotgun", "optic": "iron", "aim": 58.0},
+		{"id": GameState.WeaponId.SNIPER, "name": "sniper", "optic": "scope", "aim": 17.5},
+		{"id": GameState.WeaponId.PISTOL, "name": "pistol", "optic": "iron", "aim": 54.0},
+		{"id": GameState.WeaponId.LMG, "name": "lmg", "optic": "iron", "aim": 54.0},
+		{"id": GameState.WeaponId.BOW, "name": "bow", "optic": "iron", "aim": 48.0},
+		{"id": GameState.WeaponId.KNIFE, "name": "knife", "optic": "iron", "aim": 58.0},
+		{"id": GameState.WeaponId.MACHETE, "name": "machete", "optic": "iron", "aim": 58.0},
+		{"id": GameState.WeaponId.BAT, "name": "bat", "optic": "iron", "aim": 58.0},
+	]
+	var n := 161
+	for spec in guns:
+		await _arms_show(wm, vm, cam, spec, false)
+		await _snap("%d_%s_hip" % [n, spec["name"]])
+		n += 1
+		if spec["name"] in ["knife", "machete", "bat"]:
+			continue
+		await _arms_show(wm, vm, cam, spec, true)
+		await _snap("%d_%s_ads" % [n, spec["name"]])
+		n += 1
+	# Reload sequences. Progress is the same clock the ammo refill uses.
+	var sequences := [
+		{"id": GameState.WeaponId.RIFLE, "name": "rifle_tac", "optic": "iron", "kind": "mag", "empty": false, "frames": [0.18, 0.36, 0.62, 0.88]},
+		{"id": GameState.WeaponId.RIFLE, "name": "rifle_empty", "optic": "iron", "kind": "mag", "empty": true, "frames": [0.2, 0.42, 0.66, 0.84]},
+		{"id": GameState.WeaponId.PISTOL, "name": "pistol_empty", "optic": "iron", "kind": "mag", "empty": true, "frames": [0.2, 0.42, 0.66, 0.84]},
+		{"id": GameState.WeaponId.SMG, "name": "smg_tac", "optic": "iron", "kind": "mag", "empty": false, "frames": [0.2, 0.4, 0.66, 0.9]},
+		{"id": GameState.WeaponId.SNIPER, "name": "sniper_empty", "optic": "iron", "kind": "mag", "empty": true, "frames": [0.2, 0.42, 0.66, 0.84]},
+		{"id": GameState.WeaponId.LMG, "name": "lmg_tac", "optic": "iron", "kind": "mag", "empty": false, "frames": [0.2, 0.4, 0.66, 0.9]},
+		{"id": GameState.WeaponId.SHOTGUN, "name": "shotgun_shell", "optic": "iron", "kind": "shell", "empty": true, "frames": [0.16, 0.4, 0.6, 0.86]},
+		{"id": GameState.WeaponId.BOW, "name": "bow_nock", "optic": "iron", "kind": "arrow", "empty": true, "frames": [0.2, 0.5, 0.78, 0.94]},
+	]
+	for seq in sequences:
+		await _arms_show(wm, vm, cam, {"id": seq["id"], "optic": seq["optic"]}, false)
+		var fi := 1
+		for p in seq["frames"]:
+			if is_instance_valid(vm) and vm.has_method("scrub_reload"):
+				vm.scrub_reload(float(p), str(seq["kind"]), bool(seq["empty"]))
+			await get_tree().process_frame
+			await get_tree().process_frame
+			await _snap("%d_%s_%d" % [n, seq["name"], fi])
+			n += 1
+			fi += 1
+	# Holster the rifle and draw the pistol, three beats.
+	await _arms_show(wm, vm, cam, {"id": GameState.WeaponId.RIFLE, "optic": "iron"}, false)
+	if is_instance_valid(vm):
+		vm.show_weapon(GameState.WeaponId.PISTOL, true)
+	await get_tree().create_timer(0.08).timeout
+	await _snap("%d_swap_holster" % n)
+	n += 1
+	await get_tree().create_timer(0.16).timeout
+	await _snap("%d_swap_low" % n)
+	n += 1
+	await get_tree().create_timer(0.22).timeout
+	await _snap("%d_swap_draw" % n)
+	n += 1
+	# Mobile landscape, same renderer, the rifle and a tactical reload frame.
+	await _resize_snap(844, 390)
+	await _arms_show(wm, vm, cam, {"id": GameState.WeaponId.RIFLE, "optic": "iron", "aim": 56.0}, false)
+	await _snap("%d_mobile_rifle_hip" % n)
+	n += 1
+	await _arms_show(wm, vm, cam, {"id": GameState.WeaponId.RIFLE, "optic": "iron", "aim": 56.0}, true)
+	await _snap("%d_mobile_rifle_ads" % n)
+	n += 1
+	await _arms_show(wm, vm, cam, {"id": GameState.WeaponId.RIFLE, "optic": "iron"}, false)
+	if is_instance_valid(vm) and vm.has_method("scrub_reload"):
+		vm.scrub_reload(0.36, "mag", false)
+	await get_tree().process_frame
+	await _snap("%d_mobile_rifle_reload" % n)
+	n += 1
+	await _arms_show(wm, vm, cam, {"id": GameState.WeaponId.SHOTGUN, "optic": "iron", "aim": 58.0}, false)
+	await _snap("%d_mobile_shotgun_hip" % n)
+	n += 1
+	await _arms_show(wm, vm, cam, {"id": GameState.WeaponId.PISTOL, "optic": "iron", "aim": 54.0}, false)
+	await _snap("%d_mobile_pistol_hip" % n)
+	print("ARMS_SNAP complete")
+	get_tree().quit()
+
+
+func _arms_show(wm, vm, cam: Camera3D, spec: Dictionary, ads: bool) -> void:
+	var wid: GameState.WeaponId = spec["id"]
+	GameState.selected_primary = wid
+	if is_instance_valid(wm):
+		wm.refresh_slot_from_loadout(0)
+		if wm.active_slot != 0:
+			wm.select_slot(0)
+		var optic := str(spec.get("optic", "iron"))
+		wm.viewmodel_rig.rebuild_weapon(wid, {
+			"muzzle": "none",
+			"optic": optic,
+			"mag": "standard",
+			"underbarrel": "none",
+			"arrow": "standard",
+			"skin": "factory",
+		})
+		wm.viewmodel_rig.show_weapon(wid, false)
+		wm.viewmodel_rig.set_sprinting(false)
+		wm.viewmodel_rig.set_aiming(ads, 0.05)
+	if cam:
+		cam.fov = float(spec.get("aim", 70.0)) if ads else 70.0
+	await get_tree().create_timer(0.35).timeout
+
+
+func _web_arms_view() -> void:
+	## https://.../?view=arms&gun=rifle&ads=1&reload=0.4  holds one first-person pose.
+	await get_tree().process_frame
+	var q := _web_search()
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(0 if "quality=low" in q else 2)
+	GameState.set_day_start_hour(15.0)
+	GameState.set_full_loadout(GameState.WeaponId.RIFLE, GameState.WeaponId.PISTOL, GameState.WeaponId.SHOTGUN, GameState.WeaponId.FRAG, GameState.WeaponId.MACHETE)
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(120.0)
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	if player == null:
+		return
+	player.set_meta("capture_lock", true)
+	for existing in get_tree().get_nodes_in_group("guards"):
+		if existing is Node3D:
+			(existing as Node3D).visible = false
+		existing.set_process(false)
+		existing.set_physics_process(false)
+	await get_tree().create_timer(0.6).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(15.0)
+		DayNightCycle.set_process(false)
+		DayNightCycle.set_physics_process(false)
+	var overlay := get_tree().current_scene.get_node_or_null("LoadingOverlay")
+	if is_instance_valid(overlay):
+		overlay.visible = false
+	player.global_position = Vector3(2.0, 0.2, 18.0)
+	player.rotation = Vector3(0, PI, 0)
+	var head := player.get_node_or_null("Head") as Node3D
+	if head:
+		head.rotation = Vector3.ZERO
+	var gun := "rifle"
+	for part in q.trim_prefix("?").split("&"):
+		if part.begins_with("gun="):
+			gun = part.trim_prefix("gun=")
+	var ids := {
+		"rifle": GameState.WeaponId.RIFLE,
+		"smg": GameState.WeaponId.SMG,
+		"shotgun": GameState.WeaponId.SHOTGUN,
+		"sniper": GameState.WeaponId.SNIPER,
+		"pistol": GameState.WeaponId.PISTOL,
+		"lmg": GameState.WeaponId.LMG,
+		"bow": GameState.WeaponId.BOW,
+	}
+	var wid: GameState.WeaponId = ids.get(gun, GameState.WeaponId.RIFLE)
+	var wm = player.get_node_or_null("WeaponManager")
+	var vm = player.get_node_or_null("Head/Camera3D/Viewmodels")
+	var cam := player.get_node_or_null("Head/Camera3D") as Camera3D
+	await _arms_show(wm, vm, cam, {"id": wid, "optic": "scope" if gun == "sniper" else "iron", "aim": 56.0}, "ads=1" in q)
+	if "reload=" in q and is_instance_valid(vm) and vm.has_method("scrub_reload"):
+		var rp := 0.4
+		for part in q.trim_prefix("?").split("&"):
+			if part.begins_with("reload="):
+				rp = float(part.trim_prefix("reload="))
+		var kind := "shell" if gun == "shotgun" else ("arrow" if gun == "bow" else "mag")
+		vm.scrub_reload(rp, kind, "empty=1" in q)
+	player.set_process(false)
+	player.set_physics_process(false)
+	print("WEB_ARMS gun=", gun)
+	if not OS.has_feature("web"):
+		return
+	# One page load, then the browser sets window.armsCmd to "gun,ads,reload,empty".
+	JavaScriptBridge.eval("window.armsReady=1;window.armsCmd='';window.armsAck='';", true)
+	print("WEB_ARMS ready")
+	var last := ""
+	while is_inside_tree():
+		var cmd := str(JavaScriptBridge.eval("String(window.armsCmd||'')", true))
+		if cmd != "" and cmd != last:
+			last = cmd
+			await _apply_web_cmd(wm, vm, cam, cmd)
+			JavaScriptBridge.eval("window.armsAck=" + JSON.stringify(cmd) + ";", true)
+		await get_tree().process_frame
+
+
+func _apply_web_cmd(wm, vm, cam: Camera3D, cmd: String) -> void:
+	var parts := cmd.split(",")
+	var gun := parts[0] if parts.size() > 0 else "rifle"
+	var ads := parts.size() > 1 and parts[1] == "1"
+	var reload_p := float(parts[2]) if parts.size() > 2 else -1.0
+	var empty := parts.size() > 3 and parts[3] == "1"
+	var ids := {
+		"rifle": GameState.WeaponId.RIFLE,
+		"smg": GameState.WeaponId.SMG,
+		"shotgun": GameState.WeaponId.SHOTGUN,
+		"sniper": GameState.WeaponId.SNIPER,
+		"pistol": GameState.WeaponId.PISTOL,
+		"lmg": GameState.WeaponId.LMG,
+		"bow": GameState.WeaponId.BOW,
+		"knife": GameState.WeaponId.KNIFE,
+	}
+	var aims := {"rifle": 56.0, "smg": 52.0, "shotgun": 58.0, "sniper": 17.5, "pistol": 54.0, "lmg": 54.0, "bow": 48.0, "knife": 58.0}
+	var wid: GameState.WeaponId = ids.get(gun, GameState.WeaponId.RIFLE)
+	var optic := "scope" if gun == "sniper" and ads else "iron"
+	await _arms_show(wm, vm, cam, {"id": wid, "optic": optic, "aim": float(aims.get(gun, 56.0))}, ads)
+	if reload_p >= 0.0 and is_instance_valid(vm) and vm.has_method("scrub_reload"):
+		var kind := "shell" if gun == "shotgun" else ("arrow" if gun == "bow" else "mag")
+		vm.scrub_reload(reload_p, kind, empty)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("WEB_ARMS pose ", cmd)
+
+
 func _snap_fc5() -> void:
 	## Player-view shots of the new Hope County station and the redesigned rifle.
 	await get_tree().process_frame
@@ -926,6 +1199,10 @@ func _web_search() -> String:
 
 func _web_wants_overlook() -> bool:
 	return "view=overlook" in _web_search()
+
+
+func _web_wants_arms() -> bool:
+	return "view=arms" in _web_search()
 
 
 func _place_overlook(player: Node3D) -> void:

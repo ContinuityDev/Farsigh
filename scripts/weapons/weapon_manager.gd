@@ -31,6 +31,8 @@ var lethal_count: int = 0
 var _cooldown: float = 0.0
 var _reloading: bool = false
 var _reload_timer: float = 0.0
+var _reload_kind: String = "mag"
+var _reload_interrupt: bool = false
 
 var viewmodel_rig: ViewmodelRig
 
@@ -258,13 +260,24 @@ func _process(delta: float) -> void:
 	_cooldown = maxf(0.0, _cooldown - delta)
 	if _reloading:
 		_reload_timer -= delta
+		if is_instance_valid(viewmodel_rig) and viewmodel_rig.consume_reload_commit():
+			_apply_reload_payload()
 		if _reload_timer <= 0.0:
-			_finish_reload()
+			_advance_reload()
 
 
 func try_fire() -> void:
 	var w := get_active()
-	if _reloading or _cooldown > 0.0:
+	if _reloading:
+		# A pump shotgun can be closed up and fired between shells.
+		if _reload_kind == "shell" and _mag() > 0:
+			_reload_interrupt = true
+			_reloading = false
+			if is_instance_valid(viewmodel_rig):
+				viewmodel_rig.cancel_reload()
+		else:
+			return
+	if _cooldown > 0.0:
 		return
 	if w.projectile_kind == "melee_swing":
 		_fire_shot(w)
@@ -441,27 +454,85 @@ func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 
 
 func start_reload() -> void:
+	if _reloading:
+		return
+	_kick_reload()
+
+
+func _reload_kind_for(w: WeaponData) -> String:
+	if w.id == GameState.WeaponId.SHOTGUN:
+		return "shell"
+	if w.id == GameState.WeaponId.BOW or w.id == GameState.WeaponId.HUNTER_BOW:
+		return "arrow"
+	return "mag"
+
+
+func _kick_reload() -> void:
 	var w := get_active()
 	if w.projectile_kind == "melee_swing":
 		return
-	if _reloading or _mag() >= w.magazine_size or _reserve() <= 0:
+	if _mag() >= w.magazine_size or _reserve() <= 0:
+		_reloading = false
 		return
 	_reloading = true
-	_reload_timer = w.reload_time
+	_reload_interrupt = false
+	_reload_kind = _reload_kind_for(w)
+	var empty := _mag() == 0
+	var dur := w.reload_time
+	if _reload_kind == "mag" and not empty:
+		# Rounds still in the gun: skip the charging-handle pull.
+		dur *= 0.68
+	elif _reload_kind == "shell":
+		dur = maxf(0.58, w.reload_time / float(maxi(2, w.magazine_size)))
+	elif _reload_kind == "arrow" and w.magazine_size > 1:
+		dur = maxf(0.5, w.reload_time / float(w.magazine_size))
+	_reload_timer = dur
 	if is_instance_valid(viewmodel_rig):
-		viewmodel_rig.play_reload(_reload_timer)
+		viewmodel_rig.play_reload(dur, _reload_kind, empty)
+
+
+func _apply_reload_payload() -> void:
+	var w := get_active()
+	if _reload_kind == "shell" or _reload_kind == "arrow":
+		if _reserve() <= 0 or _mag() >= w.magazine_size:
+			return
+		_set_mag(_mag() + 1)
+		_set_reserve(_reserve() - 1)
+	else:
+		var need := w.magazine_size - _mag()
+		var take := mini(need, _reserve())
+		if take <= 0:
+			return
+		_set_mag(_mag() + take)
+		_set_reserve(_reserve() - take)
+	if _reload_kind == "arrow" and is_instance_valid(viewmodel_rig):
+		viewmodel_rig.set_bow_arrow_visible(_mag() > 0)
+	_emit_ammo()
+
+
+func _advance_reload() -> void:
+	if _reload_interrupt:
+		_reload_interrupt = false
+		_reloading = false
+		if is_instance_valid(viewmodel_rig):
+			viewmodel_rig.cancel_reload()
+		return
+	if is_instance_valid(viewmodel_rig):
+		if viewmodel_rig.consume_reload_commit() or viewmodel_rig.force_reload_commit():
+			_apply_reload_payload()
+	else:
+		_apply_reload_payload()
+	_reloading = false
+	var w := get_active()
+	if _reload_kind in ["shell", "arrow"] and _mag() < w.magazine_size and _reserve() > 0:
+		_kick_reload()
+		return
+	if w.id == GameState.WeaponId.BOW and is_instance_valid(viewmodel_rig):
+		viewmodel_rig.set_bow_arrow_visible(_mag() > 0)
 
 
 func _finish_reload() -> void:
-	_reloading = false
-	var w := get_active()
-	var need := w.magazine_size - _mag()
-	var take := mini(need, _reserve())
-	_set_mag(_mag() + take)
-	_set_reserve(_reserve() - take)
-	if is_instance_valid(viewmodel_rig) and w.id == GameState.WeaponId.BOW:
-		viewmodel_rig.set_bow_arrow_visible(_mag() > 0)
-	_emit_ammo()
+	_advance_reload()
 
 
 func switch_slot(to_primary: bool) -> void:
