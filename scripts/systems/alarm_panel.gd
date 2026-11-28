@@ -28,6 +28,7 @@ func _ready() -> void:
 		if b:
 			reinforcement_points.append(b.get_path())
 	_update_visual()
+	_dress_siren()
 
 
 func is_disabled() -> bool:
@@ -71,7 +72,7 @@ func interact(player: Node) -> void:
 	disable(player)
 	var hud := get_tree().get_first_node_in_group("hud")
 	if hud and hud.has_method("show_status"):
-		hud.show_status("Alarm disabled", 2.0)
+		hud.show_status("Alarm box disabled — this post will not call reinforcements", 2.6)
 
 
 func _spawn_reinforcements(extra: int = 0) -> void:
@@ -114,6 +115,39 @@ func _spawn_reinforcements(extra: int = 0) -> void:
 			outpost.register_guard(g)
 		if i > cap * 4:
 			break
+
+
+func _dress_siren() -> void:
+	## Yellow box plus a red lamp, closer to an Eden's Gate alarm post than a bare cube.
+	if get_node_or_null("Siren") != null:
+		return
+	var pole := MeshInstance3D.new()
+	pole.name = "Siren"
+	var shaft := CylinderMesh.new()
+	shaft.top_radius = 0.04
+	shaft.bottom_radius = 0.05
+	shaft.height = 0.55
+	pole.mesh = shaft
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.12, 0.12, 0.13)
+	dark.metallic = 0.4
+	dark.roughness = 0.45
+	pole.material_override = dark
+	pole.position = Vector3(0, 1.55, 0)
+	add_child(pole)
+	var lamp := MeshInstance3D.new()
+	var globe := SphereMesh.new()
+	globe.radius = 0.11
+	globe.height = 0.2
+	lamp.mesh = globe
+	var red := StandardMaterial3D.new()
+	red.albedo_color = Color(0.7, 0.08, 0.06)
+	red.emission_enabled = true
+	red.emission = Color(0.85, 0.12, 0.08)
+	red.emission_energy_multiplier = 0.6
+	lamp.material_override = red
+	lamp.position = Vector3(0, 1.9, 0)
+	add_child(lamp)
 
 
 func _update_visual() -> void:

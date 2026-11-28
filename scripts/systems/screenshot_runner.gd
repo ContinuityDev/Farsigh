@@ -42,6 +42,10 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_support()
 		return
+	if OS.get_environment("FC5_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_fc5()
+		return
 	if _web_wants_overlook():
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _web_overlook_view()
@@ -434,6 +438,103 @@ func _snap(name: String) -> void:
 	var path := "%s/%s.png" % [docs, name]
 	img.save_png(path)
 	print("Saved screenshot ", path, " scene=", str(get_tree().current_scene))
+
+
+func _snap_fc5() -> void:
+	## Player-view shots of the new Hope County station and the redesigned rifle.
+	await get_tree().process_frame
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(2)
+	GameState.set_day_start_hour(15.0)
+	GameState.set_full_loadout(GameState.WeaponId.RIFLE, GameState.WeaponId.PISTOL, GameState.WeaponId.SHOTGUN, GameState.WeaponId.FRAG, GameState.WeaponId.MACHETE)
+	GameState.select_outpost("falls_end")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.8).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(15.0)
+	var overlay := get_tree().current_scene.get_node_or_null("LoadingOverlay")
+	if is_instance_valid(overlay):
+		overlay.visible = false
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var hud := get_tree().current_scene.get_node_or_null("HUD")
+	if is_instance_valid(hud):
+		var tc := hud.get_node_or_null("TouchControls")
+		if is_instance_valid(tc):
+			tc.visible = false
+	if player == null:
+		print("FC5_SNAP missing player")
+		get_tree().quit(1)
+		return
+	player.global_position = Vector3(0.0, 0.2, 36.0)
+	player.rotation = Vector3.ZERO
+	var head := player.get("head") as Node3D
+	if head:
+		head.rotation = Vector3.ZERO
+	var wm = player.get_node_or_null("WeaponManager")
+	if is_instance_valid(wm):
+		wm.select_slot(0)
+	await get_tree().create_timer(0.6).timeout
+	await _snap("95_falls_gate")
+	player.global_position = Vector3(-20.0, 1.4, 16.0)
+	var to := Vector3(-4.0, 2.0, 0.0) - player.global_position
+	player.rotation.y = atan2(-to.x, -to.z)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("96_falls_overlook")
+	player.global_position = Vector3(-2.0, 0.2, 8.0)
+	player.rotation.y = atan2(-(-12.0 - player.global_position.x), - (2.0 - player.global_position.z))
+	await get_tree().create_timer(0.35).timeout
+	await _snap("97_falls_yard")
+	player.global_position = Vector3(1.5, 0.2, 10.0)
+	to = Vector3(0.0, 4.0, -6.0) - player.global_position
+	player.rotation.y = atan2(-to.x, -to.z)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("98_falls_chapel")
+	player.global_position = Vector3(-4.0, 0.2, 8.0)
+	to = Vector3(-12.0, 1.4, 2.0) - player.global_position
+	player.rotation.y = atan2(-to.x, -to.z)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("103_falls_alarm")
+	# Hip, ADS, and sprint of the rifle, aimed down the haul road.
+	player.global_position = Vector3(0.2, 0.2, 30.0)
+	player.rotation.y = PI
+	if head:
+		head.rotation = Vector3.ZERO
+	if is_instance_valid(wm) and is_instance_valid(wm.viewmodel_rig):
+		wm.viewmodel_rig.set_sprinting(false)
+		wm.viewmodel_rig.set_aiming(false)
+	await get_tree().create_timer(0.45).timeout
+	await _snap("99_rifle_hip")
+	TouchInput.press("aim")
+	await get_tree().create_timer(0.7).timeout
+	await _snap("100_rifle_ads")
+	TouchInput.release("aim")
+	TouchInput.press("sprint")
+	TouchInput.set_move_vector(Vector2(0, -1))
+	await get_tree().create_timer(0.45).timeout
+	await _snap("101_rifle_sprint")
+	TouchInput.release("sprint")
+	TouchInput.set_move_vector(Vector2.ZERO)
+	if is_instance_valid(wm):
+		wm.select_slot(1)
+		if is_instance_valid(wm.viewmodel_rig):
+			wm.viewmodel_rig.set_aiming(false)
+	await get_tree().create_timer(0.45).timeout
+	await _snap("102_pistol_hip")
+	player.global_position = Vector3(0.0, 0.2, 30.0)
+	player.rotation.y = 0.0
+	if head:
+		head.rotation = Vector3.ZERO
+	if is_instance_valid(wm):
+		wm.select_slot(0)
+	if is_instance_valid(hud) and hud.has_method("set_liberated_banner"):
+		hud.set_liberated_banner(true)
+	await get_tree().create_timer(0.35).timeout
+	await _snap("104_falls_liberated")
+	print("FC5_SNAP complete")
+	get_tree().quit()
 
 
 func _snap_controls_and_bushes() -> void:

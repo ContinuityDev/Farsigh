@@ -255,6 +255,7 @@ func _physics_process(delta: float) -> void:
 	var horiz_speed := Vector2(velocity.x, velocity.z).length()
 	if is_instance_valid(weapons) and is_instance_valid(weapons.viewmodel_rig):
 		weapons.viewmodel_rig.set_move_factor(horiz_speed / WALK_SPEED if is_on_floor() else 0.0)
+		weapons.viewmodel_rig.set_sprinting(sprinting and is_on_floor())
 		weapons.viewmodel_rig.set_carrying_body(carried_body != null, carried_body != null and is_crouching)
 	_update_carry_animation(delta, horiz_speed)
 	_update_footsteps(delta, direction.length() > 0.1 and is_on_floor(), sprinting)

@@ -46,6 +46,8 @@ var _vault_p: float = 0.0
 var _carrying: bool = false
 var _dragging: bool = false
 var _sway: Vector2 = Vector2.ZERO
+var _sprint: float = 0.0
+var _sprint_target: float = 0.0
 var _aim_blend: float = 0.0
 var _aim_target: float = 0.0
 var _ads_speed: float = 4.0
@@ -79,13 +81,13 @@ func rebuild_all_async(host: Node) -> void:
 
 func _setup_poses() -> void:
 	_base_pos = {
-		GameState.WeaponId.PISTOL: Vector3(0.21, -0.19, -0.40),
-		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.21, -0.19, -0.41),
-		GameState.WeaponId.RIFLE: Vector3(0.24, -0.21, -0.47),
-		GameState.WeaponId.SMG: Vector3(0.22, -0.20, -0.43),
-		GameState.WeaponId.SHOTGUN: Vector3(0.24, -0.22, -0.48),
-		GameState.WeaponId.SNIPER: Vector3(0.25, -0.21, -0.50),
-		GameState.WeaponId.LMG: Vector3(0.26, -0.23, -0.48),
+		GameState.WeaponId.PISTOL: Vector3(0.18, -0.14, -0.36),
+		GameState.WeaponId.MACHINE_PISTOL: Vector3(0.18, -0.14, -0.37),
+		GameState.WeaponId.RIFLE: Vector3(0.20, -0.145, -0.42),
+		GameState.WeaponId.SMG: Vector3(0.19, -0.145, -0.40),
+		GameState.WeaponId.SHOTGUN: Vector3(0.20, -0.15, -0.44),
+		GameState.WeaponId.SNIPER: Vector3(0.21, -0.15, -0.46),
+		GameState.WeaponId.LMG: Vector3(0.22, -0.16, -0.44),
 		GameState.WeaponId.BOW: Vector3(0.19, -0.13, -0.45),
 		GameState.WeaponId.CROSSBOW: Vector3(0.22, -0.20, -0.46),
 		GameState.WeaponId.KNIFE: Vector3(0.23, -0.19, -0.37),
@@ -194,10 +196,50 @@ func _disable_viewmodel_shadows(n: Node) -> void:
 # ============================================================================
 # PROCEDURAL MODULAR WEAPON BUILDERS
 # ============================================================================
+func _fp_arms(root: Node3D, grip: Vector3, support: Vector3, two_hand: bool) -> void:
+	## Right hand on the grip, left hand under the handguard. Forearms enter from the bottom of the frame.
+	var skin := Color(0.86, 0.64, 0.48)
+	var sleeve := Color(0.22, 0.28, 0.18)
+	var right := Node3D.new()
+	right.name = "RightHand"
+	right.position = grip
+	root.add_child(right)
+	_limb(right, _gun_box(Vector3(0.034, 0.046, 0.028), skin, 0.72, 0.02, "skin"), Vector3(0.012, -0.008, 0.008))
+	for i in 4:
+		var y := 0.016 - float(i) * 0.013
+		_limb(right, _gun_box(Vector3(0.02, 0.011, 0.012), skin, 0.72, 0.02, "skin"), Vector3(0.034, y, 0.004))
+		_limb(right, _gun_box(Vector3(0.014, 0.01, 0.012), skin, 0.7, 0.02, "skin"), Vector3(0.026, y - 0.012, 0.014))
+	_limb(right, _gun_box(Vector3(0.012, 0.01, 0.022), skin, 0.72, 0.02, "skin"), Vector3(0.006, 0.02, -0.01))
+	var forearm := _limb(right, _limb_capsule(0.013, 0.15, sleeve), Vector3(0.03, -0.08, 0.09))
+	forearm.rotation_degrees = Vector3(62, -20, 12)
+	if not two_hand:
+		return
+	var left := Node3D.new()
+	left.name = "LeftHand"
+	left.position = support
+	root.add_child(left)
+	_limb(left, _gun_box(Vector3(0.036, 0.016, 0.046), skin, 0.72, 0.02, "skin"), Vector3(-0.01, -0.022, 0))
+	for i in 4:
+		var z := -0.016 + float(i) * 0.012
+		_limb(left, _gun_box(Vector3(0.012, 0.012, 0.012), skin, 0.72, 0.02, "skin"), Vector3(-0.026, -0.01, z))
+		_limb(left, _gun_box(Vector3(0.01, 0.014, 0.01), skin, 0.7, 0.02, "skin"), Vector3(-0.02, 0.002, z))
+	_limb(left, _gun_box(Vector3(0.012, 0.01, 0.02), skin, 0.72, 0.02, "skin"), Vector3(0.012, -0.008, 0.016))
+	var larm := _limb(left, _limb_capsule(0.012, 0.14, sleeve), Vector3(-0.02, -0.08, 0.06))
+	larm.rotation_degrees = Vector3(70, 18, -6)
+
+
+func _limb(parent: Node3D, part: MeshInstance3D, pos: Vector3) -> MeshInstance3D:
+	return ProcMesh.add_part(parent, part, pos)
+
+
+func _limb_capsule(radius: float, height: float, color: Color) -> MeshInstance3D:
+	var mi := ProcMesh.capsule_mesh(radius, height, color, 0.7, 0.02)
+	mi.material_override = _surface_material(color, 0.7, 0.02, "skin")
+	return mi
+
+
 func _build_pistol(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accent_col: Color, mods: Dictionary, is_auto: bool) -> void:
-	var polymer := Color(0.11, 0.12, 0.13)
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
+	var polymer := Color(0.10, 0.10, 0.11)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -206,13 +248,16 @@ func _build_pistol(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accen
 	slide.name = "Slide"
 	root.add_child(slide)
 	var slide_len := 0.24 if is_auto else 0.205
-	ProcMesh.add_part(slide, ProcMesh.box_mesh(Vector3(0.042, 0.046, slide_len), body_col, 0.42, 0.55), Vector3(0, 0.032, -0.02))
+	var steel := body_col.lightened(0.08)
+	ProcMesh.add_part(slide, _gun_box(Vector3(0.04, 0.028, slide_len), steel, 0.32, 0.86), Vector3(0, 0.038, -0.02))
+	ProcMesh.add_part(slide, _gun_box(Vector3(0.034, 0.012, slide_len * 0.72), steel.darkened(0.15), 0.4, 0.7), Vector3(0, 0.026, -0.01))
+	ProcMesh.add_part(slide, _gun_cyl(0.008, 0.04, steel.darkened(0.25), 0.28, 0.9, 8), Vector3(0, 0.034, -slide_len * 0.48), Vector3(90, 0, 0))
 	# No slide-mounted irons — _attach_optic owns the single iron/optic set so ADS centers correctly
 	if not is_auto:
 		_pistol_slide = slide
 
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.036, 0.028, slide_len - 0.01), accent_col, 0.72, 0.15), Vector3(0, 0.0, -0.015))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.034, 0.105, 0.052), polymer, 0.85, 0.08), Vector3(0, -0.062, 0.048), Vector3(-14, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.036, 0.028, slide_len - 0.01), accent_col, 0.55, 0.45), Vector3(0, 0.0, -0.015))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.034, 0.105, 0.052), polymer, 0.82, 0.04, "polymer"), Vector3(0, -0.062, 0.048), Vector3(-14, 0, 0))
 
 	# Magazine (longer if extended mag or machine pistol!)
 	var ext := String(mods.get("mag", "standard")) == "extended"
@@ -232,9 +277,7 @@ func _build_pistol(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accen
 	_sight_local[wid] = _attach_optic(root, Vector3(0, 0.058, 0.01), String(mods.get("optic", "iron")), true)
 	_attach_underbarrel(root, Vector3(0, -0.020, -0.095), String(mods.get("underbarrel", "none")), true)
 
-	# Gloved hands
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.062, 0.075, 0.082), glove, 0.88, 0.04), Vector3(0.006, -0.062, 0.055), Vector3(-12, 0, 0))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.070, 0.068, 0.24), sleeve, 0.90, 0.02), Vector3(0.035, -0.105, 0.185), Vector3(-16, -8, 0))
+	_fp_arms(root, Vector3(0.006, -0.05, 0.05), Vector3(0.01, -0.01, -0.06), not is_auto)
 
 	var flash := _make_muzzle_flash(0.055 if String(mods.get("muzzle", "none")) == "suppressor" else 0.085, Color(1.0, 0.85, 0.45, 0.88))
 	flash.position = Vector3(0, 0.028, muzzle_z - 0.03)
@@ -242,22 +285,37 @@ func _build_pistol(slot: Node3D, wid: GameState.WeaponId, body_col: Color, accen
 	_muzzle_flashes[wid] = flash
 
 
-func _gun_box(size: Vector3, color: Color, roughness: float = 0.5, metallic: float = 0.45) -> MeshInstance3D:
+var _surface_cache: Dictionary = {}
+
+
+func _surface_tex(kind: String) -> Texture2D:
+	if _surface_cache.has(kind):
+		return _surface_cache[kind]
+	var tex := load("res://assets/textures/weapons/%s.png" % kind) as Texture2D
+	_surface_cache[kind] = tex
+	return tex
+
+
+func _surface_material(color: Color, roughness: float, metallic: float, kind: String) -> Material:
+	if GraphicsQuality:
+		return GraphicsQuality.make_gun_material(color, metallic, roughness, _surface_tex(kind))
+	return ProcMesh.gun_mat(color, roughness, metallic)
+
+
+func _gun_box(size: Vector3, color: Color, roughness: float = 0.5, metallic: float = 0.45, surface: String = "metal") -> MeshInstance3D:
 	var mi := ProcMesh.box_mesh(size, color, roughness, metallic)
-	mi.material_override = ProcMesh.gun_mat(color, roughness, metallic)
+	mi.material_override = _surface_material(color, roughness, metallic, surface)
 	return mi
 
 
-func _gun_cyl(radius: float, height: float, color: Color, roughness: float = 0.4, metallic: float = 0.65, segments: int = 10) -> MeshInstance3D:
+func _gun_cyl(radius: float, height: float, color: Color, roughness: float = 0.4, metallic: float = 0.65, segments: int = 10, surface: String = "metal") -> MeshInstance3D:
 	var mi := ProcMesh.cylinder_mesh(radius, height, color, roughness, metallic, segments)
-	mi.material_override = ProcMesh.gun_mat(color, roughness, metallic)
+	mi.material_override = _surface_material(color, roughness, metallic, surface)
 	return mi
 
 
 func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, accent_col: Color, mods: Dictionary, rec_len: float, hg_len: float, brl_len: float, is_smg: bool, is_sniper: bool, is_lmg: bool) -> void:
-	var polymer := Color(0.11, 0.12, 0.13)
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
+	var polymer := Color(0.09, 0.09, 0.1)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
@@ -265,8 +323,10 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 	# Receiver (wider/boxier for LMG, sleeker for SMG/Sniper) — rim materials on High
 	var rw := 0.078 if is_lmg else (0.044 if is_smg else 0.054)
 	var rh := 0.084 if is_lmg else (0.058 if is_smg else 0.068)
-	ProcMesh.add_part(root, _gun_box(Vector3(rw, rh, rec_len), body_col, 0.45, 0.55), Vector3(0, 0.015, 0.0))
-	ProcMesh.add_part(root, _gun_box(Vector3(0.030, 0.012, rec_len), polymer, 0.4, 0.5), Vector3(0, 0.015 + rh * 0.5 + 0.005, -0.01))
+	var steel := body_col.lightened(0.05)
+	ProcMesh.add_part(root, _gun_box(Vector3(rw, rh * 0.62, rec_len), steel, 0.34, 0.82), Vector3(0, 0.028, 0.0))
+	ProcMesh.add_part(root, _gun_box(Vector3(rw * 0.92, rh * 0.48, rec_len * 0.72), polymer, 0.72, 0.06, "polymer"), Vector3(0, -0.012, 0.03))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.030, 0.012, rec_len), polymer, 0.4, 0.5, "polymer"), Vector3(0, 0.015 + rh * 0.5 + 0.005, -0.01))
 	# Detail: top rail segments + charging handle + ejection port for clearer silhouette
 	ProcMesh.add_part(root, _gun_box(Vector3(0.022, 0.006, rec_len * 0.72), Color(0.14, 0.15, 0.16), 0.35, 0.7), Vector3(0, 0.015 + rh * 0.5 + 0.012, -0.02))
 	ProcMesh.add_part(root, _gun_box(Vector3(0.012, 0.018, 0.028), Color(0.28, 0.29, 0.30), 0.4, 0.6), Vector3(rw * 0.42, 0.028, -0.02))
@@ -274,11 +334,15 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 
 	# Handguard & Barrel — cylinder shroud plus a lower rail so it isn't one brick
 	var hg_z := -(rec_len * 0.5 + hg_len * 0.5)
-	ProcMesh.add_part(root, _gun_cyl(rw * 0.46, hg_len, accent_col, 0.62, 0.28, 8), Vector3(0, 0.02, hg_z), Vector3(90, 0, 0))
-	ProcMesh.add_part(root, _gun_box(Vector3(rw * 0.72, rh * 0.28, hg_len * 0.92), accent_col.darkened(0.08), 0.7, 0.18), Vector3(0, -0.006, hg_z))
+	ProcMesh.add_part(root, _gun_cyl(rw * 0.46, hg_len, accent_col, 0.62, 0.28, 8, "polymer"), Vector3(0, 0.02, hg_z), Vector3(90, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(rw * 0.72, rh * 0.28, hg_len * 0.92), accent_col.darkened(0.08), 0.7, 0.18, "polymer"), Vector3(0, -0.006, hg_z))
 	# Handguard vent slots (side detail)
 	ProcMesh.add_part(root, _gun_box(Vector3(0.004, rh * 0.35, hg_len * 0.55), polymer.darkened(0.2), 0.5, 0.4), Vector3(-rw * 0.48, 0.02, hg_z))
 	ProcMesh.add_part(root, _gun_box(Vector3(0.004, rh * 0.35, hg_len * 0.55), polymer.darkened(0.2), 0.5, 0.4), Vector3(rw * 0.48, 0.02, hg_z))
+	if not is_smg:
+		for rib in 5:
+			var rz := hg_z - hg_len * 0.35 + float(rib) * hg_len * 0.16
+			ProcMesh.add_part(root, _gun_box(Vector3(rw * 0.98, 0.006, 0.008), polymer.lightened(0.08), 0.45, 0.35), Vector3(0, 0.02 + rh * 0.22, rz))
 	var brl_z := hg_z - hg_len * 0.5 - brl_len * 0.5 + 0.03
 	var brl_r := 0.016 if is_sniper else (0.015 if is_lmg else 0.011)
 	ProcMesh.add_part(root, _gun_cyl(brl_r, brl_len, body_col.darkened(0.2), 0.35, 0.72, 8), Vector3(0, 0.022, brl_z), Vector3(90, 0, 0))
@@ -315,10 +379,10 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 	_magazines[id] = mag
 
 	# Tapered stock, buttplate, and a swept grip. The old stock was one box.
-	ProcMesh.add_part(root, _gun_box(Vector3(0.034, 0.048, 0.16), accent_col, 0.7, 0.16), Vector3(0, 0.02, rec_len * 0.5 + 0.06), Vector3(-8, 0, 0))
-	ProcMesh.add_part(root, _gun_box(Vector3(0.03, 0.07, 0.11), accent_col.darkened(0.06), 0.72, 0.14), Vector3(0, -0.02, rec_len * 0.5 + 0.14), Vector3(-16, 0, 0))
-	ProcMesh.add_part(root, _gun_box(Vector3(0.038, 0.09, 0.022), polymer, 0.45, 0.35), Vector3(0, -0.012, rec_len * 0.5 + 0.2))
-	ProcMesh.add_part(root, _gun_box(Vector3(0.028, 0.09, 0.04), polymer, 0.8, 0.1), Vector3(0, -0.05, 0.07), Vector3(-22, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.034, 0.048, 0.16), accent_col, 0.7, 0.16, "polymer"), Vector3(0, 0.02, rec_len * 0.5 + 0.06), Vector3(-8, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.03, 0.07, 0.11), accent_col.darkened(0.06), 0.72, 0.14, "polymer"), Vector3(0, -0.02, rec_len * 0.5 + 0.14), Vector3(-16, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.038, 0.09, 0.022), polymer, 0.45, 0.35, "polymer"), Vector3(0, -0.012, rec_len * 0.5 + 0.2))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.028, 0.09, 0.04), polymer, 0.8, 0.1, "polymer"), Vector3(0, -0.05, 0.07), Vector3(-22, 0, 0))
 	ProcMesh.add_part(root, _gun_box(Vector3(0.008, 0.03, 0.01), polymer, 0.4, 0.55), Vector3(0, 0.046, brl_z - brl_len * 0.28))
 
 	# Modular Gunsmith Attachments!
@@ -331,11 +395,7 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 	_sight_local[id] = _attach_optic(root, Vector3(0, 0.015 + rh * 0.5 + 0.014, 0.01), chosen_optic, false)
 	_attach_underbarrel(root, Vector3(0, -0.025, hg_z), String(mods.get("underbarrel", "none")), false)
 
-	# Gloved hands + forearms
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.058, 0.068, 0.075), glove), Vector3(0.005, -0.055, 0.085), Vector3(-14, 0, 0))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.068, 0.068, 0.22), sleeve), Vector3(0.038, -0.105, 0.21), Vector3(-18, -8, 0))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.060, 0.062, 0.076), glove), Vector3(-0.015, -0.045, hg_z))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.062, 0.060, 0.24), sleeve), Vector3(-0.08, -0.13, hg_z + 0.11), Vector3(-22, 22, 0))
+	_fp_arms(root, Vector3(0.004, -0.04, 0.08), Vector3(0.0, 0.0, hg_z), true)
 
 	var flash_sz := 0.06 if String(mods.get("muzzle", "none")) == "suppressor" else (0.14 if is_lmg or is_sniper else 0.11)
 	var flash := _make_muzzle_flash(flash_sz, Color(1.0, 0.78, 0.22, 0.95))
@@ -345,30 +405,26 @@ func _build_long_gun(slot: Node3D, id: GameState.WeaponId, body_col: Color, acce
 
 
 func _build_shotgun(slot: Node3D, body_col: Color, accent_col: Color, mods: Dictionary) -> void:
-	var wood := Color(0.42, 0.25, 0.13) if accent_col == SKIN_PALETTES["default"]["accent"] else accent_col
-	var glove := Color(0.18, 0.17, 0.16)
-	var sleeve := Color(0.24, 0.28, 0.20)
+	var wood := Color(0.38, 0.22, 0.11) if accent_col == SKIN_PALETTES["default"]["accent"] else accent_col
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	slot.add_child(root)
 
 	# Heavy shotgun receiver + top barrel + lower tubular magazine
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.056, 0.072, 0.24), body_col, 0.42, 0.58), Vector3(0, 0.015, 0.02))
-	ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.016, 0.44, body_col.darkened(0.12), 0.35, 0.72, 10), Vector3(0, 0.034, -0.30), Vector3(90, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.056, 0.072, 0.24), body_col, 0.42, 0.58, "metal"), Vector3(0, 0.015, 0.02))
+	ProcMesh.add_part(root, _gun_cyl(0.016, 0.44, body_col.darkened(0.12), 0.35, 0.72, 10, "metal"), Vector3(0, 0.034, -0.30), Vector3(90, 0, 0))
 	var tube_len := 0.44 if String(mods.get("mag", "standard")) == "extended" else 0.34
-	ProcMesh.add_part(root, ProcMesh.cylinder_mesh(0.014, tube_len, body_col.darkened(0.22), 0.4, 0.65, 10), Vector3(0, 0.002, -0.10 - tube_len * 0.5), Vector3(90, 0, 0))
+	ProcMesh.add_part(root, _gun_cyl(0.014, tube_len, body_col.darkened(0.22), 0.4, 0.65, 10, "metal"), Vector3(0, 0.002, -0.10 - tube_len * 0.5), Vector3(90, 0, 0))
 	# Ribbed pump forend
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.056, 0.056, 0.18), wood, 0.78, 0.08), Vector3(0, -0.002, -0.25))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.056, 0.056, 0.18), wood, 0.78, 0.08, "wood"), Vector3(0, -0.002, -0.25))
 	# Stock
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.048, 0.090, 0.26), wood, 0.78, 0.08), Vector3(0, -0.022, 0.22), Vector3(-8, 0, 0))
+	ProcMesh.add_part(root, _gun_box(Vector3(0.048, 0.090, 0.26), wood, 0.78, 0.08, "wood"), Vector3(0, -0.022, 0.22), Vector3(-8, 0, 0))
 
 	var tip := _attach_muzzle(root, Vector3(0, 0.034, -0.52), String(mods.get("muzzle", "none")), 0.022, 0.18)
 	_sight_local[GameState.WeaponId.SHOTGUN] = _attach_optic(root, Vector3(0, 0.056, 0.02), String(mods.get("optic", "iron")), false)
 	_attach_underbarrel(root, Vector3(0, -0.038, -0.26), String(mods.get("underbarrel", "none")), false)
 
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.060, 0.068, 0.075), glove), Vector3(0.006, -0.04, 0.13))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.068, 0.068, 0.22), sleeve), Vector3(0.04, -0.095, 0.25), Vector3(-16, -8, 0))
-	ProcMesh.add_part(root, ProcMesh.box_mesh(Vector3(0.062, 0.062, 0.080), glove), Vector3(-0.012, -0.035, -0.25))
+	_fp_arms(root, Vector3(0.006, -0.03, 0.12), Vector3(0.0, 0.0, -0.25), true)
 
 	var flash := _make_muzzle_flash(0.15, Color(1.0, 0.72, 0.18, 0.95))
 	flash.position = Vector3(0, 0.034, tip - 0.04)
@@ -726,6 +782,10 @@ func show_weapon(id: GameState.WeaponId, animate_swap: bool = true) -> void:
 		_swap_t = _swap_dur
 
 
+func set_sprinting(on: bool) -> void:
+	_sprint_target = 1.0 if on else 0.0
+
+
 func set_move_factor(factor: float) -> void:
 	_move_factor = clampf(factor, 0.0, 1.5)
 
@@ -896,6 +956,16 @@ func _process(delta: float) -> void:
 	if _carrying:
 		offset_p.y -= 0.28 if not _dragging else 0.32
 		offset_r.x -= 44.0
+
+	_sprint = move_toward(_sprint, _sprint_target, delta * 5.0)
+	if _sprint > 0.001 and ads < 0.25 and not _carrying:
+		# Gun drops across the body the way a sprinting rifle sits in FC5.
+		offset_p.y -= 0.2 * _sprint
+		offset_p.x += 0.06 * _sprint
+		offset_p.z += 0.05 * _sprint
+		offset_r.x += 36.0 * _sprint
+		offset_r.z += 22.0 * _sprint
+		offset_p.y += sin(_idle_time * 13.0) * 0.014 * _sprint
 
 	if _fire_t > 0.0:
 		_fire_t = maxf(0.0, _fire_t - delta)

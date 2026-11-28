@@ -297,16 +297,28 @@ func _apply_grade_for_hour(hour: float, sun_elev: float) -> void:
 	sm.set_shader_parameter("vignette_strength", 0.22 if level == LEVEL_MED else 0.38)
 
 
-func make_gun_material(color: Color, metallic: float = 0.35, roughness: float = 0.55) -> Material:
+func make_gun_material(color: Color, metallic: float = 0.35, roughness: float = 0.55, surface: Texture2D = null) -> Material:
 	if not wants_gun_rim() or _gun_shader == null:
-		return ProcMesh.mat(color, roughness, metallic)
+		if surface == null:
+			return ProcMesh.mat(color, roughness, metallic)
+		var flat := StandardMaterial3D.new()
+		flat.albedo_color = color
+		flat.albedo_texture = surface
+		flat.roughness = roughness
+		flat.metallic = metallic
+		flat.uv1_scale = Vector3(2.4, 2.4, 2.4)
+		flat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		return flat
 	var mat := ShaderMaterial.new()
 	mat.shader = _gun_shader
 	mat.set_shader_parameter("albedo", color)
-	mat.set_shader_parameter("rim_color", Color(0.55, 0.72, 0.95, 1.0))
-	mat.set_shader_parameter("rim_strength", 0.5)
+	mat.set_shader_parameter("rim_color", Color(0.72, 0.68, 0.58, 1.0))
+	mat.set_shader_parameter("rim_strength", 0.28)
 	mat.set_shader_parameter("metallic", metallic)
 	mat.set_shader_parameter("roughness", roughness)
+	if surface != null:
+		mat.set_shader_parameter("albedo_tex", surface)
+		mat.set_shader_parameter("use_tex", 1.0)
 	return mat
 
 

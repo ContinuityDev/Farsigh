@@ -256,14 +256,52 @@ func show_status(text: String, duration: float = 2.5) -> void:
 
 
 func show_liberation(name: String) -> void:
-	show_status("OUTPOST LIBERATED — %s" % name, 6.0)
+	show_status("%s is free" % name, 6.0)
 	set_liberated_banner(true)
+	_play_liberation_fanfare()
+
+
+func _play_liberation_fanfare() -> void:
+	var player := get_node_or_null("Fanfare") as AudioStreamPlayer
+	if player == null:
+		player = AudioStreamPlayer.new()
+		player.name = "Fanfare"
+		add_child(player)
+	if player.stream == null:
+		player.stream = _liberation_tone()
+	player.play()
+
+
+func _liberation_tone() -> AudioStreamWAV:
+	## Short C-major sting. Generated so the web build does not ship an audio file.
+	var rate := 22050
+	var count := int(rate * 1.5)
+	var data := PackedByteArray()
+	data.resize(count * 2)
+	var notes := PackedFloat32Array([523.25, 659.25, 783.99, 1046.5])
+	for i in count:
+		var t := float(i) / float(rate)
+		var env := clampf(t / 0.04, 0.0, 1.0) * clampf((1.5 - t) / 0.7, 0.0, 1.0)
+		var s := 0.0
+		for k in notes.size():
+			if t > float(k) * 0.11:
+				s += sin(TAU * notes[k] * t)
+		s = clampf(s / float(notes.size()) * env * 0.4, -1.0, 1.0)
+		data.encode_s16(i * 2, int(s * 28000.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = data
+	return wav
 
 
 func set_liberated_banner(on: bool) -> void:
 	liberated_banner.visible = on
 	if on:
-		liberated_banner.text = "LIBERATED"
+		liberated_banner.text = "OUTPOST LIBERATED"
+		liberated_banner.add_theme_color_override("font_color", Color(0.96, 0.93, 0.84))
+		liberated_banner.add_theme_font_size_override("font_size", 40)
 
 
 func _ensure_clear_ui() -> void:

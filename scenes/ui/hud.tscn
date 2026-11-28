@@ -33,19 +33,35 @@ mouse_filter = 2
 
 [node name="H" type="ColorRect" parent="Root/Crosshair"]
 layout_mode = 0
-offset_left = 0.0
+offset_left = -6.0
 offset_top = 7.0
-offset_right = 16.0
+offset_right = 2.0
 offset_bottom = 9.0
-color = Color(0.95, 0.95, 0.9, 0.85)
+color = Color(0.96, 0.95, 0.9, 0.92)
+
+[node name="H2" type="ColorRect" parent="Root/Crosshair"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 7.0
+offset_right = 22.0
+offset_bottom = 9.0
+color = Color(0.96, 0.95, 0.9, 0.92)
 
 [node name="V" type="ColorRect" parent="Root/Crosshair"]
 layout_mode = 0
 offset_left = 7.0
-offset_top = 0.0
+offset_top = -6.0
 offset_right = 9.0
-offset_bottom = 16.0
-color = Color(0.95, 0.95, 0.9, 0.85)
+offset_bottom = 2.0
+color = Color(0.96, 0.95, 0.9, 0.92)
+
+[node name="V2" type="ColorRect" parent="Root/Crosshair"]
+layout_mode = 0
+offset_left = 7.0
+offset_top = 14.0
+offset_right = 9.0
+offset_bottom = 22.0
+color = Color(0.96, 0.95, 0.9, 0.92)
 
 [node name="LoadoutCard" type="ColorRect" parent="Root"]
 layout_mode = 1
@@ -57,35 +73,43 @@ offset_top = -204.0
 offset_right = 448.0
 offset_bottom = -8.0
 mouse_filter = 2
-color = Color(0.04, 0.05, 0.04, 0.55)
+color = Color(0.02, 0.02, 0.02, 0.0)
 
 [node name="WeaponLabel" type="Label" parent="Root"]
 layout_mode = 1
-anchors_preset = 2
+anchors_preset = 3
+anchor_left = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -192.0
-offset_right = 430.0
-offset_bottom = -164.0
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+offset_left = -360.0
+offset_top = -118.0
+offset_right = -28.0
+offset_bottom = -92.0
+theme_override_colors/font_color = Color(0.92, 0.9, 0.84, 0.9)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
 theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 text = "Weapon"
+horizontal_alignment = 2
 
 [node name="AmmoLabel" type="Label" parent="Root"]
 layout_mode = 1
-anchors_preset = 2
+anchors_preset = 3
+anchor_left = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -162.0
-offset_right = 430.0
-offset_bottom = -126.0
+offset_left = -420.0
+offset_top = -92.0
+offset_right = -24.0
+offset_bottom = -28.0
+theme_override_colors/font_color = Color(0.97, 0.96, 0.93, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 26
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 40
 text = "0 / 0"
+horizontal_alignment = 2
 
 [node name="RocksLabel" type="Label" parent="Root"]
 layout_mode = 1
@@ -152,13 +176,15 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -120.0
-offset_top = 130.0
-offset_right = 120.0
-offset_bottom = 170.0
-theme_override_colors/font_color = Color(0.45, 0.95, 0.5, 1)
-theme_override_font_sizes/font_size = 28
-text = "LIBERATED"
+offset_left = -460.0
+offset_top = 118.0
+offset_right = 460.0
+offset_bottom = 188.0
+theme_override_colors/font_color = Color(0.96, 0.93, 0.84, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.04, 0.03, 0.9)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 40
+text = "OUTPOST LIBERATED"
 horizontal_alignment = 1
 
 [node name="PausePanel" type="ColorRect" parent="Root"]

@@ -8,6 +8,9 @@ uniform float rim_power : hint_range(0.5, 8.0) = 2.8;
 uniform float rim_strength : hint_range(0.0, 1.5) = 0.55;
 uniform float roughness : hint_range(0.0, 1.0) = 0.55;
 uniform float metallic : hint_range(0.0, 1.0) = 0.35;
+uniform sampler2D albedo_tex : source_color, hint_default_white, filter_linear, repeat_enable;
+uniform float use_tex : hint_range(0.0, 1.0) = 0.0;
+uniform vec2 uv_scale = vec2(2.4, 2.4);
 
 varying vec3 local_pos;
 
@@ -19,7 +22,9 @@ void fragment() {
 	float ndotv = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
 	float rim = pow(1.0 - ndotv, rim_power) * rim_strength;
 	float wear = fract(sin(dot(local_pos.xy, vec2(12.4, 78.2))) * 43758.0);
-	vec3 worn = albedo.rgb * mix(1.0, 0.72, smoothstep(0.62, 0.95, wear) * 0.55);
+	vec3 tex = texture(albedo_tex, UV * uv_scale).rgb;
+	vec3 worn = albedo.rgb * mix(vec3(1.0), tex, use_tex);
+	worn *= mix(1.0, 0.72, smoothstep(0.62, 0.95, wear) * 0.55);
 	ALBEDO = worn + rim_color.rgb * rim;
 	ROUGHNESS = mix(roughness, 0.25, rim);
 	METALLIC = metallic;
