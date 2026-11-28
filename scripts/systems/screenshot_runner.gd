@@ -815,6 +815,94 @@ func _snap_support() -> void:
 	get_tree().quit()
 
 
+func _snap_militia_closeups(player: Node3D, spawned: Array[Node3D]) -> void:
+	## Crouching rifleman, sandbags, and a real bush in the foreground, plus a pose strip.
+	for i in range(1, spawned.size()):
+		spawned[i].visible = false
+	var rifleman := spawned[0]
+	rifleman.global_position = Vector3(0.0, 0.15, 6.0)
+	rifleman.rotation_degrees = Vector3(0, 180, 0)
+	var root := get_tree().current_scene
+	var bush_scene := load("res://prefabs/foliage/bush_cluster.tscn") as PackedScene
+	if bush_scene:
+		var bush_a := bush_scene.instantiate() as Node3D
+		bush_a.name = "CloseBush"
+		bush_a.position = Vector3(-1.45, 0.0, 7.55)
+		bush_a.scale = Vector3(0.8, 0.8, 0.8)
+		root.add_child(bush_a)
+		var bush_b := bush_scene.instantiate() as Node3D
+		bush_b.position = Vector3(1.55, 0.0, 6.15)
+		bush_b.scale = Vector3(0.7, 0.7, 0.7)
+		root.add_child(bush_b)
+	var bags := load("res://prefabs/props/sandbag_wall.tscn") as PackedScene
+	if bags:
+		var wall := bags.instantiate() as Node3D
+		wall.position = Vector3(0.0, 0.0, 7.35)
+		wall.rotation_degrees = Vector3(0, 0, 0)
+		root.add_child(wall)
+	var vis := rifleman.get_node_or_null("Visual")
+	var shots := [
+		["idle", 0.35],
+		["walk", 0.45],
+		["alert", 0.4],
+		["run", 0.4],
+		["crouch", 0.45],
+		["aim", 0.35],
+		["strafe", 0.4],
+		["peek", 0.4],
+		["look", 0.45],
+		["shoot", 0.18],
+		["reload", 0.55],
+		["hit", 0.2],
+		["death", 1.1],
+	]
+	var alert := rifleman.get_node_or_null("AlertIcon") as Node3D
+	if is_instance_valid(alert):
+		alert.visible = false
+	var tag := rifleman.get_node_or_null("TagIcon") as Node3D
+	if is_instance_valid(tag):
+		tag.visible = false
+	for meter_name in ["AlertMeterBg", "AlertMeterFill"]:
+		var meter := rifleman.get_node_or_null(meter_name) as Node3D
+		if is_instance_valid(meter):
+			meter.visible = false
+	var focus := rifleman.global_position + Vector3(0, 1.15, 0)
+	var eye := rifleman.global_position + Vector3(0.75, 1.4, 1.85)
+	for spec in shots:
+		var pose := String(spec[0])
+		if vis and vis.has_method("pose_for_shot"):
+			vis.pose_for_shot(pose)
+		var origin := rifleman.global_position
+		if pose == "death":
+			focus = origin + Vector3(0, 0.4, 0)
+			eye = origin + Vector3(1.15, 1.15, 1.7)
+		elif pose == "crouch" or pose == "peek":
+			focus = origin + Vector3(0, 0.75, 0)
+			eye = origin + Vector3(0.7, 1.15, 1.75)
+		else:
+			focus = origin + Vector3(0, 1.15, 0.05)
+			eye = origin + Vector3(0.72, 1.38, 1.8)
+		_frame_shot(player, eye, focus)
+		await get_tree().create_timer(float(spec[1])).timeout
+		await _snap("80_rifleman_%s" % pose)
+		if pose == "idle" and vis and vis.has_method("hand_debug"):
+			print("HAND_AXES ", vis.hand_debug())
+	# Bush fill, camera low and close so the leaf volume is the subject.
+	_frame_shot(player, Vector3(-2.3, 1.15, 9.35), Vector3(-1.45, 0.6, 7.55))
+	await get_tree().create_timer(0.2).timeout
+	await _snap("93_bush_closeup")
+	if vis and vis.has_method("pose_for_shot"):
+		vis.pose_for_shot("aim")
+	_frame_shot(player, rifleman.global_position + Vector3(0.28, 1.62, 0.95), rifleman.global_position + Vector3(0, 1.55, 0))
+	await get_tree().create_timer(0.25).timeout
+	await _snap("80_rifleman_face")
+	if vis and vis.has_method("pose_for_shot"):
+		vis.pose_for_shot("crouch")
+	_frame_shot(player, Vector3(1.15, 1.2, 8.15), rifleman.global_position + Vector3(0, 0.8, 0))
+	await get_tree().create_timer(0.35).timeout
+	await _snap("94_rifleman_crouch_bush")
+
+
 func _snap_guards() -> void:
 	await get_tree().process_frame
 	SaveManager.clear_save()
@@ -905,6 +993,7 @@ func _snap_guards() -> void:
 		_frame_shot(player, eye_r + Vector3(0, -0.15, 0.1), focus_r + Vector3(0, -0.35, 0))
 		await get_tree().create_timer(0.12).timeout
 		await _snap("68_rifleman_cover")
+	await _snap_militia_closeups(player, spawned)
 	print("GUARD_SNAP complete")
 	get_tree().quit()
 

@@ -135,7 +135,7 @@ func set_tagged(on: bool) -> void:
 		_tag_icon.outline_size = 8
 		_tag_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		# Sit above the ?/! meter so binocular tags coexist cleanly
-		_tag_icon.position = Vector3(0, 2.55, 0)
+		_tag_icon.position = Vector3(0, _head_top() + 0.72, 0)
 		_tag_icon.no_depth_test = true
 		add_child(_tag_icon)
 	_refresh_tag_icon()
@@ -350,6 +350,12 @@ func _set_state(s: State) -> void:
 	state_changed.emit(State.keys()[s])
 
 
+func _head_top() -> float:
+	if is_instance_valid(visual) and visual.has_method("head_height"):
+		return float(visual.head_height())
+	return 1.7
+
+
 func _ensure_alert_meter() -> void:
 	if is_instance_valid(_alert_icon):
 		return
@@ -358,7 +364,7 @@ func _ensure_alert_meter() -> void:
 	_alert_icon.font_size = 64
 	_alert_icon.outline_size = 10
 	_alert_icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_alert_icon.position = Vector3(0, 2.35, 0)
+	_alert_icon.position = Vector3(0, _head_top() + 0.55, 0)
 	_alert_icon.no_depth_test = true
 	_alert_icon.visible = false
 	add_child(_alert_icon)
@@ -373,7 +379,7 @@ func _ensure_alert_meter() -> void:
 	bg_mat.albedo_color = Color(0.08, 0.08, 0.1, 0.85)
 	bg_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	bg.material_override = bg_mat
-	bg.position = Vector3(0, 1.92, 0)
+	bg.position = Vector3(0, _head_top() + 0.18, 0)
 	bg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bg.visible = false
 	add_child(bg)
@@ -387,7 +393,7 @@ func _ensure_alert_meter() -> void:
 	fill_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	fill_mat.albedo_color = Color(0.95, 0.85, 0.2)
 	fill.material_override = fill_mat
-	fill.position = Vector3(0, 1.92, 0.002)
+	fill.position = Vector3(0, _head_top() + 0.18, 0.002)
 	fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	fill.visible = false
 	add_child(fill)
