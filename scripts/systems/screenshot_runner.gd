@@ -46,6 +46,10 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _snap_fc5()
 		return
+	if OS.get_environment("CC0_SNAP") == "1":
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		await _snap_cc0()
+		return
 	if _web_wants_overlook():
 		process_mode = Node.PROCESS_MODE_ALWAYS
 		await _web_overlook_view()
@@ -438,6 +442,130 @@ func _snap(name: String) -> void:
 	var path := "%s/%s.png" % [docs, name]
 	img.save_png(path)
 	print("Saved screenshot ", path, " scene=", str(get_tree().current_scene))
+
+
+func _snap_cc0() -> void:
+	## Close-ups of the clothed guard and each CC0 firearm at the hip and in ADS.
+	await get_tree().process_frame
+	SaveManager.clear_save()
+	GameState.start_new_run()
+	GameState.set_graphics_quality(2)
+	GameState.set_day_start_hour(15.0)
+	GameState.set_full_loadout(GameState.WeaponId.RIFLE, GameState.WeaponId.PISTOL, GameState.WeaponId.SHOTGUN, GameState.WeaponId.FRAG, GameState.WeaponId.MACHETE)
+	GameState.select_outpost("compound_alpha")
+	GameState.begin_world_load()
+	get_tree().change_scene_to_file("res://scenes/levels/outpost.tscn")
+	await GameState.wait_world_ready(90.0)
+	await get_tree().create_timer(0.6).timeout
+	if DayNightCycle:
+		DayNightCycle.set_hour(15.0)
+	var overlay := get_tree().current_scene.get_node_or_null("LoadingOverlay")
+	if is_instance_valid(overlay):
+		overlay.visible = false
+	for existing in get_tree().get_nodes_in_group("guards"):
+		if existing is Node3D:
+			(existing as Node3D).visible = false
+		existing.set_process(false)
+		existing.set_physics_process(false)
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var hud := get_tree().current_scene.get_node_or_null("HUD")
+	if is_instance_valid(hud):
+		var tc := hud.get_node_or_null("TouchControls")
+		if is_instance_valid(tc):
+			tc.visible = false
+	var packed := load("res://scenes/enemies/guard.tscn") as PackedScene
+	var guard := packed.instantiate() as Node3D
+	guard.name = "CC0Guard"
+	guard.set("role", "patrol")
+	guard.position = Vector3(0.0, 0.15, 6.0)
+	guard.rotation_degrees = Vector3(0, 0, 0)
+	get_tree().current_scene.add_child(guard)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	guard.set_physics_process(false)
+	guard.set_process(false)
+	var badge := guard.get_node_or_null("StateLabel") as Label3D
+	if is_instance_valid(badge):
+		badge.visible = false
+	var vis := guard.get_node_or_null("Visual")
+	if vis and vis.has_method("set_locomotion"):
+		vis.set_locomotion(false, false)
+	await get_tree().create_timer(0.35).timeout
+	# Actor faces -Z, so the camera sits on that side.
+	_frame_shot(player, guard.global_position + Vector3(0.85, 1.25, -2.15), guard.global_position + Vector3(0, 1.05, 0))
+	await _snap("105_guard_idle")
+	_frame_shot(player, guard.global_position + Vector3(0.15, 1.45, -1.15), guard.global_position + Vector3(0, 1.55, 0))
+	await _snap("106_guard_face")
+	if vis and vis.has_method("set_locomotion"):
+		vis.set_locomotion(false, true)
+	await get_tree().create_timer(0.25).timeout
+	_frame_shot(player, guard.global_position + Vector3(1.15, 1.2, -1.85), guard.global_position + Vector3(0, 1.05, 0))
+	await _snap("107_guard_aim")
+	if vis and vis.has_method("set_locomotion"):
+		vis.set_locomotion(true, false)
+	await get_tree().create_timer(0.35).timeout
+	_frame_shot(player, guard.global_position + Vector3(1.6, 1.05, -1.35), guard.global_position + Vector3(0, 0.9, 0))
+	await _snap("108_guard_walk")
+	# Firearms, from the player's own camera so the viewmodel is in frame.
+	if is_instance_valid(hud):
+		hud.visible = true
+		var tc2 := hud.get_node_or_null("TouchControls")
+		if is_instance_valid(tc2):
+			tc2.visible = false
+	guard.visible = false
+	var vm := player.get_node_or_null("Head/Camera3D/Viewmodels")
+	if is_instance_valid(vm):
+		vm.visible = true
+		vm.set_process(true)
+	var wm = player.get_node_or_null("WeaponManager")
+	var guns := [
+		{"id": GameState.WeaponId.RIFLE, "name": "rifle", "optic": "iron"},
+		{"id": GameState.WeaponId.RIFLE, "name": "rifle_dot", "optic": "red_dot"},
+		{"id": GameState.WeaponId.RIFLE, "name": "rifle_holo", "optic": "holo"},
+		{"id": GameState.WeaponId.SMG, "name": "smg", "optic": "iron"},
+		{"id": GameState.WeaponId.SHOTGUN, "name": "shotgun", "optic": "iron"},
+		{"id": GameState.WeaponId.SNIPER, "name": "sniper", "optic": "scope"},
+		{"id": GameState.WeaponId.PISTOL, "name": "pistol", "optic": "iron"},
+		{"id": GameState.WeaponId.LMG, "name": "lmg", "optic": "iron"},
+	]
+	player.global_position = Vector3(2.0, 0.2, 18.0)
+	player.rotation = Vector3(0, PI, 0)
+	var head := player.get_node_or_null("Head") as Node3D
+	if head:
+		head.rotation = Vector3.ZERO
+	var shot_i := 109
+	for spec in guns:
+		var wid: GameState.WeaponId = spec["id"]
+		GameState.selected_primary = wid
+		if is_instance_valid(wm):
+			wm.refresh_slot_from_loadout(0)
+			if wm.active_slot != 0:
+				wm.select_slot(0)
+			var mods := {
+				"muzzle": "suppressor" if wid == GameState.WeaponId.PISTOL else "none",
+				"optic": spec["optic"],
+				"mag": "standard",
+				"underbarrel": "none",
+				"arrow": "standard",
+				"skin": "factory",
+			}
+			wm.viewmodel_rig.rebuild_weapon(wid, mods)
+			wm.viewmodel_rig.show_weapon(wid, false)
+			wm.viewmodel_rig.set_sprinting(false)
+			wm.viewmodel_rig.set_aiming(false)
+		await get_tree().create_timer(0.3).timeout
+		await _snap("%d_%s_hip" % [shot_i, spec["name"]])
+		shot_i += 1
+		if is_instance_valid(wm):
+			wm.viewmodel_rig.set_aiming(true, 0.2)
+		await get_tree().create_timer(0.55).timeout
+		await _snap("%d_%s_ads" % [shot_i, spec["name"]])
+		shot_i += 1
+		if is_instance_valid(wm):
+			wm.viewmodel_rig.set_aiming(false, 0.15)
+		await get_tree().create_timer(0.1).timeout
+	print("CC0_SNAP complete")
+	get_tree().quit()
 
 
 func _snap_fc5() -> void:

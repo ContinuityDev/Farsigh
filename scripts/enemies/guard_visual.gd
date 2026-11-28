@@ -173,7 +173,26 @@ func _force_loop_modes() -> void:
 			anim_player.get_animation(clip_name).loop_mode = Animation.LOOP_NONE
 
 
+func _uses_authored_materials() -> bool:
+	if _actor == null:
+		return false
+	for n in _actor.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		var label := str(mi.name)
+		if label.find("Peasant") >= 0 or label.find("HeadSkin") >= 0 or label.find("Hair") >= 0:
+			return true
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var mat := mi.mesh.surface_get_material(i)
+			if mat is BaseMaterial3D and (mat as BaseMaterial3D).albedo_texture != null:
+				return true
+	return false
+
+
 func _paint_defaults() -> void:
+	if _uses_authored_materials():
+		return
 	_retint_named("Eyes", Color(0.12, 0.09, 0.08), 0.3)
 	_retint_named("Eyebrows", Color(0.16, 0.1, 0.07), 0.75)
 	if _body == null or _body.mesh == null:
@@ -235,6 +254,8 @@ func _emphasize_face() -> void:
 
 
 func _tint_cloth(color: Color) -> void:
+	if _uses_authored_materials():
+		return
 	if _body == null or _cloth_surface < 0:
 		return
 	var mat := StandardMaterial3D.new()
@@ -400,33 +421,45 @@ func _attach_rifle() -> void:
 	var hand := _bone_attach("hand_r", "RightHand")
 	_rifle = Node3D.new()
 	_rifle.name = "GuardRifle"
-	# Hand +Y runs toward the fingers on this rig. Barrel follows that axis.
-	# Wrist is the bone origin. Tuck the stock into the palm (+Z is up on this pose) and keep the barrel along +Y.
-	# Pistol clips point hand +Y out the fingers and hand +Z up the back of the hand.
-	# The receiver sits in the palm; the barrel runs forward along +Y.
-	_rifle.position = Vector3(0.0, 0.09, -0.02)
 	hand.add_child(_rifle)
-	var gun := Color(0.11, 0.12, 0.13)
-	var wood := Color(0.29, 0.18, 0.1)
-	ProcMesh.add_part(_rifle, ProcMesh.box_mesh(Vector3(0.042, 0.15, 0.05), gun, 0.42, 0.4), Vector3(0, 0.0, 0))
-	ProcMesh.add_part(_rifle, ProcMesh.cylinder_mesh(0.014, 0.4, gun.darkened(0.08), 0.32, 0.6, 8), Vector3(0, 0.26, 0.006))
-	ProcMesh.add_part(_rifle, ProcMesh.box_mesh(Vector3(0.034, 0.16, 0.038), wood, 0.7, 0.05), Vector3(0, 0.16, 0.0))
-	ProcMesh.add_part(_rifle, ProcMesh.box_mesh(Vector3(0.03, 0.18, 0.04), wood, 0.72, 0.04), Vector3(0, -0.15, 0.008))
-	ProcMesh.add_part(_rifle, ProcMesh.box_mesh(Vector3(0.02, 0.07, 0.032), gun, 0.5, 0.25), Vector3(0, -0.02, -0.04), Vector3(16, 0, 0))
-	ProcMesh.add_part(_rifle, ProcMesh.box_mesh(Vector3(0.018, 0.035, 0.1), Color(0.08, 0.08, 0.09), 0.4, 0.45), Vector3(0, 0.01, -0.07))
+	var packed := load("res://assets/weapons/cc0/AssaultRifle_1.fbx") as PackedScene
+	var gun := packed.instantiate() if packed else null
+	if gun == null:
+		return
+	gun.name = "CC0Rifle"
+	_rifle.add_child(gun)
+	var bounds := _rifle_bounds(gun)
+	# Imported muzzle is +X and up is +Y. Hand +Y is out the fingers, hand +Z is up the back of the hand.
+	var length := 0.72
+	var scale := length / maxf(bounds.size.x, 0.001)
+	var basis := Basis(Vector3(0, 1, 0), Vector3(0, 0, 1), Vector3(1, 0, 0)).scaled(Vector3.ONE * scale)
+	var grip_pt := bounds.position + Vector3(bounds.size.x * 0.30, bounds.size.y * 0.22, bounds.size.z * 0.5)
+	var palm := Vector3(0.0, 0.05, 0.0)
+	gun.transform = Transform3D(basis, palm - basis * grip_pt)
+	_guard_gun_materials(gun)
+	var support := bounds.position + Vector3(bounds.size.x * 0.62, bounds.size.y * 0.50, bounds.size.z * 0.5)
+	var muzzle := bounds.position + Vector3(bounds.size.x * 0.98, bounds.size.y * 0.55, bounds.size.z * 0.5)
+	var grip := Marker3D.new()
+	grip.name = "LeftGrip"
+	grip.position = gun.transform * support
+	_rifle.add_child(grip)
 	_sniper_kit = Node3D.new()
 	_sniper_kit.name = "SniperKit"
 	_sniper_kit.visible = false
-	_rifle.add_child(_sniper_kit)
-	ProcMesh.add_part(_sniper_kit, ProcMesh.cylinder_mesh(0.016, 0.16, gun, 0.3, 0.55, 8), Vector3(0, 0.16, 0.035), Vector3(90, 0, 0))
-	ProcMesh.add_part(_sniper_kit, ProcMesh.cylinder_mesh(0.011, 0.2, gun, 0.3, 0.6, 6), Vector3(0, 0.5, 0.005))
-	var grip := Marker3D.new()
-	grip.name = "LeftGrip"
-	grip.position = Vector3(0.0, 0.16, 0.0)
-	_rifle.add_child(grip)
+	gun.add_child(_sniper_kit)
+	var scope_scene := load("res://assets/weapons/cc0/Scope_2.fbx") as PackedScene
+	if scope_scene:
+		var scope := scope_scene.instantiate()
+		_sniper_kit.add_child(scope)
+		var scope_bounds := _rifle_bounds(scope)
+		var scope_scale := (bounds.size.x * 0.22) / maxf(scope_bounds.size.x, 0.001)
+		var scope_mid := scope_bounds.position + scope_bounds.size * 0.5
+		var mount := bounds.position + Vector3(bounds.size.x * 0.42, bounds.size.y * 0.86, bounds.size.z * 0.5)
+		scope.scale = Vector3.ONE * scope_scale
+		scope.position = mount - scope_mid * scope_scale
 	_rifle_flash = Node3D.new()
 	_rifle_flash.name = "MuzzleFlash"
-	_rifle_flash.position = Vector3(0, 0.48, 0.006)
+	_rifle_flash.position = gun.transform * muzzle
 	_rifle_flash.visible = false
 	_rifle.add_child(_rifle_flash)
 	var flash := ProcMesh.sphere_mesh(0.04, Color(1.0, 0.82, 0.35))
@@ -443,6 +476,51 @@ func _attach_rifle() -> void:
 		var wrist: Vector3 = _skeleton.get_bone_global_rest(_arm_hand).origin
 		_arm_upper_len = shoulder.distance_to(elbow)
 		_arm_lower_len = elbow.distance_to(wrist)
+
+
+func _rifle_bounds(node: Node3D) -> AABB:
+	var box := AABB()
+	var first := true
+	var inv := node.global_transform.affine_inverse()
+	for n in node.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		var local: AABB = inv * (mi.global_transform * mi.get_aabb())
+		if first:
+			box = local
+			first = false
+		else:
+			box = box.merge(local)
+	if first:
+		for n in node.find_children("*", "MeshInstance3D", true, false):
+			var mi2 := n as MeshInstance3D
+			if mi2.mesh:
+				return mi2.get_aabb()
+	return box
+
+
+func _guard_gun_materials(node: Node) -> void:
+	for n in node.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var mat := mi.mesh.surface_get_material(i)
+			if not (mat is StandardMaterial3D):
+				continue
+			var sm := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
+			var label := sm.resource_name.to_lower()
+			if label.find("wood") >= 0:
+				sm.metallic = 0.0
+				sm.roughness = 0.58
+			elif label.find("metal") >= 0:
+				sm.metallic = 0.7
+				sm.roughness = 0.36
+			else:
+				sm.metallic = 0.08
+				sm.roughness = 0.52
+			mi.set_surface_override_material(i, sm)
 
 
 func _attach_gear() -> void:

@@ -10,3 +10,13 @@ Consider supporting me on Patreon!
 
 https://www.patreon.com/quaternius
 
+Also used, same CC0 dedication:
+- Ultimate Gun Pack (viewmodel and guard rifles)
+- Modular Character Outfits Fantasy, Male Peasant (shirt, trousers, boots)
+- Universal Base Characters (face, eyes, buzz-cut hair)
+- Universal Animation Library (locomotion and pistol clips; the free
+  standard packs do not include rifle clips)
+
+First-person arms: WRAD ARMS by wriks, CC0
+https://wriks.itch.io/wrad-arms
+
