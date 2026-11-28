@@ -1607,33 +1607,39 @@ func _ads_pose_for(wid: GameState.WeaponId, _base_p: Vector3, _base_r: Vector3) 
 		_:
 			var sight: Vector3 = _sight_local.get(wid, Vector3(0.0, 0.06, 0.02))
 			# Per-weapon hold distance — far enough to avoid clipping hands/receiver
-			var hold_z := 0.58
+			# Closer than the hip hold so the grip sits near the bottom edge
+			# while the sight stays on the crosshair.
+			var hold_z := 0.42
+			# Positive yaw swings the muzzle left so the right side of the
+			# receiver and the handguard read, instead of a rear-on stick.
+			# Negative pitch drops the barrel so the hands sit low in the frame.
+			var yaw_trim := 14.0
+			var pitch_trim := -18.0
 			match wid:
 				GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL, GameState.WeaponId.TRANQ_PISTOL:
-					hold_z = 0.44
+					hold_z = 0.34
+					yaw_trim = 12.0
+					pitch_trim = -6.0
 				GameState.WeaponId.SMG:
-					hold_z = 0.52
+					hold_z = 0.40
+					yaw_trim = 15.0
+					pitch_trim = -10.0
 				GameState.WeaponId.SHOTGUN, GameState.WeaponId.LMG:
-					hold_z = 0.66
+					hold_z = 0.46
+					yaw_trim = 14.0
+					pitch_trim = -8.0
 				GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
-					hold_z = 0.62
+					hold_z = 0.50
+					yaw_trim = 6.0
+					pitch_trim = -4.0
 				GameState.WeaponId.CROSSBOW:
-					hold_z = 0.55
-				_:
-					hold_z = 0.58
-			# A small muzzle-down angle shows the rail without dropping the barrel out of view.
-			var pitch_trim := -6.0
-			match wid:
-				GameState.WeaponId.SHOTGUN:
-					pitch_trim = -3.0
-				GameState.WeaponId.PISTOL, GameState.WeaponId.MACHINE_PISTOL:
-					pitch_trim = -2.0
-				GameState.WeaponId.SNIPER, GameState.WeaponId.SILENCED_SNIPER:
-					pitch_trim = -1.0
-			var turned := Basis.from_euler(Vector3(deg_to_rad(pitch_trim), 0.0, 0.0)) * sight
+					hold_z = 0.44
+					yaw_trim = 8.0
+					pitch_trim = -6.0
+			var turned := Basis.from_euler(Vector3(deg_to_rad(pitch_trim), deg_to_rad(yaw_trim), 0.0)) * sight
 			return {
 				"pos": Vector3(-turned.x, -turned.y, -hold_z - turned.z),
-				"rot": Vector3(pitch_trim, 0.0, 0.0),
+				"rot": Vector3(pitch_trim, yaw_trim, 0.0),
 			}
 
 
